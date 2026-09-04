@@ -1956,6 +1956,43 @@
         }
     };
 
+    /**
+     * Choosing a part from stock fills in its description and price, so a
+     * technician picks one thing instead of typing three.
+     */
+    function initPartPickers(root) {
+        RL.qsa('[data-part-select]', root).forEach(function (select) {
+            if (select.dataset.bound === '1') {
+                return;
+            }
+
+            select.dataset.bound = '1';
+
+            select.addEventListener('change', function () {
+                var option = select.options[select.selectedIndex];
+                var row = select.closest('[data-repeater-row]') || select.closest('.repeater-row');
+
+                if (!row || !option || !option.value) {
+                    return;
+                }
+
+                var nameField = row.querySelector('[data-part-name]');
+                var costField = row.querySelector('[data-line-cost]');
+
+                if (nameField && option.dataset.name) {
+                    nameField.value = option.dataset.name;
+                }
+
+                if (costField && option.dataset.cost) {
+                    costField.value = parseFloat(option.dataset.cost).toFixed(2);
+                }
+
+                // Let the cost calculator pick the change up.
+                row.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        });
+    }
+
     function initRepeaters(root) {
         RL.qsa('[data-repeater]', root).forEach(function (container) {
             if (!container.dataset.repeaterIndex) {
@@ -2214,6 +2251,7 @@
         initTabs(root);
         initDropzones(root);
         initRepeaters(root);
+        initPartPickers(root);
         initMisc(root);
     };
 

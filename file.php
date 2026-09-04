@@ -55,6 +55,35 @@ if ($avatarUserId !== null) {
 }
 
 // -----------------------------------------------------------------------------
+// Asset photos
+// -----------------------------------------------------------------------------
+
+$assetPhotoId = Request::intOrNull('asset_photo');
+
+if ($assetPhotoId !== null) {
+    if (!Acl::can('assets.view')) {
+        Response::abortPage(403, 'You do not have permission to view that.');
+    }
+
+    $asset = db()->one(
+        'SELECT id, name, image_path FROM {assets} WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+        [$assetPhotoId]
+    );
+
+    if ($asset === null || empty($asset['image_path'])) {
+        Response::abortPage(404, 'That asset has no photo.');
+    }
+
+    $path = Uploader::absolutePath((string) $asset['image_path']);
+
+    if ($path === null) {
+        Response::abortPage(404, 'That photo is no longer on the server.');
+    }
+
+    Response::file($path, 'asset-' . (int) $asset['id'] . '.jpg', mime_of($path), true);
+}
+
+// -----------------------------------------------------------------------------
 // Attachments
 // -----------------------------------------------------------------------------
 

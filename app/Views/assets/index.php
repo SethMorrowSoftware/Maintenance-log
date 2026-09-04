@@ -1,0 +1,217 @@
+<?php
+/**
+ * Asset list.
+ *
+ * Two views: a table for a desk, and cards for a phone. The status strip at
+ * the top answers "what's down?" without anyone having to build a filter.
+ */
+
+use App\Dates;
+use App\Status;
+use App\View;
+
+$statusTabs = [
+    ''               => ['label' => 'Active',         'count' => array_sum(array_intersect_key($statusCounts, array_flip(['in_service','maintenance','out_of_service'])))],
+    'in_service'     => ['label' => 'In service',     'count' => (int) ($statusCounts['in_service'] ?? 0)],
+    'down'           => ['label' => 'Down',           'count' => (int) ($statusCounts['maintenance'] ?? 0) + (int) ($statusCounts['out_of_service'] ?? 0)],
+    'retired'        => ['label' => 'Retired',        'count' => (int) ($statusCounts['retired'] ?? 0)],
+    'all'            => ['label' => 'All',            'count' => array_sum($statusCounts)],
+];
+?>
+
+<div class="card">
+
+    <?php // ---- Status strip: the question people actually ask ---- ?>
+    <div class="table-toolbar">
+        <div class="btn-group" role="tablist">
+            <?php foreach ($statusTabs as $value => $tab): ?>
+                <?php $isActive = (string) $filters['status'] === (string) $value; ?>
+                <a class="btn btn-secondary btn-sm<?= $isActive ? ' is-active' : '' ?>"
+                   href="<?= e(url('assets.php', array_merge($filters, ['status' => $value, 'page' => null]))) ?>">
+                    <?= e($tab['label']) ?>
+                    <span class="badge badge-muted" style="margin-left:4px"><?= (int) $tab['count'] ?></span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="flex gap-2 items-center">
+            <div class="btn-group no-print">
+                <a class="btn btn-secondary btn-sm<?= $view === 'table' ? ' is-active' : '' ?>"
+                   href="<?= e(url('assets.php', array_merge($_GET, ['view' => 'table']))) ?>"
+                   aria-label="Table view" title="Table view"><?= icon('list', '', 15) ?></a>
+                <a class="btn btn-secondary btn-sm<?= $view === 'cards' ? ' is-active' : '' ?>"
+                   href="<?= e(url('assets.php', array_merge($_GET, ['view' => 'cards']))) ?>"
+                   aria-label="Card view" title="Card view"><?= icon('grid', '', 15) ?></a>
+            </div>
+        </div>
+    </div>
+
+    <?php
+    View::partial('filter-bar', [
+        'action'  => 'assets.php',
+        'filters' => [
+            'q' => [
+                'label'       => 'Search',
+                'type'        => 'text',
+                'value'       => $filters['q'],
+                'placeholder' => 'Name, tag, serial…',
+            ],
+            'category_id' => [
+                'label'   => 'Category',
+                'type'    => 'select',
+                'value'   => $filters['category_id'],
+                'options' => $categories,
+                'empty'   => 'All categories',
+            ],
+            'location_id' => [
+                'label'   => 'Location',
+                'type'    => 'select',
+                'value'   => $filters['location_id'],
+                'options' => $locations,
+                'empty'   => 'All locations',
+            ],
+            'criticality' => [
+                'label'   => 'Importance',
+                'type'    => 'select',
+                'value'   => $filters['criticality'],
+                'options' => Status::options('criticality'),
+                'empty'   => 'Any',
+            ],
+        ],
+        'hidden'   => ['status' => $filters['status'], 'view' => $view],
+        'resetUrl' => url('assets.php', ['status' => $filters['status'], 'view' => $view]),
+    ]);
+    ?>
+
+    <?php if ($assets === []): ?>
+
+        <?php View::partial('empty-state', [
+            'icon'        => 'assets',
+            'title'       => $hasFilters ? 'No assets match those filters' : 'No assets yet',
+            'message'     => $hasFilters
+                ? 'Try widening the search, or clear the filters to see everything.'
+                : 'Add your karts, rides and machines so their maintenance can be recorded against them.',
+            'actionLabel' => $hasFilters ? 'Clear filters' : (can('assets.create') ? 'Add your first asset' : ''),
+            'actionUrl'   => $hasFilters ? url('assets.php') : (can('assets.create') ? url('asset-edit.php') : ''),
+            'actionIcon'  => $hasFilters ? 'x' : 'plus',
+        ]); ?>
+
+    <?php elseif ($view === 'cards'): ?>
+
+        <div class="card-body">
+            <div class="grid grid-3">
+                <?php foreach ($assets as $asset): ?>
+                    <a class="card" style="margin:0;display:block"
+                       href="<?= e(url('asset-view.php', ['id' => (int) $asset['id']])) ?>">
+                        <div class="card-body">
+                            <div class="flex items-start justify-between gap-2 mb-2">
+                                <span class="stat-icon" style="width:34px;height:34px;background:<?= e((string) ($asset['category_color'] ?? '#4f46e5')) ?>1a;color:<?= e((string) ($asset['category_color'] ?? '#4f46e5')) ?>">
+                                    <?= icon((string) ($asset['category_icon'] ?? 'tool'), '', 18) ?>
+                                </span>
+                                <?php View::partial('status-badge', ['value' => (string) $asset['status'], 'vocabulary' => 'asset']); ?>
+                            </div>
+                            <strong style="display:block"><?= e((string) $asset['name']) ?></strong>
+                            <span class="text-sm text-muted"><?= e((string) $asset['asset_tag']) ?></span>
+                            <div class="text-sm text-subtle mt-2">
+                                <?= e((string) ($asset['category_name'] ?? 'Uncategorised')) ?>
+                                <?php if (!empty($asset['location_name'])): ?>
+                                    &middot; <?= e((string) $asset['location_name']) ?>
+                                <?php endif; ?>
+                            </div>
+                            <?php if ((string) $asset['meter_type'] !== 'none'): ?>
+                                <div class="text-sm mt-2">
+                                    <?= icon('gauge', '', 14) ?>
+                                    <?= e(decimal($asset['meter_reading'])) ?> <?= e((string) $asset['meter_type']) ?>
+                                </div>
+                            <?php endif; ?>
+                            <?php if ((int) $asset['open_work_orders'] > 0): ?>
+                                <div class="mt-2">
+                                    <span class="badge badge-warn">
+                                        <?= (int) $asset['open_work_orders'] ?> open work order<?= (int) $asset['open_work_orders'] === 1 ? '' : 's' ?>
+                                    </span>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+    <?php else: ?>
+
+        <div class="table-wrap">
+            <table class="table is-stacked table-sortable">
+                <thead>
+                    <tr>
+                        <th data-sort><?= sort_link('name', 'Asset', $sort, $direction) ?></th>
+                        <th data-sort><?= sort_link('category', 'Category', $sort, $direction) ?></th>
+                        <th data-sort><?= sort_link('location', 'Location', $sort, $direction) ?></th>
+                        <th data-sort><?= sort_link('status', 'Status', $sort, $direction) ?></th>
+                        <th class="is-numeric" data-sort><?= sort_link('meter', 'Meter', $sort, $direction) ?></th>
+                        <th data-sort><?= sort_link('last_service', 'Last service', $sort, $direction) ?></th>
+                        <th class="is-actions no-print">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($assets as $asset): ?>
+                        <tr data-row-href="<?= e(url('asset-view.php', ['id' => (int) $asset['id']])) ?>">
+                            <td data-label="Asset" class="is-row-title">
+                                <a href="<?= e(url('asset-view.php', ['id' => (int) $asset['id']])) ?>" class="cell-primary">
+                                    <?= e((string) $asset['name']) ?>
+                                </a>
+                                <span class="cell-secondary">
+                                    <?= e((string) $asset['asset_tag']) ?>
+                                    <?php if ((int) $asset['open_work_orders'] > 0): ?>
+                                        &middot; <span style="color:var(--warn)"><?= (int) $asset['open_work_orders'] ?> open</span>
+                                    <?php endif; ?>
+                                </span>
+                            </td>
+                            <td data-label="Category"><?= e((string) ($asset['category_name'] ?? '—')) ?></td>
+                            <td data-label="Location"><?= e((string) ($asset['location_name'] ?? '—')) ?></td>
+                            <td data-label="Status">
+                                <?php View::partial('status-badge', ['value' => (string) $asset['status'], 'vocabulary' => 'asset']); ?>
+                            </td>
+                            <td data-label="Meter" class="is-numeric"
+                                data-value="<?= e((string) $asset['meter_reading']) ?>">
+                                <?php if ((string) $asset['meter_type'] === 'none'): ?>
+                                    <span class="text-subtle">—</span>
+                                <?php else: ?>
+                                    <?= e(decimal($asset['meter_reading'])) ?>
+                                    <span class="text-subtle text-xs"><?= e((string) $asset['meter_type']) ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td data-label="Last service"
+                                data-value="<?= e((string) ($asset['last_service'] ?? '')) ?>">
+                                <?php if (!empty($asset['last_service'])): ?>
+                                    <?= e(Dates::date((string) $asset['last_service'])) ?>
+                                    <span class="cell-secondary"><?= e(Dates::ago((string) $asset['last_service'])) ?></span>
+                                <?php else: ?>
+                                    <span class="text-subtle">Never</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="is-actions no-print">
+                                <?php if (can('logs.create')): ?>
+                                    <a class="btn btn-secondary btn-sm"
+                                       href="<?= e(url('log-edit.php', ['asset_id' => (int) $asset['id']])) ?>"
+                                       title="Log maintenance on this asset">
+                                        <?= icon('wrench', '', 15) ?> Log
+                                    </a>
+                                <?php endif; ?>
+                                <?php if (can('assets.edit')): ?>
+                                    <a class="btn btn-ghost btn-sm btn-icon"
+                                       href="<?= e(url('asset-edit.php', ['id' => (int) $asset['id']])) ?>"
+                                       aria-label="Edit <?= attr((string) $asset['name']) ?>" title="Edit">
+                                        <?= icon('edit', '', 15) ?>
+                                    </a>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+    <?php endif; ?>
+
+    <?php View::partial('pagination', ['paginator' => $paginator, 'singular' => 'asset']); ?>
+</div>
