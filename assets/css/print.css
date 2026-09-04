@@ -519,6 +519,50 @@
     .label-barcode { margin-top: 1mm; height: 6mm; }
     .label-barcode svg { height: 100%; width: auto; }
 
+    .label-org {
+        font-size: 6.5pt;
+        color: #777;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Two larger stocks. Avery 5163 is 4in x 2in, two across and five down;
+       5164 is 4in x 3-1/3in, two across and three down. */
+    .label-sheet.is-medium {
+        grid-template-columns: repeat(2, 101.6mm);
+        grid-auto-rows: 50.8mm;
+        column-gap: 4.8mm;
+    }
+    .label-sheet.is-medium .label {
+        width: 101.6mm;
+        height: 50.8mm;
+        padding: 4mm 5mm;
+        gap: 5mm;
+    }
+    .label-sheet.is-medium .label-code { width: 40mm; height: 40mm; }
+    .label-sheet.is-medium .label-tag  { font-size: 16pt; }
+    .label-sheet.is-medium .label-name { font-size: 12pt; }
+    .label-sheet.is-medium .label-meta { font-size: 10pt; }
+    .label-sheet.is-medium .label-org  { font-size: 8.5pt; }
+
+    .label-sheet.is-large {
+        grid-template-columns: repeat(2, 101.6mm);
+        grid-auto-rows: 84.7mm;
+        column-gap: 4.8mm;
+    }
+    .label-sheet.is-large .label {
+        width: 101.6mm;
+        height: 84.7mm;
+        padding: 6mm 7mm;
+        gap: 6mm;
+    }
+    .label-sheet.is-large .label-code { width: 60mm; height: 60mm; }
+    .label-sheet.is-large .label-tag  { font-size: 22pt; }
+    .label-sheet.is-large .label-name { font-size: 15pt; }
+    .label-sheet.is-large .label-meta { font-size: 12pt; }
+    .label-sheet.is-large .label-org  { font-size: 10pt; }
+
     /* ----------------------------------------------------------------------
        Page breaks
        ---------------------------------------------------------------------- */
