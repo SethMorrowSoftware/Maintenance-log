@@ -1956,6 +1956,50 @@
         }
     };
 
+    /* =====================================================================
+       17b. Fields that only matter for one answer
+       ===================================================================== */
+
+    /**
+     * A select marked [data-reveal="name"] shows and hides the blocks marked
+     * [data-reveal-for="name"], each of which lists the values it belongs to in
+     * [data-reveal-when="a,b"].
+     *
+     * The server always renders every block. Without JavaScript the form still
+     * works — you just see one or two questions that do not apply, and the
+     * server ignores them.
+     */
+    function initReveals(root) {
+        RL.qsa('[data-reveal]', root).forEach(function (select) {
+            if (select.dataset.revealBound === '1') {
+                return;
+            }
+
+            select.dataset.revealBound = '1';
+
+            var name = select.dataset.reveal;
+            var scope = select.closest('form') || document;
+
+            var apply = function () {
+                RL.qsa('[data-reveal-for="' + name + '"]', scope).forEach(function (block) {
+                    var when = (block.dataset.revealWhen || '').split(',');
+                    var show = when.indexOf(select.value) !== -1;
+
+                    block.hidden = !show;
+
+                    // A hidden field must not block submission by being required.
+                    RL.qsa('[required]', block).forEach(function (field) {
+                        field.disabled = !show;
+                    });
+                });
+            };
+
+            select.addEventListener('change', apply);
+            apply();
+        });
+    }
+
+
     /**
      * Choosing a part from stock fills in its description and price, so a
      * technician picks one thing instead of typing three.
@@ -2134,6 +2178,173 @@
 
 
     /* =====================================================================
+       18b. Checklist runner
+       ===================================================================== */
+
+    /**
+     * The inspection screen.
+     *
+     * Tapping a response button colours the whole item, opens the notes box on
+     * a fail, and updates the progress counter at the bottom. All of it is
+     * enhancement: the radio inputs and the form work without any of this.
+     */
+    function initChecklistRunner(root) {
+        var items = RL.qsa('[data-checklist-item]', root);
+
+        if (items.length === 0) {
+            return;
+        }
+
+        function refreshItem(item) {
+            var checked = item.querySelector('[data-response-input]:checked');
+            var value = checked ? checked.value : '';
+
+            item.classList.remove('is-pass', 'is-fail', 'is-na', 'is-unanswered');
+
+            if (value === 'pass' || value === 'yes') {
+                item.classList.add('is-pass');
+            } else if (value === 'fail' || value === 'no') {
+                item.classList.add('is-fail');
+            } else if (value === 'na') {
+                item.classList.add('is-na');
+            } else {
+                item.classList.add('is-unanswered');
+            }
+
+            RL.qsa('.response-btn', item).forEach(function (button) {
+                var input = button.querySelector('[data-response-input]');
+                button.classList.toggle('is-selected', !!(input && input.checked));
+            });
+
+            // A failure needs an explanation, so reveal the box and focus it.
+            var notes = item.querySelector('[data-fail-notes]');
+
+            if (notes) {
+                var shouldShow = value === 'fail' || value === 'no';
+                var hasText = notes.querySelector('textarea') && notes.querySelector('textarea').value.trim() !== '';
+
+                notes.hidden = !(shouldShow || hasText);
+            }
+        }
+
+        function refreshProgress() {
+            var answered = 0;
+            var passed = 0;
+            var failed = 0;
+
+            items.forEach(function (item) {
+                var checked = item.querySelector('[data-response-input]:checked');
+                var value = checked ? checked.value : '';
+
+                if (value) {
+                    answered++;
+
+                    if (value === 'pass' || value === 'yes') {
+                        passed++;
+                    } else if (value === 'fail' || value === 'no') {
+                        failed++;
+                    }
+
+                    return;
+                }
+
+                // Number, meter and text items count once they have a value.
+                var field = item.querySelector('input[type="number"], textarea[name*="value_text"]');
+
+                if (field && field.value.trim() !== '') {
+                    answered++;
+                    passed++;
+                }
+            });
+
+            var total = items.length;
+            var bar = RL.qs('[data-progress-bar]');
+            var pct = total === 0 ? 0 : Math.round((answered / total) * 100);
+
+            if (bar) {
+                bar.style.width = pct + '%';
+                bar.classList.toggle('tone-danger', failed > 0);
+                bar.classList.toggle('tone-ok', failed === 0 && answered === total && total > 0);
+            }
+
+            var set = function (selector, value) {
+                var node = RL.qs(selector);
+
+                if (node) {
+                    node.textContent = String(value);
+                }
+            };
+
+            set('[data-count-answered]', answered);
+            set('[data-count-pass]', passed);
+            set('[data-count-fail]', failed);
+        }
+
+        items.forEach(function (item) {
+            RL.qsa('[data-response-input]', item).forEach(function (input) {
+                input.addEventListener('change', function () {
+                    refreshItem(item);
+                    refreshProgress();
+
+                    var notes = item.querySelector('[data-fail-notes] textarea');
+
+                    if (notes && !item.querySelector('[data-fail-notes]').hidden && notes.value === '') {
+                        notes.focus();
+                    }
+                });
+            });
+
+            RL.qsa('input[type="number"], textarea', item).forEach(function (field) {
+                field.addEventListener('input', RL.debounce(refreshProgress, 250));
+            });
+
+            refreshItem(item);
+        });
+
+        refreshProgress();
+
+        // Warn before finishing with unanswered items, rather than letting the
+        // server bounce it back after a scroll to the bottom.
+        var form = items[0].closest('form');
+
+        if (form) {
+            form.addEventListener('submit', function (event) {
+                var submitter = event.submitter;
+
+                if (!submitter || submitter.value !== 'complete') {
+                    return;
+                }
+
+                var unanswered = items.filter(function (item) {
+                    if (item.querySelector('[data-response-input]:checked')) {
+                        return false;
+                    }
+
+                    var field = item.querySelector('input[type="number"], textarea[name*="value_text"]');
+
+                    return !(field && field.value.trim() !== '');
+                });
+
+                if (unanswered.length === 0) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                RL.toast(
+                    unanswered.length + ' item' + (unanswered.length === 1 ? '' : 's')
+                    + ' still need' + (unanswered.length === 1 ? 's' : '') + ' an answer.',
+                    'warning'
+                );
+
+                unanswered[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+                unanswered[0].classList.add('is-unanswered');
+            });
+        }
+    }
+
+
+    /* =====================================================================
        19. Misc behaviours
        ===================================================================== */
 
@@ -2251,7 +2462,9 @@
         initTabs(root);
         initDropzones(root);
         initRepeaters(root);
+        initReveals(root);
         initPartPickers(root);
+        initChecklistRunner(root);
         initMisc(root);
     };
 

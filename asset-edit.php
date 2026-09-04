@@ -113,7 +113,14 @@ if (is_post()) {
             Asset::update($id, $data);
 
             if ($data['meter_type'] !== 'none' && abs($newMeter - $previousMeter) > 0.004) {
-                Asset::updateMeter($id, $newMeter, 'Set while editing the asset');
+                // Editing the asset is the one place a meter is allowed to go
+                // backwards: it is where you correct a replaced or reset unit.
+                Asset::updateMeter($id, $newMeter, 'Set while editing the asset', 'manual', null, true);
+
+                if ($newMeter < $previousMeter) {
+                    flash('info', 'The meter has been set back to ' . decimal($newMeter)
+                        . '. The change is recorded in the meter history.');
+                }
             }
 
             $savedId = $id;

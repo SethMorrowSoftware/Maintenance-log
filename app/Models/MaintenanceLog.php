@@ -375,13 +375,20 @@ final class MaintenanceLog
         // 1. Meter reading
         if ($meterReading !== null && $meterReading !== '') {
             try {
-                Asset::updateMeter(
+                $meterResult = Asset::updateMeter(
                     $assetId,
                     (float) $meterReading,
                     'Recorded on a maintenance log',
                     'maintenance_log',
                     $logId
                 );
+
+                // The log itself is saved either way; say so rather than
+                // letting a rejected reading disappear silently.
+                if (!$meterResult['ok']) {
+                    flash('warning', 'The log was saved, but the meter reading was not applied. '
+                        . $meterResult['error']);
+                }
             } catch (Throwable $e) {
                 log_error('Meter update from log failed: ' . $e->getMessage());
             }

@@ -342,8 +342,14 @@ final class Asset
      *
      * @return array{ok: bool, error: string}
      */
-    public static function updateMeter(int $id, float $reading, string $notes = '', string $source = 'manual', ?int $referenceId = null): array
-    {
+    public static function updateMeter(
+        int $id,
+        float $reading,
+        string $notes = '',
+        string $source = 'manual',
+        ?int $referenceId = null,
+        bool $allowDecrease = false
+    ): array {
         $asset = self::find($id);
 
         if ($asset === null) {
@@ -359,6 +365,19 @@ final class Asset
         }
 
         $previous = (float) $asset['meter_reading'];
+
+        // Hours and miles only go up. A lower number is nearly always a typo,
+        // and letting it through would rewind every meter-based service due
+        // date on the machine. Correcting a replaced meter is a deliberate act,
+        // done on the asset itself.
+        if (!$allowDecrease && $reading < $previous - 0.004) {
+            return [
+                'ok'    => false,
+                'error' => 'That reading (' . decimal($reading) . ') is lower than the last one ('
+                    . decimal($previous) . ' ' . (string) $asset['meter_type'] . '). '
+                    . 'Check the number. If the meter was replaced or reset, change it on the asset itself.',
+            ];
+        }
 
         self::recordMeterReading($id, $reading, $source, $referenceId, $notes, $previous);
 

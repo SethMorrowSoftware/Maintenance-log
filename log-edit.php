@@ -118,6 +118,20 @@ if (is_post()) {
         $data['meter_reading'] = null;
     }
 
+    // Catch a mistyped meter here, where it can still be corrected in the same
+    // form, rather than saving the log and quietly dropping the reading.
+    if ($asset !== null
+        && ($data['meter_reading'] ?? '') !== ''
+        && (float) $data['meter_reading'] < (float) $asset['meter_reading'] - 0.004) {
+        flash_errors([
+            'meter_reading' => 'The meter currently reads ' . decimal($asset['meter_reading']) . ' '
+                . (string) $asset['meter_type'] . '. A reading cannot go backwards — check the number. '
+                . 'If the meter was replaced, change it on the asset itself.',
+        ], $_POST);
+
+        redirect(url('log-edit.php', $editing ? ['id' => $id] : []));
+    }
+
     try {
         if ($editing) {
             MaintenanceLog::update($id, $data, $parts);
