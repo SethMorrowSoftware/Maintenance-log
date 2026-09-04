@@ -46,10 +46,11 @@ If something here conflicts with your instincts, follow this file.
 ├─ audit.php
 ├─ notifications.php
 ├─ search.php
-├─ labels.php              Printable asset labels (QR + barcode)
-├─ qr.php                  Renders a QR/barcode image for an asset
+├─ labels.php              Printable sheet of QR asset labels
+├─ qr.php                  Where a scanned label lands; sends the scanner onward
 ├─ file.php                Authenticated attachment download/inline view
 ├─ cron.php                Token-protected scheduled tasks
+├─ error.php               Rendered for Apache's own 403/404/500 (see .htaccess)
 ├─ api/
 │  ├─ index.php            JSON API front controller
 │  └─ .htaccess            (allows everything; here only to override parent denies if needed)
@@ -60,7 +61,7 @@ If something here conflicts with your instincts, follow this file.
 │  ├─ Config.php  Database.php  Auth.php  Acl.php  Csrf.php  Flash.php
 │  ├─ Request.php  Response.php  Validator.php  Settings.php  Audit.php
 │  ├─ Paginator.php  Csv.php  Mailer.php  Uploader.php  Dates.php  Str.php
-│  ├─ View.php  Icon.php  Barcode.php  Qr.php  Notifier.php  Scheduler.php
+│  ├─ View.php  Icon.php  Qr.php  Reports.php  Notifier.php  Scheduler.php
 │  ├─ Models/   Asset.php  MaintenanceLog.php  User.php  ... (one per domain)
 │  ├─ Api/      AssetsController.php  LogsController.php  ... (one per domain)
 │  └─ Views/    layout.php  partials/*.php  <domain>/<page>.php
@@ -313,7 +314,7 @@ schedules.view schedules.manage
 checklists.view checklists.manage
 inspections.view inspections.perform inspections.delete
 workorders.view workorders.create workorders.edit workorders.assign workorders.close workorders.delete
-parts.view parts.manage
+parts.view parts.adjust parts.manage
 reports.view reports.export
 users.view users.manage
 settings.manage
@@ -323,7 +324,7 @@ audit.view
 | Role | Grants |
 |---|---|
 | `viewer` | all `*.view` + `reports.view` |
-| `technician` | viewer + `logs.create`, `logs.edit_own`, `assets.meter`, `inspections.perform`, `workorders.create`, `workorders.edit` |
+| `technician` | viewer + `logs.create`, `logs.edit_own`, `assets.meter`, `inspections.perform`, `workorders.create`, `workorders.edit`, `parts.adjust` |
 | `manager` | technician + `assets.*`, `logs.edit_any`, `logs.delete`, `schedules.manage`, `checklists.manage`, `inspections.delete`, `workorders.*`, `parts.manage`, `reports.export`, `audit.view` |
 | `admin` | everything, including `users.manage` and `settings.manage` |
 
@@ -383,7 +384,7 @@ workorder.priority   : low | normal | high | urgent
 workorder.source     : operator_report | inspection | preventive | breakdown | other
 part_transaction.type: in | out | adjust
 user.role            : admin | manager | technician | viewer
-attachment.entity_type : asset | maintenance_log | work_order | inspection | part | user
+attachment.entity_type : asset | maintenance_log | work_order | inspection | part | user | setting
 notification.type    : pm_due | pm_overdue | wo_assigned | wo_updated | inspection_failed |
                        low_stock | system
 ```
@@ -502,7 +503,10 @@ List with search, filter (category/location/status/criticality), sort, paginatio
 card & table views, CSV export. Profile page with tabs: Overview · Maintenance History ·
 Schedules · Inspections · Work Orders · Parts Used · Attachments · Meter History · Audit.
 Create/edit with photo upload. Status change with reason (writes an audit + optional log).
-Quick meter update. Soft delete. Printable label with QR + barcode.
+Quick meter update. Soft delete. Printable QR label — pointing a phone at it opens the
+asset, or drops straight into a new log or inspection, depending on how the sheet was
+printed. No 1D barcode: the scanner in this setting is a phone, and adding a second
+symbology nobody has a reader for is scope for its own sake.
 
 ### Maintenance logs
 The core feature. List with rich filters (asset, category, location, technician, type, date

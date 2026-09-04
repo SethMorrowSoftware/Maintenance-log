@@ -516,8 +516,6 @@
         text-overflow: ellipsis;
         white-space: nowrap;
     }
-    .label-barcode { margin-top: 1mm; height: 6mm; }
-    .label-barcode svg { height: 100%; width: auto; }
 
     .label-org {
         font-size: 6.5pt;
