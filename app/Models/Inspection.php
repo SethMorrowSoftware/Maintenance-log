@@ -35,7 +35,8 @@ final class Inspection
                     a.meter_reading AS asset_meter,
                     c.name AS category_name, loc.name AS location_name,
                     u.first_name, u.last_name, u.username, u.avatar_path, u.id AS user_id,
-                    cl.name AS current_checklist_name
+                    cl.name AS current_checklist_name,
+                    cl.require_signature, cl.require_meter
              FROM {inspections} i
              INNER JOIN {assets} a ON a.id = i.asset_id
              LEFT JOIN {asset_categories} c ON c.id = a.category_id
@@ -168,11 +169,12 @@ final class Inspection
     {
         $items = self::items($inspectionId);
 
-        $passed   = 0;
-        $failed   = 0;
-        $na       = 0;
-        $missing  = 0;
-        $critical = false;
+        $passed     = 0;
+        $failed     = 0;
+        $na         = 0;
+        $missing    = 0;
+        $critical   = false;
+        $meterOnList = null;
 
         foreach ($items as $item) {
             $itemId = (int) $item['id'];
@@ -204,6 +206,12 @@ final class Inspection
                 'value_number' => $valueNumber,
                 'notes'        => mb_substr($notes, 0, 500, 'UTF-8'),
             ], ['id' => $itemId]);
+
+            // A checklist that asks for the hour meter should not make somebody
+            // type it again at the bottom of the page.
+            if ($type === 'meter' && $valueNumber !== null) {
+                $meterOnList = $valueNumber;
+            }
 
             // Tally.
             if (in_array($response, ['pass', 'yes'], true)) {
@@ -239,6 +247,8 @@ final class Inspection
 
         if (isset($meta['meter_reading']) && $meta['meter_reading'] !== '') {
             $update['meter_reading'] = (float) $meta['meter_reading'];
+        } elseif ($meterOnList !== null) {
+            $update['meter_reading'] = $meterOnList;
         }
 
         db()->update('inspections', $update, ['id' => $inspectionId]);
@@ -368,7 +378,7 @@ final class Inspection
             }
 
             try {
-                Notifier::inspectionFailed($inspection, $inspection);
+                Notifier::inspectionFailed($inspection);
             } catch (Throwable $e) {
                 log_error('Inspection notification failed: ' . $e->getMessage());
             }

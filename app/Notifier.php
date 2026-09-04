@@ -300,17 +300,19 @@ final class Notifier
     }
 
     /**
-     * @param array<string, mixed> $inspection
-     * @param array<string, mixed> $asset
+     * @param array<string, mixed> $inspection a row from Inspection::find(),
+     *                                         which already carries asset_name
      */
-    public static function inspectionFailed(array $inspection, array $asset): void
+    public static function inspectionFailed(array $inspection): void
     {
+        $failed = (int) $inspection['failed_count'];
+
         self::pushToRole(
             'workorders.assign',
             'inspection_failed',
-            'Inspection failed: ' . (string) $asset['name'],
-            (int) $inspection['failed_count'] . ' item(s) failed'
-            . ((int) $inspection['critical_failed'] ? ', including a safety-critical item.' : '.'),
+            'Inspection failed: ' . (string) ($inspection['asset_name'] ?? 'an asset'),
+            $failed . ' item' . ($failed === 1 ? '' : 's') . ' failed'
+            . ((int) $inspection['critical_failed'] ? ', including a safety-critical one.' : '.'),
             'inspection-view.php?id=' . (int) $inspection['id'],
             'inspection',
             (int) $inspection['id']

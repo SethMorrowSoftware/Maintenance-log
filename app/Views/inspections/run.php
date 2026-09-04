@@ -20,6 +20,29 @@ use App\View;
 $inspectionId = (int) $inspection['id'];
 $meterUnit    = (string) $inspection['meter_type'];
 $hasMeter     = $meterUnit !== 'none';
+
+// What this particular checklist asks for. A checklist whose template has since
+// been deleted falls back to the site-wide defaults.
+$needsSignature = $inspection['require_signature'] === null
+    ? Settings::bool('inspection_signature_required', true)
+    : (int) $inspection['require_signature'] === 1;
+
+$asksForMeter = $inspection['require_meter'] === null
+    ? true
+    : (int) $inspection['require_meter'] === 1;
+
+// If the checklist already has a "meter reading" line on it, do not ask for the
+// same number again at the bottom of the page.
+$meterOnList = false;
+
+foreach ($sections as $sectionItems) {
+    foreach ($sectionItems as $sectionItem) {
+        if ((string) $sectionItem['response_type'] === 'meter') {
+            $meterOnList = true;
+            break 2;
+        }
+    }
+}
 ?>
 
 <form method="post" action="<?= e(url('inspection-run.php', ['id' => $inspectionId])) ?>" data-guard>
@@ -158,7 +181,7 @@ $hasMeter     = $meterUnit !== 'none';
             <h2 class="card-title"><?= icon('check-circle', '', 18) ?> Finish up</h2>
         </div>
         <div class="card-body">
-            <?php if ($hasMeter): ?>
+            <?php if ($hasMeter && !$meterOnList && $asksForMeter): ?>
                 <?php View::partial('form-field', [
                     'name'   => 'meter_reading',
                     'label'  => 'Meter reading',
@@ -187,7 +210,7 @@ $hasMeter     = $meterUnit !== 'none';
                 'label'    => 'Your name',
                 'type'     => 'text',
                 'value'    => $inspection['signature_name'] ?: user_name(),
-                'required' => Settings::bool('inspection_signature_required', true),
+                'required' => $needsSignature,
                 'hint'     => 'Signs off the inspection. This appears on the printed record.',
                 'noOld'    => true,
                 'attrs'    => ['maxlength' => 120],

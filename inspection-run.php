@@ -122,7 +122,13 @@ if (is_post()) {
         redirect(url('inspection-run.php', ['id' => $inspectionId]));
     }
 
-    if (Settings::bool('inspection_signature_required', true) && $meta['signature_name'] === '') {
+    // The checklist decides whether it has to be signed. A checklist whose
+    // template has since been deleted falls back to the site-wide default.
+    $needsSignature = $inspection['require_signature'] === null
+        ? Settings::bool('inspection_signature_required', true)
+        : (int) $inspection['require_signature'] === 1;
+
+    if ($needsSignature && $meta['signature_name'] === '') {
         flash('error', 'Type your name to sign off the inspection. Your progress has been saved.');
         redirect(url('inspection-run.php', ['id' => $inspectionId]));
     }

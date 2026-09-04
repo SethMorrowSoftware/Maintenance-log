@@ -295,7 +295,8 @@ $canDelete = $editing && can('checklists.manage');
                             <?= checked((int) $values['require_signature'], 1) ?>>
                         <span class="form-check-label">
                             Ask for a name at the end
-                            <small>Whoever runs it types their name to sign it off.</small>
+                            <small>Whoever runs it has to type their name to finish. It goes on
+                            the printed record.</small>
                         </span>
                     </label>
 
@@ -304,7 +305,8 @@ $canDelete = $editing && can('checklists.manage');
                             <?= checked((int) $values['require_meter'], 1) ?>>
                         <span class="form-check-label">
                             Ask for the meter reading
-                            <small>Hours or miles on the machine, if it has a meter.</small>
+                            <small>Hours or miles on the machine, if it has one. Skipped
+                            automatically if a line above already asks for it.</small>
                         </span>
                     </label>
 

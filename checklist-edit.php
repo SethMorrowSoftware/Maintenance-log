@@ -10,6 +10,7 @@ use App\Csrf;
 use App\Models\Asset;
 use App\Models\Inspection;
 use App\Request;
+use App\Settings;
 use App\Status;
 use App\Validator;
 use App\View;
@@ -199,8 +200,10 @@ $defaults = [
     'asset_id'          => '',
     'frequency'         => 'daily',
     'estimated_minutes' => '',
-    'require_signature' => 1,
-    'require_meter'     => 0,
+    // A new checklist starts from whatever the site-wide default says; from
+    // then on the checklist itself is the authority.
+    'require_signature' => Settings::bool('inspection_signature_required', true) ? 1 : 0,
+    'require_meter'     => 1,
     'is_active'         => 1,
 ];
 
