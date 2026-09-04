@@ -688,6 +688,30 @@ final class Dates
     }
 
     /**
+     * "2026-03" as "March 2026". Used by reports that group by month.
+     */
+    public static function monthLabel(string $yearMonth): string
+    {
+        if (preg_match('/^(\d{4})-(\d{2})$/', $yearMonth, $m) !== 1) {
+            return $yearMonth;
+        }
+
+        $month = (int) $m[2];
+
+        if ($month < 1 || $month > 12) {
+            return $yearMonth;
+        }
+
+        $date = DateTimeImmutable::createFromFormat(
+            'Y-m-d H:i:s',
+            $m[1] . '-' . $m[2] . '-01 00:00:00',
+            self::utcZone()
+        );
+
+        return $date === false ? $yearMonth : $date->format('F Y');
+    }
+
+    /**
      * Convert a local date range (inclusive) into UTC datetime bounds suitable
      * for "performed_at >= ? AND performed_at < ?".
      *

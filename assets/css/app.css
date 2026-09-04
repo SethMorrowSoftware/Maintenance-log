@@ -1354,6 +1354,50 @@ pre code { padding: 0; background: none; border: 0; }
     align-items: center;
 }
 
+/* Two date boxes that behave as one filter cell */
+.filter-dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    grid-column: span 2;
+}
+.filter-dates .form-group { margin-bottom: 0; }
+
+/* The row of reports along the top of reports.php */
+.report-tabs {
+    display: flex;
+    gap: var(--space-1);
+    overflow-x: auto;
+    padding-bottom: var(--space-2);
+    margin-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: thin;
+}
+.report-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.report-tab:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+.report-tab.is-active {
+    background: var(--brand-50);
+    color: var(--brand-700);
+}
+.report-tab .icon { flex-shrink: 0; }
+
+.print-title {
+    font-size: var(--text-xl);
+    margin: 0 0 var(--space-4);
+}
+
 .active-filters {
     display: flex;
     flex-wrap: wrap;
@@ -1529,6 +1573,14 @@ pre code { padding: 0; background: none; border: 0; }
 
 .table-compact th,
 .table-compact td { padding: var(--space-2) var(--space-3); }
+
+/* The totals line at the bottom of a report */
+.table tfoot td {
+    background: var(--surface-2);
+    border-top: 2px solid var(--border-strong);
+    border-bottom: 0;
+    font-variant-numeric: tabular-nums;
+}
 
 .sort-link {
     display: inline-flex;
