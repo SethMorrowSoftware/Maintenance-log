@@ -2,13 +2,17 @@
 /config/config.php
 /config/installed.lock
 
-# Runtime storage
+# Runtime storage. The .htaccess in each of these is not runtime junk — it is
+# what keeps the folder off the web, so it has to ship.
 /storage/uploads/*
 !/storage/uploads/.gitkeep
+!/storage/uploads/.htaccess
 /storage/logs/*
 !/storage/logs/.gitkeep
+!/storage/logs/.htaccess
 /storage/cache/*
 !/storage/cache/.gitkeep
+!/storage/cache/.htaccess
 
 # OS / editor noise
 .DS_Store

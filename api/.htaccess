@@ -1,0 +1,43 @@
+# RideLog — the JSON API endpoint.
+#
+# This folder must stay reachable: it is what the header search box, the meter
+# widget and the notification bell talk to. The file is here so that a host
+# where somebody has denied the whole document root by default still serves it,
+# and so that nothing else in this folder is ever served by accident.
+
+# Only index.php. There is nothing else here, and if there ever is, it is not
+# something a browser should be able to fetch.
+<FilesMatch "^(?!index\.php$).*$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        <IfModule mod_access_compat.c>
+            Order allow,deny
+            Deny from all
+        </IfModule>
+    </IfModule>
+</FilesMatch>
+
+<Files "index.php">
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        <IfModule mod_access_compat.c>
+            Order allow,deny
+            Allow from all
+        </IfModule>
+    </IfModule>
+</Files>
+
+# API responses are per-user and must never be cached by a shared proxy.
+<IfModule mod_headers.c>
+    Header always set Cache-Control "no-store, no-cache, must-revalidate, private"
+    Header always set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# There is no directory index here.
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>
