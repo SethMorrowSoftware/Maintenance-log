@@ -105,6 +105,42 @@ final class Str
         return $out;
     }
 
+    /**
+     * A starting password somebody has to read off a screen and type once.
+     *
+     * No l/1/I/O/0, because it will be read aloud across a workshop and typed
+     * wrong otherwise. It always contains a capital, a lower case letter, a
+     * digit and a symbol, so it satisfies whatever the password policy is set
+     * to before anybody sees it.
+     */
+    public static function password(int $length = 12): string
+    {
+        $length  = max(10, $length);
+        $upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        $lower   = 'abcdefghijkmnopqrstuvwxyz';
+        $digits  = '23456789';
+        $symbols = '!@#$%&*?';
+
+        $pick = static function (string $set): string {
+            return $set[random_int(0, strlen($set) - 1)];
+        };
+
+        $chars = [$pick($upper), $pick($lower), $pick($digits), $pick($symbols)];
+        $all   = $upper . $lower . $digits . $symbols;
+
+        while (count($chars) < $length) {
+            $chars[] = $pick($all);
+        }
+
+        // Fisher-Yates, so the guaranteed characters are not always in front.
+        for ($i = count($chars) - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            [$chars[$i], $chars[$j]] = [$chars[$j], $chars[$i]];
+        }
+
+        return implode('', $chars);
+    }
+
     /** "Mike Torres" becomes "MT". */
     public static function initials(string $name, int $max = 2): string
     {

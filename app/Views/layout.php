@@ -34,6 +34,7 @@ $hidePageHeader = $hidePageHeader ?? false;
 
 $me        = user();
 $siteName  = Settings::siteName();
+$logoUrl   = Settings::logoUrl();
 $fullTitle = $title === $siteName ? $siteName : $title . ' · ' . $siteName;
 $unread    = $me === null ? 0 : Notifier::unreadCount((int) $me['id']);
 
@@ -131,7 +132,13 @@ $currentNav = $navAliases[$activeNav] ?? $activeNav;
     <!-- ================= Sidebar ================= -->
     <aside class="app-sidebar" id="app-sidebar" aria-label="Main navigation">
         <a class="sidebar-brand" href="<?= e(url('index.php')) ?>">
-            <span class="brand-mark" aria-hidden="true"><?php require APP_ROOT . '/assets/img/logo.svg'; ?></span>
+            <span class="brand-mark" aria-hidden="true">
+                <?php if ($logoUrl !== null): ?>
+                    <img src="<?= e($logoUrl) ?>" alt="">
+                <?php else: ?>
+                    <?php require APP_ROOT . '/assets/img/logo.svg'; ?>
+                <?php endif; ?>
+            </span>
             <span class="brand-text"><?= e($siteName) ?></span>
         </a>
 

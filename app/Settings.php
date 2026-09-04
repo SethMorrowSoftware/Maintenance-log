@@ -366,6 +366,19 @@ final class Settings
         return $name !== '' ? $name : 'RideLog';
     }
 
+    /**
+     * The site logo, or null when nobody has uploaded one.
+     *
+     * logo_path holds an attachment id rather than a file path, so the image is
+     * served through file.php with the same checks as any other upload.
+     */
+    public static function logoUrl(): ?string
+    {
+        $id = (int) self::get('logo_path', 0);
+
+        return $id > 0 ? url('file.php', ['id' => $id]) : null;
+    }
+
     public static function organizationName(): string
     {
         $name = trim((string) self::get('organization_name', ''));

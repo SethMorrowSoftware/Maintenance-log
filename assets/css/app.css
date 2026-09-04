@@ -802,6 +802,78 @@ pre code { padding: 0; background: none; border: 0; }
 }
 .notif-dot[hidden] { display: none; }
 
+/* The notifications page */
+.notification-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.notification {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--border);
+    background: var(--brand-50);
+}
+.notification:last-child { border-bottom: 0; }
+.notification.is-read { background: transparent; }
+
+.notification-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    color: var(--text-muted);
+}
+.notification-icon.tone-ok     { background: var(--ok-bg);     color: var(--ok); }
+.notification-icon.tone-warn   { background: var(--warn-bg);   color: var(--warn); }
+.notification-icon.tone-danger { background: var(--danger-bg); color: var(--danger); }
+.notification-icon.tone-info   { background: var(--info-bg);   color: var(--info); }
+
+.notification-body { flex: 1; min-width: 0; }
+.notification-title { font-weight: 600; }
+.notification-message {
+    margin: 2px 0 0;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+.notification-meta {
+    margin-top: var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--text-subtle);
+}
+.notification-actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: var(--space-1);
+}
+
+/* The colour dot beside a category name */
+.swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 6px;
+    border-radius: var(--radius-pill);
+    vertical-align: baseline;
+    border: 1px solid rgba(0, 0, 0, .12);
+}
+
+/* The "exactly what changed" fold-out on the audit log */
+.audit-detail { margin-top: var(--space-2); }
+.audit-detail > summary {
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+.audit-diff { margin-top: var(--space-2); background: var(--surface-2); }
+.audit-diff td { word-break: break-word; }
+
 /* User menu ---------------------------------------------------------------*/
 
 .user-menu { position: relative; }
@@ -1396,6 +1468,40 @@ pre code { padding: 0; background: none; border: 0; }
 .print-title {
     font-size: var(--text-xl);
     margin: 0 0 var(--space-4);
+}
+
+/* A command to copy into cPanel, and the site logo preview */
+.code-block {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+}
+.code-block code {
+    flex: 1;
+    white-space: pre;
+    font-size: var(--text-sm);
+}
+
+.logo-preview {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+.logo-preview img { max-height: 64px; max-width: 320px; }
+
+.brand-mark img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
 }
 
 .active-filters {

@@ -273,6 +273,37 @@ if (!function_exists('url')) {
     }
 }
 
+if (!function_exists('absolute_url')) {
+    /**
+     * The same URL with a scheme and host on the front.
+     *
+     * Anything that leaves the application — an email, a QR code — needs one of
+     * these, because a browser opening a link from a mail client has no idea
+     * what "/maintenance/logs.php" is relative to. It comes from app.url in
+     * config.php, which the installer writes, falling back to the current host
+     * so a half-configured site still produces something that works.
+     *
+     * @param array<string, mixed> $query
+     */
+    function absolute_url(string $path = '', array $query = []): string
+    {
+        $configured = rtrim((string) Config::get('app.url', ''), '/');
+
+        if ($configured !== '' && preg_match('#^https?://#i', $configured) === 1) {
+            $parts = parse_url($configured);
+            $origin = ($parts['scheme'] ?? 'https') . '://' . ($parts['host'] ?? '')
+                . (isset($parts['port']) ? ':' . $parts['port'] : '');
+        } else {
+            $https  = (string) ($_SERVER['HTTPS'] ?? '') !== ''
+                && strtolower((string) $_SERVER['HTTPS']) !== 'off';
+            $host   = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            $origin = ($https ? 'https://' : 'http://') . $host;
+        }
+
+        return $origin . url($path, $query);
+    }
+}
+
 if (!function_exists('asset_url')) {
     /**
      * URL for a file under assets/, with a cache-busting version stamp.

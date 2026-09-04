@@ -713,7 +713,7 @@ CREATE TABLE IF NOT EXISTS {maintenance_log_parts} (
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS {attachments} (
   id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  entity_type    ENUM('asset','maintenance_log','work_order','inspection','part','user') NOT NULL,
+  entity_type    ENUM('asset','maintenance_log','work_order','inspection','part','user','setting') NOT NULL,
   entity_id      INT UNSIGNED NOT NULL,
   original_name  VARCHAR(255) NOT NULL,
   stored_name    VARCHAR(100) NOT NULL,

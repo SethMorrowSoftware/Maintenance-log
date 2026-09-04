@@ -44,7 +44,13 @@ $siteName  = Settings::siteName();
 
     <div class="print-letterhead print-only">
         <div class="flex items-center gap-3">
-            <span class="brand-mark" aria-hidden="true"><?php require APP_ROOT . '/assets/img/logo.svg'; ?></span>
+            <span class="brand-mark" aria-hidden="true">
+                <?php if (Settings::logoUrl() !== null): ?>
+                    <img src="<?= e((string) Settings::logoUrl()) ?>" alt="">
+                <?php else: ?>
+                    <?php require APP_ROOT . '/assets/img/logo.svg'; ?>
+                <?php endif; ?>
+            </span>
             <div>
                 <p class="org-name"><?= e(Settings::organizationName()) ?></p>
                 <p class="doc-title"><?= e($docTitle) ?></p>

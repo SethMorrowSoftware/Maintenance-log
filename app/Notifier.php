@@ -247,7 +247,7 @@ final class Notifier
             return;
         }
 
-        $absolute = $link === '' ? '' : (Str::startsWith($link, 'http') ? $link : rtrim((string) Config::get('app.url', ''), '/') . '/' . ltrim($link, '/'));
+        $absolute = $link === '' ? '' : (Str::startsWith($link, 'http') ? $link : absolute_url($link));
 
         $body = '<p>' . e($message) . '</p>';
 

@@ -300,6 +300,21 @@ final class Dates
     // Display
     // -------------------------------------------------------------------------
 
+    /**
+     * Today's date written in a given format, so the Settings screen can show
+     * what each choice actually looks like rather than "M j, Y".
+     */
+    public static function sampleFormat(string $format): string
+    {
+        // A format string from a settings list, not user input, but a stray
+        // character should still never blow the page up.
+        try {
+            return self::now()->setTimezone(self::displayZone())->format($format);
+        } catch (Throwable $e) {
+            return $format;
+        }
+    }
+
     public static function dateFormat(): string
     {
         try {
