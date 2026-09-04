@@ -1,0 +1,146 @@
+# =============================================================================
+#  RideLog — root .htaccess
+#  Maintenance log & dashboard for go-karts and amusement rides.
+#
+#  Every directive is wrapped in <IfModule> so this file is safe to upload to
+#  any cPanel account, including hosts where a given Apache module is missing.
+#  RideLog does NOT require mod_rewrite — all links are real .php URLs.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. Default document
+# -----------------------------------------------------------------------------
+DirectoryIndex index.php index.html
+
+# -----------------------------------------------------------------------------
+# 2. Never list a directory's contents
+# -----------------------------------------------------------------------------
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>
+
+# -----------------------------------------------------------------------------
+# 3. Block access to sensitive files anywhere in the tree
+# -----------------------------------------------------------------------------
+<FilesMatch "(?i)^(\.env|\.git.*|composer\.(json|lock)|package(-lock)?\.json|.*\.(sql|log|ini|sh|bak|old|orig|save|swp|dist|md)|config\.php|installed\.lock)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        <IfModule mod_access_compat.c>
+            Order allow,deny
+            Deny from all
+        </IfModule>
+    </IfModule>
+</FilesMatch>
+
+# README.md is documentation the site owner may want to read locally, but there
+# is no reason to serve it. The rule above already covers it.
+
+# Block dotfiles (.htaccess itself, .DS_Store, editor droppings)
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        <IfModule mod_access_compat.c>
+            Order allow,deny
+            Deny from all
+        </IfModule>
+    </IfModule>
+</FilesMatch>
+
+# -----------------------------------------------------------------------------
+# 4. Security headers
+#    (PHP also sends these from app/bootstrap.php, so the app is protected even
+#    on hosts without mod_headers. Duplicates are harmless — the header is set,
+#    not appended.)
+# -----------------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+    Header always set Cross-Origin-Opener-Policy "same-origin"
+
+    # Do not leak the PHP version
+    Header always unset X-Powered-By
+    Header always unset X-Pingback
+
+    # Uncomment once you have an SSL certificate installed (cPanel → SSL/TLS).
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# -----------------------------------------------------------------------------
+# 5. Force HTTPS
+#    Uncomment after you have installed an SSL certificate. Leaving it commented
+#    means a fresh upload works immediately over plain HTTP.
+# -----------------------------------------------------------------------------
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTPS} !=on
+#     RewriteCond %{HTTP:X-Forwarded-Proto} !https
+#     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+# </IfModule>
+
+# -----------------------------------------------------------------------------
+# 6. Compression
+# -----------------------------------------------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
+    AddOutputFilterByType DEFLATE application/javascript application/x-javascript
+    AddOutputFilterByType DEFLATE application/json application/xml
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# -----------------------------------------------------------------------------
+# 7. Browser caching for static assets
+#    App pages are never cached (PHP sends no-store for authenticated views).
+# -----------------------------------------------------------------------------
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css                "access plus 7 days"
+    ExpiresByType application/javascript  "access plus 7 days"
+    ExpiresByType image/svg+xml           "access plus 30 days"
+    ExpiresByType image/png               "access plus 30 days"
+    ExpiresByType image/jpeg              "access plus 30 days"
+    ExpiresByType image/gif               "access plus 30 days"
+    ExpiresByType image/webp              "access plus 30 days"
+    ExpiresByType image/x-icon            "access plus 30 days"
+    ExpiresDefault                        "access plus 1 hour"
+</IfModule>
+
+# -----------------------------------------------------------------------------
+# 8. Correct MIME types (some shared hosts still miss these)
+# -----------------------------------------------------------------------------
+<IfModule mod_mime.c>
+    AddType image/svg+xml       .svg
+    AddType application/json    .json
+    AddType text/javascript     .js
+    AddType font/woff2          .woff2
+</IfModule>
+
+# -----------------------------------------------------------------------------
+# 9. Upload limits
+#    cPanel usually exposes these under "MultiPHP INI Editor". If your host
+#    allows per-directory overrides, uncommenting these raises the attachment
+#    size limit. If your host DISALLOWS them, Apache returns a 500 — in that
+#    case leave them commented and change the limits in MultiPHP INI Editor.
+# -----------------------------------------------------------------------------
+# <IfModule mod_php.c>
+#     php_value upload_max_filesize 16M
+#     php_value post_max_size 20M
+#     php_value memory_limit 256M
+#     php_value max_execution_time 120
+# </IfModule>
+
+# -----------------------------------------------------------------------------
+# 10. Friendly error pages
+#     ErrorDocument paths are relative to the DOCUMENT ROOT, not to this file.
+#     If RideLog lives at the root of your domain, uncomment these as-is.
+#     If it lives in a subfolder (e.g. https://example.com/maintenance/), use
+#     /maintenance/error.php?code=403 instead.
+# -----------------------------------------------------------------------------
+# ErrorDocument 403 /error.php?code=403
+# ErrorDocument 404 /error.php?code=404
+# ErrorDocument 500 /error.php?code=500
