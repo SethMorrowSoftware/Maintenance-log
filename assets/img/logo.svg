@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" role="img" aria-label="RideLog">
+  <!-- Ferris wheel rim -->
+  <circle cx="24" cy="19" r="13.5" stroke="currentColor" stroke-width="2.6"/>
+  <!-- Spokes -->
+  <g stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".85">
+    <path d="M24 5.5v27"/>
+    <path d="M10.5 19h27"/>
+    <path d="m14.45 9.45 19.1 19.1"/>
+    <path d="m33.55 9.45-19.1 19.1"/>
+  </g>
+  <!-- Gondolas -->
+  <g fill="currentColor">
+    <circle cx="24" cy="5.5" r="2.6"/>
+    <circle cx="24" cy="32.5" r="2.6"/>
+    <circle cx="10.5" cy="19" r="2.6"/>
+    <circle cx="37.5" cy="19" r="2.6"/>
+  </g>
+  <!-- Hub -->
+  <circle cx="24" cy="19" r="3.4" fill="currentColor"/>
+  <circle cx="24" cy="19" r="1.3" fill="#fff" opacity=".9"/>
+  <!-- Support legs and base -->
+  <path d="M17 29 12 43M31 29l5 14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M8 43h32" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+</svg>
