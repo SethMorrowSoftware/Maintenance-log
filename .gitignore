@@ -1,0 +1,19 @@
+# Runtime configuration written by the web installer
+/config/config.php
+/config/installed.lock
+
+# Runtime storage
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/cache/*
+!/storage/cache/.gitkeep
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
