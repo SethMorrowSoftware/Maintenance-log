@@ -1,0 +1,297 @@
+-- =============================================================================
+--  RideLog — Reference data
+--
+--  ALWAYS installed. This is the data the application needs in order to work:
+--  default settings, asset categories, park locations, and two ready-to-use
+--  inspection checklists.
+--
+--  Uses INSERT IGNORE throughout so re-running is harmless and never clobbers
+--  values the site owner has since changed on the Settings screen.
+--
+--  Same {table} placeholder convention as schema.sql.
+-- =============================================================================
+
+
+-- -----------------------------------------------------------------------------
+-- Settings
+--   setting_type drives how the Settings screen renders the field:
+--   string | text | int | bool | select | password | color | email | hidden
+-- -----------------------------------------------------------------------------
+INSERT IGNORE INTO {settings}
+  (setting_key, setting_value, setting_type, setting_group, is_public, label, description, sort_order)
+VALUES
+  -- General ------------------------------------------------------------------
+  ('site_name', 'Castle Fun Center Maintenance', 'string', 'general', 1,
+   'Site name', 'Shown in the header, page titles and emails.', 10),
+  ('organization_name', 'Castle Fun Center', 'string', 'general', 1,
+   'Organization name', 'Used on printed reports and inspection sheets.', 20),
+  ('footer_text', '', 'string', 'general', 1,
+   'Footer text', 'Optional extra line shown at the bottom of every page.', 30),
+  ('items_per_page', '25', 'int', 'general', 0,
+   'Rows per page', 'How many records each list shows before paginating.', 40),
+  ('dashboard_pm_lookahead_days', '14', 'int', 'general', 0,
+   'Upcoming maintenance window', 'How many days ahead the dashboard looks for due maintenance.', 50),
+
+  -- Localization -------------------------------------------------------------
+  ('timezone', 'America/New_York', 'select', 'localization', 1,
+   'Time zone', 'All dates and times are shown in this zone. Stored internally as UTC.', 10),
+  ('date_format', 'M j, Y', 'select', 'localization', 1,
+   'Date format', 'How dates are displayed.', 20),
+  ('time_format', 'g:i A', 'select', 'localization', 1,
+   'Time format', 'How times are displayed.', 30),
+  ('currency_symbol', '$', 'string', 'localization', 1,
+   'Currency symbol', 'Prefixed to every cost figure.', 40),
+  ('week_start', '0', 'select', 'localization', 0,
+   'First day of the week', '0 = Sunday, 1 = Monday.', 50),
+
+  -- Maintenance --------------------------------------------------------------
+  ('notify_pm_due_days', '7', 'int', 'maintenance', 0,
+   'Notify before PM is due', 'Days of warning before scheduled maintenance comes due.', 10),
+  ('default_labor_rate', '0.00', 'string', 'maintenance', 0,
+   'Default labour rate', 'Hourly rate used to pre-fill labour cost. 0 disables it.', 20),
+  ('require_meter_on_log', '0', 'bool', 'maintenance', 0,
+   'Require a meter reading', 'Force a meter reading on every log for assets that have a meter.', 30),
+  ('inspection_signature_required', '1', 'bool', 'maintenance', 0,
+   'Require inspection sign-off', 'Technicians must type their name to complete an inspection.', 40),
+  ('inspection_fail_opens_wo', '1', 'bool', 'maintenance', 0,
+   'Failed critical item opens a work order', 'Automatically raise a high-priority work order.', 50),
+  ('wo_number_prefix', 'WO-', 'string', 'maintenance', 0,
+   'Work order prefix', 'Prefix for generated work order numbers.', 60),
+  ('low_stock_alerts', '1', 'bool', 'maintenance', 0,
+   'Low stock alerts', 'Warn when a part drops to or below its reorder level.', 70),
+
+  -- Uploads ------------------------------------------------------------------
+  ('max_upload_mb', '8', 'int', 'uploads', 0,
+   'Maximum attachment size (MB)', 'Cannot exceed what your host allows in upload_max_filesize.', 10),
+  ('image_max_dimension', '2000', 'int', 'uploads', 0,
+   'Maximum image dimension (px)', 'Uploaded photos are resized down to this and stripped of metadata.', 20),
+
+  -- Email --------------------------------------------------------------------
+  ('mail_enabled', '0', 'bool', 'email', 0,
+   'Send email', 'Turn off to keep everything in-app only.', 10),
+  ('mail_transport', 'mail', 'select', 'email', 0,
+   'Mail transport', 'PHP mail() works on most cPanel hosts. Use SMTP for better deliverability.', 20),
+  ('mail_from_name', 'Castle Fun Center Maintenance', 'string', 'email', 0,
+   'From name', 'Sender name on outgoing mail.', 30),
+  ('mail_from_email', '', 'email', 'email', 0,
+   'From address', 'Use an address on your own domain or mail will be rejected.', 40),
+  ('smtp_host', '', 'string', 'email', 0, 'SMTP host', 'e.g. mail.yourdomain.com', 50),
+  ('smtp_port', '587', 'int', 'email', 0, 'SMTP port', '587 for TLS, 465 for SSL, 25 for none.', 60),
+  ('smtp_secure', 'tls', 'select', 'email', 0, 'SMTP encryption', 'tls, ssl or none.', 70),
+  ('smtp_user', '', 'string', 'email', 0, 'SMTP username', '', 80),
+  ('smtp_pass', '', 'password', 'email', 0, 'SMTP password', '', 90),
+
+  -- Security -----------------------------------------------------------------
+  ('session_timeout_minutes', '480', 'int', 'security', 0,
+   'Session timeout (minutes)', 'Sign a user out after this much inactivity.', 10),
+  ('allow_registration', '0', 'bool', 'security', 0,
+   'Allow self-registration', 'Leave off. Administrators should create accounts.', 20),
+  ('password_min_length', '8', 'int', 'security', 0,
+   'Minimum password length', 'Eight characters or more.', 30),
+  ('audit_retention_days', '365', 'int', 'security', 0,
+   'Audit log retention (days)', 'Older audit entries are pruned. 0 keeps everything.', 40),
+  ('cron_token', '', 'hidden', 'security', 0,
+   'Cron token', 'Secret in the scheduled-task URL. Generated during installation.', 50),
+
+  -- Branding -----------------------------------------------------------------
+  ('theme_default', 'system', 'select', 'branding', 1,
+   'Default theme', 'system, light or dark. Each person can override this.', 10),
+  ('primary_color', '#4f46e5', 'color', 'branding', 1,
+   'Accent colour', 'Primary colour used across the interface.', 20),
+  ('logo_path', '', 'string', 'branding', 1,
+   'Logo', 'Optional logo shown in the sidebar and on printed reports.', 30),
+
+  -- System (not user-editable) -----------------------------------------------
+  ('schema_version', '1.0.0', 'hidden', 'system', 0, 'Schema version', '', 10),
+  ('app_installed_at', '', 'hidden', 'system', 0, 'Installed at', '', 20),
+  ('last_cron_run', '', 'hidden', 'system', 0, 'Last scheduled run', '', 30);
+
+
+-- -----------------------------------------------------------------------------
+-- Asset categories
+-- -----------------------------------------------------------------------------
+INSERT IGNORE INTO {asset_categories}
+  (id, name, slug, description, icon, color, default_meter_type, sort_order, is_active)
+VALUES
+  (1,  'Go-Kart',            'go-kart',            'Single and double-seat racing karts',        'kart',        '#4f46e5', 'hours',  10, 1),
+  (2,  'Kiddie Ride',        'kiddie-ride',        'Small-scale rides for younger guests',       'ride',        '#0ea5e9', 'cycles', 20, 1),
+  (3,  'Major Ride',         'major-ride',         'Large mechanical attractions',               'ride',        '#7c3aed', 'cycles', 30, 1),
+  (4,  'Water Attraction',   'water-attraction',   'Bumper boats and water play equipment',      'activity',    '#06b6d4', 'hours',  40, 1),
+  (5,  'Bumper Boat',        'bumper-boat',        'Powered bumper boats',                       'activity',    '#0891b2', 'hours',  50, 1),
+  (6,  'Arcade / Game',      'arcade-game',        'Redemption and video games',                 'grid',        '#db2777', 'none',   60, 1),
+  (7,  'Mini Golf',          'mini-golf',          'Course holes, obstacles and features',       'map-pin',     '#16a34a', 'none',   70, 1),
+  (8,  'Batting Cage',       'batting-cage',       'Pitching machines and cage equipment',       'activity',    '#ca8a04', 'cycles', 80, 1),
+  (9,  'Laser Tag',          'laser-tag',          'Arena equipment, vests and phasers',         'shield',      '#dc2626', 'none',   90, 1),
+  (10, 'Support Vehicle',    'support-vehicle',    'Utility vehicles, mowers and tractors',      'truck',       '#65a30d', 'hours', 100, 1),
+  (11, 'Facility Equipment', 'facility-equipment', 'Compressors, HVAC and shop equipment',       'tool',        '#64748b', 'hours', 110, 1);
+
+
+-- -----------------------------------------------------------------------------
+-- Locations
+-- -----------------------------------------------------------------------------
+INSERT IGNORE INTO {locations} (id, name, description, building, sort_order, is_active) VALUES
+  (1,  'Go-Kart Track',        'Main outdoor kart track',                   'Outdoor',     10, 1),
+  (2,  'Kiddie Track',         'Junior kart track',                         'Outdoor',     20, 1),
+  (3,  'Main Midway',          'Central ride midway',                       'Outdoor',     30, 1),
+  (4,  'Arcade',               'Indoor arcade floor',                       'Main Building',40, 1),
+  (5,  'Water Area',           'Bumper boats and water attractions',        'Outdoor',     50, 1),
+  (6,  'Mini Golf Course',     'Eighteen-hole course',                      'Outdoor',     60, 1),
+  (7,  'Batting Cages',        'Batting cage bays',                         'Outdoor',     70, 1),
+  (8,  'Laser Tag Arena',      'Indoor laser tag arena',                    'Main Building',80, 1),
+  (9,  'Maintenance Shop',     'Repair bay and workbenches',                'Shop',        90, 1),
+  (10, 'Storage / Off-Season', 'Off-season and long-term storage',          'Shop',       100, 1),
+  (11, 'Grounds',              'Parking, walkways and general grounds',     'Outdoor',    110, 1);
+
+
+-- -----------------------------------------------------------------------------
+-- Checklist 1 — Daily Go-Kart Pre-Operation Inspection
+-- -----------------------------------------------------------------------------
+INSERT IGNORE INTO {checklists}
+  (id, name, description, applies_to, category_id, asset_id, frequency,
+   estimated_minutes, require_signature, require_meter, is_active)
+VALUES
+  (1, 'Daily Go-Kart Pre-Operation Inspection',
+   'Complete on every kart before the track opens to guests. Any failed critical item takes the kart out of service until it is repaired and re-inspected.',
+   'category', 1, NULL, 'daily', 10, 1, 1, 1);
+
+INSERT IGNORE INTO {checklist_items}
+  (id, checklist_id, section, item_text, description, response_type,
+   is_required, is_critical, allow_photo, expected_value, unit, min_value, max_value, sort_order)
+VALUES
+  (1,  1, 'Brakes & Steering', 'Brake pedal firm, kart stops in a straight line',
+       'Roll the kart and apply the brake. No sponginess, no pulling to one side.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 10),
+  (2,  1, 'Brakes & Steering', 'Brake pads and rotor within service limits',
+       'Check pad thickness and look for scoring or glazing on the rotor.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 20),
+  (3,  1, 'Brakes & Steering', 'Steering free of excess play, wheels track straight',
+       'No more than slight play at the wheel. Tie rods and heim joints tight.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 30),
+  (4,  1, 'Controls', 'Throttle returns fully to idle when released',
+       'Snap the pedal and confirm the return spring closes the throttle completely.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 40),
+  (5,  1, 'Controls', 'Kill switch stops the engine',
+       'Run the engine and confirm the kill switch shuts it down immediately.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 50),
+  (6,  1, 'Safety Equipment', 'Seat belt / harness latches and retracts correctly',
+       'Buckle and release. Check webbing for fraying, cuts or UV damage.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 60),
+  (7,  1, 'Safety Equipment', 'Roll bar and head restraint secure, no cracks',
+       'Check welds and mounting bolts.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 70),
+  (8,  1, 'Safety Equipment', 'Bumpers and side pods secure, no sharp edges',
+       'All fasteners present and tight. No exposed sharp metal.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 80),
+  (9,  1, 'Body & Frame', 'Body panels and floor pan free of cracks or damage',
+       'Look underneath as well as on top.',
+       'pass_fail', 1, 0, 1, '', '', NULL, NULL, 90),
+  (10, 1, 'Body & Frame', 'Seat secure and undamaged',
+       'Seat mounts tight, no cracks in the shell.',
+       'pass_fail', 1, 0, 1, '', '', NULL, NULL, 100),
+  (11, 1, 'Wheels & Tires', 'Tyre condition acceptable, no cords showing',
+       'Even wear, adequate tread, no visible damage.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 110),
+  (12, 1, 'Wheels & Tires', 'Tyre pressure (front / rear)',
+       'Record the measured pressure in PSI.',
+       'number', 0, 0, 0, '', 'PSI', 0.00, 60.00, 120),
+  (13, 1, 'Wheels & Tires', 'Wheel nuts torqued, no wobble at the hub',
+       'Spin each wheel and rock it to check bearings.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 130),
+  (14, 1, 'Drivetrain', 'Chain / belt tension and lubrication correct',
+       'Correct deflection, adequate lubrication, guard in place.',
+       'pass_fail', 1, 0, 1, '', '', NULL, NULL, 140),
+  (15, 1, 'Drivetrain', 'Clutch engages smoothly, no slipping',
+       'Kart should not creep at idle and should pull cleanly.',
+       'pass_fail', 1, 0, 1, '', '', NULL, NULL, 150),
+  (16, 1, 'Engine & Fluids', 'Engine oil at correct level',
+       'Check on level ground.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 160),
+  (17, 1, 'Engine & Fluids', 'No fuel leaks, lines and clamps sound',
+       'Inspect the tank, lines, filter and carburettor for weeping or cracking.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 170),
+  (18, 1, 'Engine & Fluids', 'Engine runs and idles normally, no unusual noise',
+       'Listen for knocking, rattling or exhaust leaks.',
+       'pass_fail', 1, 0, 1, '', '', NULL, NULL, 180),
+  (19, 1, 'Engine & Fluids', 'Hour meter reading',
+       'Record the current hour meter value.',
+       'meter', 0, 0, 0, '', 'hours', NULL, NULL, 190),
+  (20, 1, 'Final', 'Test lap completed, kart handles normally',
+       'Drive one lap. Confirm braking, steering and power delivery are normal.',
+       'pass_fail', 1, 1, 0, '', '', NULL, NULL, 200);
+
+
+-- -----------------------------------------------------------------------------
+-- Checklist 2 — Daily Ride Pre-Opening Inspection
+-- -----------------------------------------------------------------------------
+INSERT IGNORE INTO {checklists}
+  (id, name, description, applies_to, category_id, asset_id, frequency,
+   estimated_minutes, require_signature, require_meter, is_active)
+VALUES
+  (2, 'Daily Ride Pre-Opening Inspection',
+   'Complete on every ride before the park opens. Follow the manufacturer''s manual in addition to this checklist. A failed critical item keeps the ride closed until corrected and re-inspected.',
+   'all', NULL, NULL, 'daily', 20, 1, 0, 1);
+
+INSERT IGNORE INTO {checklist_items}
+  (id, checklist_id, section, item_text, description, response_type,
+   is_required, is_critical, allow_photo, expected_value, unit, min_value, max_value, sort_order)
+VALUES
+  (21, 2, 'Controls', 'Emergency stop halts the ride immediately',
+       'Test the E-stop from the operator position. Ride must stop without delay.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 10),
+  (22, 2, 'Controls', 'Operator control panel functions correctly',
+       'All buttons, keys, indicators and interlocks respond as expected.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 20),
+  (23, 2, 'Controls', 'Ride cycle timer and speed within specification',
+       'Compare against the manufacturer''s stated cycle.',
+       'pass_fail', 1, 0, 1, '', '', NULL, NULL, 30),
+  (24, 2, 'Restraints & Safety', 'Restraints latch, lock and release correctly',
+       'Test every seat. Confirm each restraint locks and cannot be released under load.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 40),
+  (25, 2, 'Restraints & Safety', 'Seats, belts and harnesses free of wear or damage',
+       'Check webbing, stitching, buckles and padding.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 50),
+  (26, 2, 'Restraints & Safety', 'Gates, fencing and queue barriers secure',
+       'No gaps, no damage, latches working.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 60),
+  (27, 2, 'Restraints & Safety', 'Safety and height-requirement signage in place and legible',
+       'Rider requirements posted and readable from the queue.',
+       'pass_fail', 1, 0, 1, '', '', NULL, NULL, 70),
+  (28, 2, 'Mechanical', 'Drive system operates smoothly, no unusual noise',
+       'Listen through a full cycle for grinding, knocking or squealing.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 80),
+  (29, 2, 'Mechanical', 'Brakes and stopping devices function correctly',
+       'Ride stops within its normal distance and position.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 90),
+  (30, 2, 'Mechanical', 'Lubrication points serviced per schedule',
+       'Grease points, chains and bearings per the manufacturer''s chart.',
+       'pass_fail', 1, 0, 1, '', '', NULL, NULL, 100),
+  (31, 2, 'Mechanical', 'Hydraulic / pneumatic systems free of leaks',
+       'Check hoses, cylinders and fittings. Note pressures if gauged.',
+       'pass_fail_na', 1, 1, 1, '', '', NULL, NULL, 110),
+  (32, 2, 'Electrical', 'Wiring, conduit and connections sound',
+       'No exposed conductors, chafing, or water ingress in enclosures.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 120),
+  (33, 2, 'Electrical', 'Ride and area lighting operational',
+       'Including any emergency and egress lighting.',
+       'pass_fail', 1, 0, 1, '', '', NULL, NULL, 130),
+  (34, 2, 'Structure', 'Structure, welds and fasteners show no cracks or looseness',
+       'Walk the structure. Check critical fasteners and safety wire.',
+       'pass_fail', 1, 1, 1, '', '', NULL, NULL, 140),
+  (35, 2, 'Structure', 'Ground surface, ramps and platforms free of trip hazards',
+       'No standing water, no loose decking, no raised edges.',
+       'pass_fail', 1, 0, 1, '', '', NULL, NULL, 150),
+  (36, 2, 'Test Cycles', 'Empty test cycle completed successfully',
+       'Run a full cycle with no riders and observe.',
+       'pass_fail', 1, 1, 0, '', '', NULL, NULL, 160),
+  (37, 2, 'Test Cycles', 'Loaded / ballast test cycle completed successfully',
+       'Run with staff or ballast where the manufacturer requires it.',
+       'pass_fail_na', 1, 1, 0, '', '', NULL, NULL, 170),
+  (38, 2, 'Test Cycles', 'Cycle count / meter reading',
+       'Record the counter value if the ride has one.',
+       'meter', 0, 0, 0, '', 'cycles', NULL, NULL, 180),
+  (39, 2, 'Final', 'Ride is safe to open to guests',
+       'Overall judgement by the inspecting technician.',
+       'pass_fail', 1, 1, 0, '', '', NULL, NULL, 190),
+  (40, 2, 'Final', 'Notes / observations for the day',
+       'Anything the next shift should know.',
+       'text', 0, 0, 0, '', '', NULL, NULL, 200);
