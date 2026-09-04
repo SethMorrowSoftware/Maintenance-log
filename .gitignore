@@ -17,3 +17,6 @@ Thumbs.db
 *~
 .idea/
 .vscode/
+
+# Written by the installer when it completes; must not ship.
+/install/.htaccess
