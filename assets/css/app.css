@@ -2589,6 +2589,86 @@ a.stat-card:hover {
 
 
 /* ==========================================================================
+   21b. Parts and stock
+   "Have we got one?" is the question this answers, so the count is loud.
+   ========================================================================== */
+
+.stock-count {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.stock-count.tone-out  { color: var(--danger); }
+.stock-count.tone-low  { color: var(--warn); }
+.stock-count.tone-ok   { color: var(--text); }
+.stock-count.tone-untracked { color: var(--text-muted); }
+
+.stock-headline {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+.stock-big {
+    font-size: clamp(2rem, 7vw, 3rem);
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.stock-big.tone-out  { color: var(--danger); }
+.stock-big.tone-low  { color: var(--warn); }
+.stock-big.tone-ok   { color: var(--ok); }
+.stock-big.tone-untracked { color: var(--text); }
+
+.stock-unit {
+    margin-left: var(--space-2);
+    font-size: var(--text-md);
+    color: var(--text-muted);
+}
+.stock-note {
+    flex: 1 1 220px;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    text-align: right;
+}
+
+/* The take-one / put-one-back control, on the list row and on the part page */
+.stock-form {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    justify-content: flex-end;
+}
+.stock-form .form-input {
+    width: 74px;
+    text-align: right;
+    padding: 5px 8px;
+}
+.stock-form.is-large {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+.stock-form.is-large .form-input { width: auto; text-align: left; padding: 8px 12px; }
+.stock-form.is-large input[name="notes"] { flex: 1 1 200px; }
+
+@media (max-width: 760px) {
+    .stock-form { justify-content: flex-start; flex-wrap: wrap; }
+    .stock-note { text-align: left; }
+}
+
+/* A card that folds away: the "optional detail" pattern used on every form */
+details.card > summary {
+    cursor: pointer;
+    list-style: none;
+}
+details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: -2px;
+}
+
+
+/* ==========================================================================
    22. Attachments and file inputs
    ========================================================================== */
 

@@ -70,7 +70,8 @@ final class Acl
         ],
         'Parts' => [
             'parts.view'   => 'View parts inventory',
-            'parts.manage' => 'Manage parts and stock',
+            'parts.adjust' => 'Take parts off the shelf and put them back',
+            'parts.manage' => 'Add, edit and remove parts',
         ],
         'Reports' => [
             'reports.view'   => 'View reports',
@@ -107,6 +108,9 @@ final class Acl
             'inspections.perform',
             'workorders.create',
             'workorders.edit',
+            // Taking a part off the shelf is daily work for a mechanic. Adding
+            // and removing parts from the list is not.
+            'parts.adjust',
         ],
         self::ROLE_MANAGER => [
             'assets.create',
