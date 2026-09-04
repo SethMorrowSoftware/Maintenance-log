@@ -2943,10 +2943,17 @@ a.stat-card:hover {
     .response-btn { min-height: 52px; }
 }
 
-/* Very small phones */
-@media (max-width: 400px) {
+/* Very small phones.
+   Two KPI columns are kept down to 340px: six tiles in a single column pushes
+   everything actionable below the fold on a phone, which is the one place the
+   dashboard most needs to be scannable. */
+@media (max-width: 340px) {
     .stat-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 400px) {
     .filter-bar { grid-template-columns: 1fr; }
+    .stat-card { padding: var(--space-3); }
 }
 
 /* Fine pointer devices get slightly denser controls */

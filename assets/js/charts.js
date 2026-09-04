@@ -167,6 +167,11 @@
         summary.textContent = 'View as table';
         details.appendChild(summary);
 
+        // The fallback table can be wider than a phone, so give it the same
+        // horizontal scroll container every other table in the app uses.
+        var wrap = document.createElement('div');
+        wrap.className = 'table-wrap';
+
         var table = document.createElement('table');
         table.className = 'table table-compact';
 
@@ -196,7 +201,8 @@
         });
 
         table.appendChild(tbody);
-        details.appendChild(table);
+        wrap.appendChild(table);
+        details.appendChild(wrap);
         container.appendChild(details);
 
         function cell(tag, text) {
