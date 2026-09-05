@@ -22,6 +22,7 @@ use App\Request;
 // Sign in first, then come straight back here — requireLogin carries the whole
 // scanned address forward, so nothing is lost.
 Auth::requireLogin();
+require_feature('labels');
 
 $code = trim(Request::string('c'));
 

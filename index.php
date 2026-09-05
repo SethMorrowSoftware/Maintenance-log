@@ -121,7 +121,10 @@ function run_hourly_tasks(): void
             return;
         }
 
-        Scheduler::raiseDueNotifications();
+        if (feature_on('schedules')) {
+            Scheduler::raiseDueNotifications();
+        }
+
         Auth::pruneRememberTokens();
         Auth::pruneResets();
 

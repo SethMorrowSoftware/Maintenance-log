@@ -38,9 +38,9 @@ if (mb_strlen($query) >= 2) {
              WHERE a.deleted_at IS NULL
                AND (a.name LIKE ? OR a.asset_tag LIKE ? OR a.serial_number LIKE ?
                     OR a.model LIKE ? OR a.manufacturer LIKE ? OR a.vin LIKE ?
-                    OR a.notes LIKE ?)
+                    OR a.notes LIKE ? OR a.custom_data LIKE ?)
              ORDER BY a.name LIMIT 40",
-            array_fill(0, 7, $like)
+            array_fill(0, 8, $like)
         );
     }
 

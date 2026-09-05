@@ -36,7 +36,8 @@ $me        = user();
 $siteName  = Settings::siteName();
 $logoUrl   = Settings::logoUrl();
 $fullTitle = $title === $siteName ? $siteName : $title . ' · ' . $siteName;
-$unread    = $me === null ? 0 : Notifier::unreadCount((int) $me['id']);
+$showBell  = $me !== null && feature_on('notifications');
+$unread    = $showBell ? Notifier::unreadCount((int) $me['id']) : 0;
 
 /**
  * The whole navigation, in one place. Each item names the permission that
@@ -61,6 +62,7 @@ $navigation = [
     ],
     'Administration' => [
         ['label' => 'Users',                  'url' => 'users.php',      'icon' => 'users',     'permission' => 'users.view'],
+        ['label' => 'Roles',                  'url' => 'roles.php',      'icon' => 'shield',    'permission' => 'users.manage'],
         ['label' => 'Checklists',             'url' => 'checklists.php', 'icon' => 'checklist', 'permission' => 'checklists.view'],
         ['label' => 'Categories & Locations', 'url' => 'categories.php', 'icon' => 'tag',       'permission' => 'assets.edit'],
         ['label' => 'Settings',               'url' => 'settings.php',   'icon' => 'settings',  'permission' => 'settings.manage'],
@@ -210,11 +212,13 @@ $currentNav = $navAliases[$activeNav] ?? $activeNav;
                 </button>
 
                 <?php if ($me !== null): ?>
-                    <a class="header-btn" href="<?= e(url('notifications.php')) ?>"
-                       aria-label="Notifications" title="Notifications" id="notification-bell">
-                        <?= icon('bell') ?>
-                        <span class="notif-dot" id="notif-count" <?= $unread > 0 ? '' : 'hidden' ?>><?= $unread > 99 ? '99+' : (int) $unread ?></span>
-                    </a>
+                    <?php if ($showBell): ?>
+                        <a class="header-btn" href="<?= e(url('notifications.php')) ?>"
+                           aria-label="Notifications" title="Notifications" id="notification-bell">
+                            <?= icon('bell') ?>
+                            <span class="notif-dot" id="notif-count" <?= $unread > 0 ? '' : 'hidden' ?>><?= $unread > 99 ? '99+' : (int) $unread ?></span>
+                        </a>
+                    <?php endif; ?>
 
                     <div class="user-menu">
                         <button type="button" class="user-menu-trigger" id="user-menu-trigger"
@@ -238,12 +242,14 @@ $currentNav = $navAliases[$activeNav] ?? $activeNav;
                             <a class="dropdown-item" role="menuitem" href="<?= e(url('profile.php', ['tab' => 'password'])) ?>">
                                 <?= icon('key', '', 17) ?> Change password
                             </a>
-                            <a class="dropdown-item" role="menuitem" href="<?= e(url('notifications.php')) ?>">
-                                <?= icon('bell', '', 17) ?> Notifications
-                                <?php if ($unread > 0): ?>
-                                    <span class="badge badge-danger" style="margin-left:auto"><?= (int) $unread ?></span>
-                                <?php endif; ?>
-                            </a>
+                            <?php if ($showBell): ?>
+                                <a class="dropdown-item" role="menuitem" href="<?= e(url('notifications.php')) ?>">
+                                    <?= icon('bell', '', 17) ?> Notifications
+                                    <?php if ($unread > 0): ?>
+                                        <span class="badge badge-danger" style="margin-left:auto"><?= (int) $unread ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            <?php endif; ?>
                             <div class="dropdown-divider"></div>
                             <form method="post" action="<?= e(url('logout.php')) ?>">
                                 <?= csrf_field() ?>

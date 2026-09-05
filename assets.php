@@ -107,8 +107,23 @@ if (Request::string('export') === 'csv') {
         'Notes'            => static fn (array $r) => $r['notes'],
     ];
 
+    // The extra fields from Settings → Fields, after the built-in columns.
+    foreach (\App\CustomFields::all() as $field) {
+        $heading = (string) $field['label'];
+
+        while (isset($columns[$heading])) {
+            $heading .= ' (extra)';
+        }
+
+        $columns[$heading] = static fn (array $r) => \App\CustomFields::valueOn($field, $r);
+    }
+
     if (!costs_visible()) {
         unset($columns['Purchase cost'], $columns['Lifetime maintenance cost']);
+    }
+
+    if (!feature_on('meters')) {
+        unset($columns['Meter type'], $columns['Meter reading']);
     }
 
     Csv::stream(
@@ -163,8 +178,10 @@ if (can('reports.export')) {
         . icon('download', '', 17) . ' Export</a>';
 }
 
-$actions .= '<a class="btn btn-secondary" href="' . e(url('labels.php')) . '">'
-    . icon('qr-code', '', 17) . ' Print labels</a>';
+if (feature_on('labels')) {
+    $actions .= '<a class="btn btn-secondary" href="' . e(url('labels.php')) . '">'
+        . icon('qr-code', '', 17) . ' Print labels</a>';
+}
 
 View::render('assets/index', [
     'title'        => asset_word(true, true),

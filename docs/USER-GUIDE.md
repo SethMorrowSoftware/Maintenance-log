@@ -13,7 +13,9 @@ You have just done something to a machine. Record it before you forget.
 
 1. Click **Log maintenance** — it is the blue button at the top of the
    dashboard, and it is on every machine's page too.
-2. Pick the machine.
+2. Pick the machine. Not in the list yet? If you are allowed to add machines,
+   there is an **Add it** link under the picker: fill in the new one, save, and
+   you are back on this form with it already chosen and your typing still here.
 3. Pick the kind of work: a repair, a service, a daily check, a modification.
 4. Give it a short title. Write it the way you would say it: *"Replaced front
    brake pads"*, *"Chain kept jumping — swapped the sprocket"*.
@@ -232,6 +234,12 @@ which machines still need today's check, and three big buttons — log
 maintenance, run today's check, report a problem. Managers and administrators
 see the full dashboard with the charts.
 
+That table is how RideLog comes out of the box. An administrator can change it
+on the **Roles** page: one grid, a row per permission, a column per role, tick
+what each role may do. Want technicians to add machines, or managers to see
+what things cost? Tick the box. Administrators always keep everything, so
+nobody can lock the site, and **Reset to defaults** puts the table above back.
+
 If you cannot do something you think you should be able to, that is the reason.
 Ask an administrator.
 
@@ -256,6 +264,48 @@ is not the word your team uses — rides, assets, appliances, vehicles — chang
 it once under **Settings → General** ("What do you call one of the things you
 look after?") and every label follows. Categories are just labels too: add an
 *Appliances* category and start logging the walk-in fridge alongside the karts.
+
+---
+
+## Switching off what you do not use
+
+Every part of RideLog is optional. **Settings → Features** has a switch for
+each one — work orders, scheduled service, inspections, parts, meters,
+downtime, money, photos, QR labels, reports, notifications, the audit log and
+form drafts. Off means gone: from the menu, the forms, the machine page and the
+dashboard. Nothing is deleted, and switching it back on brings the records
+straight back. A site that just wants a log book can run with everything off.
+
+Switching **Money** off hides prices and costs from everybody, administrators
+included.
+
+---
+
+## Extra fields on machines
+
+The machine form has the usual things: make, model, serial numbers, engine,
+tyres, dates. If your site needs to record something else on every machine —
+seat size, restrictor plate, gas or electric, a supplier's part number — an
+administrator adds it once under **Settings → Fields**. Give it a name, say
+what kind of answer it takes (text, a number, a date, yes or no, or a pick from
+a list), and it appears on every machine's form and page, in the export, and
+optionally as a column on the machine list. Search finds what is typed into
+them too.
+
+---
+
+## Adding the second of twenty
+
+Entering a fleet one at a time is dull, so two things help:
+
+- On any machine's page, the **copy** button (next to Edit) starts a new
+  machine already filled in like that one — same category, location, make,
+  model, engine and extra fields, with the next name in the sequence and a
+  fresh tag. Change what differs and save.
+- On the new-machine form, **Save and add another like it** saves the one you
+  are on and opens the next, filled in the same way.
+
+"Go-Kart #7" becomes "Go-Kart #8", "Lane 09" becomes "Lane 10".
 
 ---
 

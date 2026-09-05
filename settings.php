@@ -75,6 +75,21 @@ if (is_post()) {
         redirect(url('settings.php', ['tab' => 'slack']));
     }
 
+    // ----------------------------------------------------------- extra fields
+    if ($action === 'save_fields') {
+        $rows   = $_POST['fields'] ?? [];
+        $errors = \App\CustomFields::save(is_array($rows) ? $rows : []);
+
+        if ($errors !== []) {
+            flash_errors(['fields' => implode(' ', $errors)], $_POST);
+        } else {
+            audit('settings.update', 'setting', null, 'Changed the extra fields on ' . asset_word(true));
+            flash('success', 'Fields saved. They are on the ' . asset_word() . ' form now.');
+        }
+
+        redirect(url('settings.php', ['tab' => 'fields']));
+    }
+
     // ----------------------------------------------------------- new cron token
     if ($action === 'new_cron_token') {
         Settings::set('cron_token', Str::random(48));
@@ -265,4 +280,9 @@ View::render('settings/index', [
     'uploadLimit' => Settings::hostUploadLimitBytes(),
     // The System tab is a health report, not a form.
     'health'     => $tab === 'system' ? \App\Health::report() : null,
+    // The Fields tab is its own editor. After a rejected save it shows what
+    // was typed, not what is stored, so nothing has to be retyped.
+    'customFields' => $tab === 'fields'
+        ? (is_array(old('fields', null)) ? \App\CustomFields::build((array) old('fields', []))['fields'] : \App\CustomFields::all())
+        : [],
 ]);

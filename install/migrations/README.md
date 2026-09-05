@@ -25,6 +25,11 @@ error — the runner records every applied file in the `applied_migrations`
 setting and skips it next time, so this only matters if someone edits that
 setting by hand.
 
+Put the same change in `schema.sql` as well, so a fresh install gets it
+directly. The installer records every file in this folder as already applied,
+which is why the upgrade runner never tries to add a column a new database
+already has.
+
 Never edit a migration that has already shipped. Add a new one instead.
 
 ## Applying them

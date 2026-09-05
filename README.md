@@ -59,10 +59,31 @@ administrator's figures are still right.
 opens that machine's page — or straight into a new log, if that is what you set
 the labels to do.
 
-**Four roles.** Viewer, technician, manager, administrator. A technician can log
-their own work and run inspections, and gets a simpler home page built around
-three buttons; a manager can do everything with the machines; an administrator
-can also manage people and settings, and is the only one who sees money.
+**Four roles, and the administrator decides what they mean.** Viewer,
+technician, manager, administrator. Out of the box a technician can log their
+own work and run inspections, and gets a simpler home page built around three
+buttons; a manager can do everything with the machines; an administrator can
+also manage people and settings, and is the only one who sees money. The
+**Roles** page is a grid of every permission against every role: tick what each
+may do, and reset to the defaults when you change your mind. Administrators
+always keep everything.
+
+**Everything is optional.** Work orders, scheduled service, inspections, parts,
+meters, downtime, money, photos, labels, reports, notifications, the audit log
+and drafts each have a switch under Settings → Features. Off means gone from
+the menus and forms; nothing is deleted, and switching back on brings the
+records straight back.
+
+**Fields you can add.** Settings → Fields puts whatever else the site needs on
+every machine — seat size, gas or electric, a supplier's part number — as text,
+a number, a date, yes or no, or a pick from a list. They show on the machine's
+form and page, in the export, in search, and optionally as list columns.
+
+**Built for entering a fleet.** "Add another like this" on any machine, and
+"Save and add another like it" on the form, start the next one already filled
+in with the next name in the sequence. A machine missing from the picker on the
+log form can be added from right there, and you land back on the form with it
+chosen and your typing intact.
 
 **Nothing typed is lost.** The log and report forms keep a draft on the device
 as you type and offer it back if the phone locks, the tab closes or the session

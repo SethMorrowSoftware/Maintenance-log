@@ -114,6 +114,16 @@ $targetId = $editing ? (int) $target['id'] : 0;
                             </span>
                         </label>
                     <?php endforeach; ?>
+
+                    <?php if (can('users.manage')): ?>
+                        <p class="form-hint" style="margin-top:var(--space-3)">
+                            <?php if (\App\Acl::isCustomised()): ?>
+                                Some roles have been changed from the defaults, so treat the descriptions as a guide.
+                            <?php endif; ?>
+                            Want a role to do more or less?
+                            <a href="<?= e(url('roles.php')) ?>">Change what each role can do</a>.
+                        </p>
+                    <?php endif; ?>
                 </div>
             </div>
 

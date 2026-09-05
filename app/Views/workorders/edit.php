@@ -16,7 +16,7 @@ use App\View;
 
 <form method="post" action="<?= e(url('workorder-edit.php', $editing ? ['id' => (int) $workOrder['id']] : [])) ?>"
       enctype="multipart/form-data" data-validate data-guard
-      data-draft="wo-<?= $editing ? (int) $workOrder['id'] : 'new' ?>">
+      <?= feature_on('drafts') ? 'data-draft="wo-' . ($editing ? (int) $workOrder['id'] : 'new') . '"' : '' ?>>
     <?= csrf_field() ?>
 
     <div class="grid grid-sidebar">
@@ -161,6 +161,7 @@ use App\View;
                 'selectName' => 'asset_id',
             ]); ?>
 
+            <?php if (feature_on('photos')): ?>
             <div class="card">
                 <div class="card-header"><h3 class="card-title"><?= icon('camera', '', 17) ?> Photos</h3></div>
                 <div class="card-body">
@@ -175,6 +176,7 @@ use App\View;
                     <div class="mt-3" data-dropzone-preview hidden></div>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
     </div>
 </form>

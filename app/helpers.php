@@ -172,7 +172,23 @@ if (!function_exists('costs_visible')) {
      */
     function costs_visible(): bool
     {
-        return Acl::can('costs.view');
+        return \App\Features::on('costs') && Acl::can('costs.view');
+    }
+}
+
+if (!function_exists('feature_on')) {
+    /** Is a module (work_orders, parts, meters, …) switched on under Settings → Features? */
+    function feature_on(string $key): bool
+    {
+        return \App\Features::on($key);
+    }
+}
+
+if (!function_exists('require_feature')) {
+    /** Stop the page, politely, if the module is switched off. */
+    function require_feature(string $key): void
+    {
+        \App\Features::require($key);
     }
 }
 

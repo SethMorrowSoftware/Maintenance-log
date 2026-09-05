@@ -67,23 +67,27 @@ $currency = Settings::currency();
         }
     }
     ?>
-    <?php View::partial('stat-card', [
-        'label' => 'Maintenance due',
-        'value' => num(count($dueList)),
-        'sub'   => $overdue > 0 ? $overdue . ' overdue' : 'Nothing overdue',
-        'icon'  => 'calendar',
-        'tone'  => $overdue > 0 ? 'danger' : (count($dueList) > 0 ? 'warn' : 'ok'),
-        'href'  => can('schedules.view') ? url('schedules.php', ['due' => 'soon']) : '',
-    ]); ?>
+    <?php if (feature_on('schedules')): ?>
+        <?php View::partial('stat-card', [
+            'label' => 'Maintenance due',
+            'value' => num(count($dueList)),
+            'sub'   => $overdue > 0 ? $overdue . ' overdue' : 'Nothing overdue',
+            'icon'  => 'calendar',
+            'tone'  => $overdue > 0 ? 'danger' : (count($dueList) > 0 ? 'warn' : 'ok'),
+            'href'  => can('schedules.view') ? url('schedules.php', ['due' => 'soon']) : '',
+        ]); ?>
+    <?php endif; ?>
 
-    <?php View::partial('stat-card', [
-        'label' => 'Open work orders',
-        'value' => num($counts['wo_open']),
-        'sub'   => $counts['wo_urgent'] > 0 ? $counts['wo_urgent'] . ' urgent' : 'None urgent',
-        'icon'  => 'work-order',
-        'tone'  => $counts['wo_urgent'] > 0 ? 'danger' : ($counts['wo_open'] > 0 ? 'info' : 'muted'),
-        'href'  => can('workorders.view') ? url('workorders.php', ['status' => 'open']) : '',
-    ]); ?>
+    <?php if (feature_on('work_orders')): ?>
+        <?php View::partial('stat-card', [
+            'label' => 'Open work orders',
+            'value' => num($counts['wo_open']),
+            'sub'   => $counts['wo_urgent'] > 0 ? $counts['wo_urgent'] . ' urgent' : 'None urgent',
+            'icon'  => 'work-order',
+            'tone'  => $counts['wo_urgent'] > 0 ? 'danger' : ($counts['wo_open'] > 0 ? 'info' : 'muted'),
+            'href'  => can('workorders.view') ? url('workorders.php', ['status' => 'open']) : '',
+        ]); ?>
+    <?php endif; ?>
 
     <?php View::partial('stat-card', [
         'label' => 'Jobs logged',
@@ -528,7 +532,7 @@ $currency = Settings::currency();
         <?php endif; ?>
 
         <?php // ------------------------- Downtime ------------------------- ?>
-        <?php if ($downtime > 0): ?>
+        <?php if (feature_on('downtime') && $downtime > 0): ?>
             <div class="card">
                 <div class="card-body">
                     <span class="stat-label">Recorded downtime</span>

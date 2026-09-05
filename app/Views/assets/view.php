@@ -15,13 +15,27 @@ $tabs = [
     'overview'    => ['label' => 'Overview',     'icon' => 'info',            'url' => url('asset-view.php', ['id' => $assetId])],
     'timeline'    => ['label' => 'History',      'icon' => 'history',         'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'timeline'])],
     'logs'        => ['label' => 'Jobs',         'icon' => 'wrench',          'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'logs']),        'count' => $counts['logs']],
-    'schedules'   => ['label' => 'Schedules',    'icon' => 'calendar',        'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'schedules']),   'count' => $counts['schedules']],
-    'inspections' => ['label' => 'Inspections',  'icon' => 'clipboard-check', 'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'inspections']), 'count' => $counts['inspections']],
-    'workorders'  => ['label' => 'Work orders',  'icon' => 'work-order',      'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'workorders']),  'count' => $counts['work_orders']],
-    'files'       => ['label' => 'Files',        'icon' => 'paperclip',       'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'files']),       'count' => $counts['attachments']],
 ];
 
-if ((string) $asset['meter_type'] !== 'none') {
+if (can('schedules.view')) {
+    $tabs['schedules'] = ['label' => 'Schedules', 'icon' => 'calendar', 'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'schedules']), 'count' => $counts['schedules']];
+}
+
+if (can('inspections.view')) {
+    $tabs['inspections'] = ['label' => 'Inspections', 'icon' => 'clipboard-check', 'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'inspections']), 'count' => $counts['inspections']];
+}
+
+if (can('workorders.view')) {
+    $tabs['workorders'] = ['label' => 'Work orders', 'icon' => 'work-order', 'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'workorders']), 'count' => $counts['work_orders']];
+}
+
+if (feature_on('photos')) {
+    $tabs['files'] = ['label' => 'Files', 'icon' => 'paperclip', 'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'files']), 'count' => $counts['attachments']];
+}
+
+$showMeter = (string) $asset['meter_type'] !== 'none' && feature_on('meters');
+
+if ($showMeter) {
     $tabs['meter'] = ['label' => 'Meter', 'icon' => 'gauge', 'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'meter']), 'count' => $counts['meter']];
 }
 
@@ -188,6 +202,15 @@ if (can('audit.view')) {
                                 <?php endif; ?>
                             </dd>
                         <?php endif; ?>
+
+                        <?php // Extra fields from Settings → Fields, only the ones filled in. ?>
+                        <?php foreach (\App\CustomFields::all() as $field): ?>
+                            <?php $customValue = \App\CustomFields::valueOn($field, $asset); ?>
+                            <?php if ($customValue !== ''): ?>
+                                <dt><?= e((string) $field['label']) ?></dt>
+                                <dd><?= e($customValue) ?></dd>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                     </dl>
 
                     <?php if (!empty($asset['description'])): ?>
@@ -720,7 +743,7 @@ if (can('audit.view')) {
             </div>
         <?php endif; ?>
 
-        <?php if ((string) $asset['meter_type'] !== 'none'): ?>
+        <?php if ($showMeter): ?>
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title"><?= icon('gauge', '', 17) ?> Meter</h3>
@@ -784,12 +807,14 @@ if (can('audit.view')) {
                     <dd><?= e(Dates::date((string) $asset['created_at'])) ?></dd>
                 </dl>
 
-                <a class="btn btn-secondary btn-block mt-3 no-print" href="<?= e(url('labels.php', ['id' => $assetId])) ?>">
-                    <?= icon('qr-code', '', 16) ?> Print a label
-                </a>
-                <p class="form-hint">
-                    Stick the label on the <?= e(asset_word()) ?>. Scanning it opens this page on a phone.
-                </p>
+                <?php if (feature_on('labels')): ?>
+                    <a class="btn btn-secondary btn-block mt-3 no-print" href="<?= e(url('labels.php', ['id' => $assetId])) ?>">
+                        <?= icon('qr-code', '', 16) ?> Print a label
+                    </a>
+                    <p class="form-hint">
+                        Stick the label on the <?= e(asset_word()) ?>. Scanning it opens this page on a phone.
+                    </p>
+                <?php endif; ?>
             </div>
         </div>
     </div>

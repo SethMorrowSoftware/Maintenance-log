@@ -324,6 +324,8 @@ final class Settings
     {
         return [
             'general'      => 'General',
+            'features'     => 'Features',
+            'fields'       => 'Fields',
             'localization' => 'Localization',
             'maintenance'  => 'Maintenance',
             'uploads'      => 'Uploads',

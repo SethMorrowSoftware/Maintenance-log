@@ -141,6 +141,12 @@ final class Acl
         ],
     ];
 
+    /**
+     * Where the Roles page keeps its changes: a JSON object of role => list of
+     * permissions, for the roles that differ from the built-in defaults.
+     */
+    public const SETTING_KEY = 'role_permissions';
+
     /** @var array<string, list<string>>|null resolved matrix, built once */
     private static ?array $resolved = null;
 
@@ -250,8 +256,33 @@ final class Acl
     // -------------------------------------------------------------------------
 
     /**
-     * Resolve inheritance once: each role gets its own grants plus everything
-     * from the roles beneath it.
+     * The built-in matrix: each role gets its own grants plus everything from
+     * the roles beneath it. This is what "Reset to defaults" goes back to.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function defaults(): array
+    {
+        $order      = [self::ROLE_VIEWER, self::ROLE_TECHNICIAN, self::ROLE_MANAGER, self::ROLE_ADMIN];
+        $known      = self::allPermissions();
+        $cumulative = [];
+        $matrix     = [];
+
+        foreach ($order as $role) {
+            $cumulative    = array_merge($cumulative, self::GRANTS[$role] ?? []);
+            $matrix[$role] = array_values(array_intersect($known, $cumulative));
+        }
+
+        // The administrator gets everything, including any permission added to
+        // the catalogue later but forgotten in the grant list.
+        $matrix[self::ROLE_ADMIN] = $known;
+
+        return $matrix;
+    }
+
+    /**
+     * The matrix in force: the defaults, with whatever the Roles page changed
+     * laid over the top. Administrators are never changed.
      *
      * @return array<string, list<string>>
      */
@@ -261,22 +292,128 @@ final class Acl
             return self::$resolved;
         }
 
-        $order      = [self::ROLE_VIEWER, self::ROLE_TECHNICIAN, self::ROLE_MANAGER, self::ROLE_ADMIN];
-        $cumulative = [];
-        $matrix     = [];
+        $matrix = self::defaults();
 
-        foreach ($order as $role) {
-            $cumulative      = array_merge($cumulative, self::GRANTS[$role] ?? []);
-            $matrix[$role]   = array_values(array_unique($cumulative));
+        foreach (self::overrides() as $role => $permissions) {
+            if ($role !== self::ROLE_ADMIN && isset($matrix[$role])) {
+                $matrix[$role] = $permissions;
+            }
         }
-
-        // The administrator gets everything, including any permission added to
-        // the catalogue later but forgotten in the grant list.
-        $matrix[self::ROLE_ADMIN] = self::allPermissions();
 
         self::$resolved = $matrix;
 
         return $matrix;
+    }
+
+    /**
+     * What the Roles page saved, tidied: role => permissions, for the roles
+     * that were changed. Empty when the site runs on the defaults.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function overrides(): array
+    {
+        try {
+            $raw = (string) Settings::get(self::SETTING_KEY, '');
+        } catch (\Throwable $e) {
+            // No database yet (the installer), or a table that predates this
+            // setting. The defaults are always safe.
+            return [];
+        }
+
+        if ($raw === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $out = [];
+
+        foreach ($decoded as $role => $list) {
+            $role = (string) $role;
+
+            if ($role === self::ROLE_ADMIN || !self::isValidRole($role) || !is_array($list)) {
+                continue;
+            }
+
+            $out[$role] = self::normalise($list);
+        }
+
+        return $out;
+    }
+
+    /** Has anybody changed a role away from the defaults? */
+    public static function isCustomised(): bool
+    {
+        return self::overrides() !== [];
+    }
+
+    /**
+     * Tidy a submitted list of permissions: known ones only, in catalogue
+     * order, and anything ticked in a section brings "view" for that section
+     * with it — a role that can add logs but not see them makes no sense.
+     *
+     * @param  array<mixed> $list
+     * @return list<string>
+     */
+    public static function normalise(array $list): array
+    {
+        $known = self::allPermissions();
+        $have  = [];
+
+        foreach ($list as $permission) {
+            $permission = (string) $permission;
+
+            if (in_array($permission, $known, true)) {
+                $have[$permission] = true;
+            }
+        }
+
+        foreach (array_keys($have) as $permission) {
+            $view = (string) strstr($permission, '.', true) . '.view';
+
+            if (in_array($view, $known, true)) {
+                $have[$view] = true;
+            }
+        }
+
+        return array_values(array_intersect($known, array_keys($have)));
+    }
+
+    /**
+     * Save a matrix from the Roles page. Only the three changeable roles are
+     * read; when what was sent matches the defaults, nothing is stored, so the
+     * page can honestly say the site runs on the defaults.
+     *
+     * @param array<string, array<mixed>> $matrix role => permissions
+     */
+    public static function saveMatrix(array $matrix): void
+    {
+        $defaults = self::defaults();
+        $store    = [];
+        $changed  = false;
+
+        foreach ([self::ROLE_VIEWER, self::ROLE_TECHNICIAN, self::ROLE_MANAGER] as $role) {
+            $store[$role] = self::normalise((array) ($matrix[$role] ?? []));
+
+            if ($store[$role] !== $defaults[$role]) {
+                $changed = true;
+            }
+        }
+
+        Settings::set(self::SETTING_KEY, $changed ? $store : '');
+        self::$resolved = null;
+    }
+
+    /** Back to the built-in matrix. */
+    public static function resetMatrix(): void
+    {
+        Settings::set(self::SETTING_KEY, '');
+        self::$resolved = null;
     }
 
     /**
@@ -334,6 +471,14 @@ final class Acl
             return false;
         }
 
+        // A permission for a module that is switched off is held by nobody,
+        // so every button and page behind it disappears together.
+        $module = Features::forPermission($permission);
+
+        if ($module !== null && !Features::on($module)) {
+            return false;
+        }
+
         return in_array($permission, self::permissionsFor($role), true);
     }
 
@@ -385,6 +530,13 @@ final class Acl
 
         if (self::can($permission)) {
             return;
+        }
+
+        // Not a matter of rights at all: the whole module is switched off.
+        $module = Features::forPermission($permission);
+
+        if ($module !== null && !Features::on($module)) {
+            Response::abortPage(404, Features::offMessage($module));
         }
 
         Audit::record(

@@ -181,7 +181,7 @@ foreach ($sections as $sectionItems) {
             <h2 class="card-title"><?= icon('check-circle', '', 18) ?> Finish up</h2>
         </div>
         <div class="card-body">
-            <?php if ($hasMeter && !$meterOnList && $asksForMeter): ?>
+            <?php if ($hasMeter && feature_on('meters') && !$meterOnList && $asksForMeter): ?>
                 <?php View::partial('form-field', [
                     'name'   => 'meter_reading',
                     'label'  => 'Meter reading',

@@ -12,6 +12,7 @@ use App\Request;
 use App\View;
 
 Auth::requireLogin();
+require_feature('notifications');
 
 $userId = (int) Auth::id();
 

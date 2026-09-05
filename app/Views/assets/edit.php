@@ -13,9 +13,34 @@ use App\Uploader;
 use App\View;
 ?>
 
-<form method="post" action="<?= e(url('asset-edit.php', $editing ? ['id' => (int) $asset['id']] : [])) ?>"
+<?php
+$returnTo = $returnTo ?? null;
+$template = $template ?? null;
+?>
+<form method="post" action="<?= e(url('asset-edit.php', $editing ? ['id' => (int) $asset['id']] : ['return' => $returnTo])) ?>"
       enctype="multipart/form-data" data-validate data-guard>
     <?= csrf_field() ?>
+    <?php if ($returnTo !== null): ?>
+        <input type="hidden" name="return" value="<?= attr($returnTo) ?>">
+    <?php endif; ?>
+
+    <?php if ($template !== null): ?>
+        <div class="alert alert-info">
+            <?= icon('copy', '', 18) ?>
+            <div class="alert-body">
+                Started as a copy of <strong><?= e((string) $template['name']) ?></strong>.
+                The name and tag are new; change whatever else differs and save.
+            </div>
+        </div>
+    <?php elseif ($returnTo !== null): ?>
+        <div class="alert alert-info">
+            <?= icon('info', '', 18) ?>
+            <div class="alert-body">
+                Save this <?= e(asset_word()) ?> and you go straight back to the form you came from,
+                with it already chosen.
+            </div>
+        </div>
+    <?php endif; ?>
 
     <div class="grid grid-sidebar">
         <div>
@@ -93,6 +118,7 @@ use App\View;
             </div>
 
             <?php // ======================== The meter ======================== ?>
+            <?php if (feature_on('meters')): ?>
             <div class="card">
                 <div class="card-header">
                     <div>
@@ -125,6 +151,7 @@ use App\View;
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
 
             <?php // ================== Make and model (optional) ================== ?>
             <details class="card" <?= $editing && ($values['manufacturer'] !== '' || $values['serial_number'] !== '') ? 'open' : '' ?>>
@@ -240,6 +267,56 @@ use App\View;
                 </div>
             </details>
 
+            <?php // ============ Extra fields from Settings → Fields ============ ?>
+            <?php $customFields = $customFields ?? []; $customValues = $customValues ?? []; ?>
+            <?php if ($customFields !== []): ?>
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><?= icon('list', '', 18) ?> More details</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-row cols-2">
+                            <?php foreach ($customFields as $field): ?>
+                                <?php
+                                $fieldName  = \App\CustomFields::inputName((string) $field['key']);
+                                $fieldValue = $customValues[(string) $field['key']] ?? '';
+                                $args       = [
+                                    'name'  => $fieldName,
+                                    'label' => (string) $field['label'],
+                                    'value' => $fieldValue,
+                                    'hint'  => (string) $field['hint'],
+                                ];
+
+                                switch ((string) $field['type']) {
+                                    case 'number':
+                                        $args['type']  = 'number';
+                                        $args['attrs'] = ['step' => 'any', 'inputmode' => 'decimal'];
+                                        break;
+                                    case 'date':
+                                        $args['type'] = 'date';
+                                        break;
+                                    case 'yesno':
+                                        $args['type']    = 'select';
+                                        $args['options'] = ['1' => 'Yes', '0' => 'No'];
+                                        $args['empty']   = 'Not filled in';
+                                        break;
+                                    case 'choice':
+                                        $args['type']    = 'select';
+                                        $args['options'] = array_combine($field['options'], $field['options']) ?: [];
+                                        $args['empty']   = 'Choose…';
+                                        break;
+                                    default:
+                                        $args['type']  = 'text';
+                                        $args['attrs'] = ['maxlength' => \App\CustomFields::MAX_TEXT];
+                                }
+                                ?>
+                                <?php View::partial('form-field', $args); ?>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <?php // ========================= Notes ========================= ?>
             <div class="card">
                 <div class="card-header">
@@ -271,6 +348,7 @@ use App\View;
 
         <?php // ========================== Sidebar ========================== ?>
         <div>
+            <?php if (feature_on('photos')): ?>
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title"><?= icon('camera', '', 17) ?> Photo</h3>
@@ -296,6 +374,7 @@ use App\View;
                     </p>
                 </div>
             </div>
+            <?php endif; ?>
 
             <div class="card">
                 <div class="card-body">
@@ -305,13 +384,14 @@ use App\View;
                     </button>
 
                     <?php if (!$editing): ?>
-                        <button type="submit" name="after" value="new" class="btn btn-secondary btn-block mt-2">
-                            <?= icon('plus', '', 16) ?> Save and add another
+                        <button type="submit" name="after" value="new" class="btn btn-secondary btn-block mt-2"
+                                title="Saves this one, then opens a new form already filled in like it">
+                            <?= icon('plus', '', 16) ?> Save and add another like it
                         </button>
                     <?php endif; ?>
 
                     <a class="btn btn-ghost btn-block mt-2" data-no-guard
-                       href="<?= e($editing ? url('asset-view.php', ['id' => (int) $asset['id']]) : url('assets.php')) ?>">
+                       href="<?= e($editing ? url('asset-view.php', ['id' => (int) $asset['id']]) : ($returnTo !== null && strpos($returnTo, '/') === 0 ? $returnTo : url('assets.php'))) ?>">
                         Cancel
                     </a>
                 </div>

@@ -21,7 +21,7 @@ use App\Status;
 $asset      = $asset      ?? null;
 $events     = $events     ?? [];
 $selectName = $selectName ?? 'asset_id';
-$hasMeter   = $asset !== null && (string) $asset['meter_type'] !== 'none';
+$hasMeter   = $asset !== null && (string) $asset['meter_type'] !== 'none' && feature_on('meters');
 ?>
 <div data-asset-context data-asset-context-for="<?= attr($selectName) ?>" <?= $asset === null ? 'hidden' : '' ?>>
     <div class="card">

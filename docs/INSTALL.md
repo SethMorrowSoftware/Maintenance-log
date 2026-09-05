@@ -132,6 +132,16 @@ has not already. Then open `.htaccess` in the root of the site and uncomment the
 five lines under "Force HTTPS", and the `Strict-Transport-Security` line just
 above them. Passwords going over plain HTTP is not a thing to leave for later.
 
+Then, when you have a minute, three settings screens make it yours:
+
+- **Settings → Features** — switch off whatever this site will not use. Off
+  means gone from the menus and forms; nothing is deleted.
+- **Settings → Fields** — add anything the machine form should ask that it does
+  not already: seat size, gas or electric, a supplier's part number.
+- **Roles** (under Administration) — tick what each role may do, if the
+  defaults are not right. Technicians adding machines, say, or managers seeing
+  costs.
+
 ---
 
 ## Slack alerts (optional)
@@ -214,7 +224,9 @@ need no nginx equivalent.
    tells you what it did.
 4. Delete `install/` again.
 
-Upgrades are additive: nothing in your data is removed or rewritten.
+Upgrades are additive: nothing in your data is removed or rewritten. The runner
+keeps a note of which database changes it has applied, so running it twice is
+harmless, and a fresh install already counts every change as applied.
 
 ---
 

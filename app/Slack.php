@@ -695,7 +695,7 @@ final class Slack
     /** Overdue and upcoming service as one list. Returns a line for the cron output. */
     public static function dueDigest(): string
     {
-        if (!self::enabled() || !Settings::bool('slack_on_due', true)) {
+        if (!self::enabled() || !Settings::bool('slack_on_due', true) || !Features::on('schedules')) {
             return 'switched off';
         }
 
@@ -809,10 +809,15 @@ final class Slack
             $extra[] = (int) $open['safety'] . ' safety';
         }
 
-        $lines[] = '• Open problems: ' . $openN . ($extra !== [] ? ' (' . implode(', ', $extra) . ')' : '');
-        $lines[] = '• Service overdue: ' . $overdue . ' · due this week: ' . $soon;
+        if (Features::on('work_orders')) {
+            $lines[] = '• Open problems: ' . $openN . ($extra !== [] ? ' (' . implode(', ', $extra) . ')' : '');
+        }
 
-        if ($low !== []) {
+        if (Features::on('schedules')) {
+            $lines[] = '• Service overdue: ' . $overdue . ' · due this week: ' . $soon;
+        }
+
+        if ($low !== [] && Features::on('parts')) {
             $lines[] = '• Parts running low: ' . implode(', ', array_map(static fn (array $p): string => (string) $p['name'], $low));
         }
 

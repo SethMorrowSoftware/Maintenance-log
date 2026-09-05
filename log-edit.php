@@ -92,7 +92,26 @@ if (is_post()) {
     }
 
     $data  = $validator->validated();
-    $parts = MaintenanceLog::normaliseParts($_POST['parts'] ?? [], $editing ? MaintenanceLog::parts($id) : []);
+    $parts = feature_on('parts')
+        ? MaintenanceLog::normaliseParts($_POST['parts'] ?? [], $editing ? MaintenanceLog::parts($id) : [])
+        : ($editing ? MaintenanceLog::parts($id) : []);
+
+    // Fields that belong to a module that is switched off never reach the form.
+    if (!feature_on('downtime')) {
+        unset($data['downtime_minutes']);
+    }
+
+    if (!feature_on('meters')) {
+        unset($data['meter_reading']);
+    }
+
+    if (!feature_on('schedules')) {
+        $data['schedule_id'] = null;
+    }
+
+    if (!feature_on('work_orders')) {
+        $data['work_order_id'] = null;
+    }
 
     // Somebody who cannot see money cannot set it either: their form has no
     // cost fields, so anything arriving here was not typed on our page.
@@ -172,7 +191,7 @@ if (is_post()) {
 
         // Raising a follow-up creates the work order, rather than leaving it as
         // a note nobody acts on.
-        if ($data['requires_followup'] && !$editing && can('workorders.create')) {
+        if ($data['requires_followup'] && !$editing && feature_on('work_orders') && can('workorders.create')) {
             try {
                 \App\Models\WorkOrder::create([
                     'asset_id'    => (int) $data['asset_id'],
@@ -273,7 +292,7 @@ $asset     = ((int) $values['asset_id']) > 0 ? Asset::find((int) $values['asset_
 // Schedules on the chosen machine, so the log can be tied to one.
 $assetSchedules = [];
 
-if ($asset !== null) {
+if ($asset !== null && feature_on('schedules')) {
     $assetSchedules = db()->pairs(
         'SELECT id, name FROM {maintenance_schedules} WHERE asset_id = ? AND is_active = 1 ORDER BY name',
         [(int) $asset['id']]
@@ -282,7 +301,7 @@ if ($asset !== null) {
 
 $openWorkOrders = [];
 
-if ($asset !== null) {
+if ($asset !== null && feature_on('work_orders')) {
     $openWorkOrders = db()->pairs(
         "SELECT id, CONCAT(wo_number, ' — ', title) FROM {work_orders}
          WHERE asset_id = ? AND deleted_at IS NULL AND status NOT IN ('completed','cancelled')

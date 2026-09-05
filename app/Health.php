@@ -331,7 +331,7 @@ final class Health
     {
         $rate = (float) Settings::get('default_labor_rate', 0);
 
-        if ($rate > 0) {
+        if ($rate > 0 || !Features::on('costs')) {
             return null;
         }
 

@@ -89,8 +89,9 @@ final class Asset
             foreach (Str::parseSearch($search, 4) as $term) {
                 $like = Str::likeContains($term);
                 $where[] = '(a.name LIKE ? OR a.asset_tag LIKE ? OR a.serial_number LIKE ?
-                             OR a.manufacturer LIKE ? OR a.model LIKE ? OR a.vin LIKE ?)';
-                array_push($params, $like, $like, $like, $like, $like, $like);
+                             OR a.manufacturer LIKE ? OR a.model LIKE ? OR a.vin LIKE ?
+                             OR a.custom_data LIKE ?)';
+                array_push($params, $like, $like, $like, $like, $like, $like, $like);
             }
         }
 
@@ -875,7 +876,7 @@ final class Asset
             "SELECT a.asset_tag, a.name, c.name AS category, l.name AS location, a.status,
                     a.criticality, a.manufacturer, a.model, a.serial_number, a.vin,
                     a.year_manufactured, a.purchase_date, a.purchase_cost, a.warranty_expires,
-                    a.meter_type, a.meter_reading, a.in_service_date, a.notes,
+                    a.meter_type, a.meter_reading, a.in_service_date, a.notes, a.custom_data,
                     (SELECT MAX(performed_at) FROM {maintenance_logs} ml
                       WHERE ml.asset_id = a.id AND ml.deleted_at IS NULL) AS last_service,
                     (SELECT COALESCE(SUM(total_cost),0) FROM {maintenance_logs} ml
@@ -887,5 +888,20 @@ final class Asset
              ORDER BY a.name ASC",
             $params
         );
+    }
+
+    /**
+     * The name for the next one in a run: "Go-Kart #7" → "Go-Kart #8",
+     * "Bowling Lane 09" → "Bowling Lane 10", "Freefall" → "Freefall 2".
+     */
+    public static function nextName(string $name): string
+    {
+        if (preg_match('/^(.*?)(\d+)(\D*)$/', $name, $m) === 1) {
+            $next = str_pad((string) ((int) $m[2] + 1), strlen($m[2]), '0', STR_PAD_LEFT);
+
+            return $m[1] . $next . $m[3];
+        }
+
+        return trim($name) === '' ? '' : trim($name) . ' 2';
     }
 }

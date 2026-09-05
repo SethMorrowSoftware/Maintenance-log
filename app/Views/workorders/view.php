@@ -86,7 +86,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                         </dd>
                     <?php endif; ?>
 
-                    <?php if ($workOrder['downtime_minutes'] !== null): ?>
+                    <?php if (feature_on('downtime') && $workOrder['downtime_minutes'] !== null): ?>
                         <dt>Out of service for</dt>
                         <dd><?= e(Dates::humanDuration((int) $workOrder['downtime_minutes'])) ?></dd>
                     <?php endif; ?>
@@ -125,6 +125,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
             </div>
         <?php endif; ?>
 
+        <?php if (feature_on('photos')): ?>
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title"><?= icon('paperclip', '', 18) ?> Photos and documents</h2>
@@ -140,6 +141,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                 ]); ?>
             </div>
         </div>
+        <?php endif; ?>
 
         <div class="card">
             <div class="card-header">
@@ -215,15 +217,17 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                                 'attrs'       => ['maxlength' => 5000],
                             ]); ?>
 
-                            <?php View::partial('form-field', [
-                                'name'   => 'downtime_minutes',
-                                'label'  => 'Out of service for',
-                                'type'   => 'number',
-                                'value'  => $workOrder['downtime_minutes'],
-                                'suffix' => 'minutes',
-                                'noOld'  => true,
-                                'attrs'  => ['min' => 0],
-                            ]); ?>
+                            <?php if (feature_on('downtime')): ?>
+                                <?php View::partial('form-field', [
+                                    'name'   => 'downtime_minutes',
+                                    'label'  => 'Out of service for',
+                                    'type'   => 'number',
+                                    'value'  => $workOrder['downtime_minutes'],
+                                    'suffix' => 'minutes',
+                                    'noOld'  => true,
+                                    'attrs'  => ['min' => 0],
+                                ]); ?>
+                            <?php endif; ?>
 
                             <button type="submit" class="btn btn-primary btn-block">Update</button>
                         <?php endif; ?>

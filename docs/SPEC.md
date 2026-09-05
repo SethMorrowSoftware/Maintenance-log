@@ -329,6 +329,20 @@ costs.view
 | `manager` | technician + `assets.*`, `logs.edit_any`, `logs.delete`, `schedules.manage`, `checklists.manage`, `inspections.delete`, `workorders.*`, `parts.manage`, `reports.export`, `audit.view` |
 | `admin` | everything, including `users.manage`, `settings.manage` and `costs.view` |
 
+**Those are the defaults, not the law.** `Acl::defaults()` is the table above;
+`Acl::matrix()` lays the `role_permissions` setting (JSON `{role: [permissions]}`,
+edited on `roles.php`, permission `users.manage`) over it for `viewer`, `technician`
+and `manager`. `admin` is never overridden. `Acl::normalise()` keeps only catalogue
+permissions and adds `<module>.view` whenever anything else in that module is
+granted. Saving a matrix identical to the defaults stores nothing, so
+`Acl::isCustomised()` is honest. Role descriptions are static text and are flagged
+as "a guide" once the matrix is customised.
+
+**Feature switches come first.** `Acl::can()` returns `false` for any permission
+whose module is off (`Features::forPermission()` maps the permission prefix to a
+switch), and `requirePermission()` answers 404 "switched off" rather than 403, so
+every button and page behind a switched-off module disappears together.
+
 **Money is admin-only.** `costs.view` is granted to `admin` and nobody else. Every
 place a price, cost, rate, spend or stock value could appear — views, list columns,
 CSV exports, reports (`Reports::withoutMoney()` strips `format: money` columns and
@@ -384,6 +398,10 @@ Full DDL lives in `install/schema.sql`. Common conventions:
 - Foreign keys are declared. Use `ON DELETE SET NULL` for optional references,
   `ON DELETE CASCADE` for child rows that cannot exist alone, `ON DELETE RESTRICT` otherwise.
 - Use `ENUM(...)` for the status/type vocabularies listed below so the DB documents itself.
+- `assets.custom_data TEXT NULL` holds the administrator-defined extra fields as one
+  JSON object (`{key: value}`), so adding a field never touches the schema. Added by
+  `install/migrations/001_asset_custom_data.sql` for databases that predate it; the
+  installer records every migration file as applied on a fresh install.
 
 ### Tables (24)
 
@@ -424,7 +442,13 @@ items_per_page, session_timeout_minutes, max_upload_mb, allow_registration,
 theme_default, primary_color, logo_path, mail_enabled, mail_from_name, mail_from_email,
 mail_transport, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure,
 notify_pm_due_days, cron_token, schema_version, low_stock_alerts, require_meter_on_log,
-inspection_signature_required, week_start, app_installed_at
+inspection_signature_required, week_start, app_installed_at,
+asset_noun_singular, asset_noun_plural,
+feature_work_orders, feature_schedules, feature_inspections, feature_parts, feature_meters,
+feature_downtime, feature_costs, feature_photos, feature_labels, feature_reports,
+feature_notifications, feature_audit, feature_drafts,
+asset_custom_fields (hidden, JSON), role_permissions (hidden, JSON),
+applied_migrations (hidden, JSON), slack_* (see App\Slack)
 ```
 
 ---
@@ -584,11 +608,44 @@ Tabbed: Maintenance History · Cost Analysis (by asset/category/month) · Downti
 Inspection Compliance · Asset Inventory · Parts Usage · Technician Activity.
 Every report: filter form, results table, chart where meaningful, CSV export, print view.
 
+### Feature switches (`App\Features`)
+Thirteen modules, each a `feature_*` bool setting in the `features` group: work orders,
+schedules, inspections (with checklists), parts, meters, downtime, costs, photos, labels,
+reports (with CSV exports), notifications (the bell), audit, drafts. `Features::on()`,
+`feature_on()` and `require_feature()` (404 with a "switched off" message). Off means the
+nav item, the page, the form fields, the machine-page tab, the dashboard stat, the report,
+the cron step and the Slack line all go together; nothing is deleted. `costs` off hides
+money from everybody, administrators included (`costs_visible()`).
+
+### Roles (`roles.php`)
+Permission `users.manage`. One grid: a row per catalogue permission, a column per role,
+headcount per role, admin column fixed. Rows for a switched-off module are dimmed and kept.
+Cells that differ from the defaults are marked; "Reset to defaults" behind a confirm. See §5.
+
+### Custom fields (`App\CustomFields`, Settings → Fields)
+Definitions in the `asset_custom_fields` setting: `{key, label, type, options, list, hint}`,
+types `text | number | date | yesno | choice`, at most 30. The key is slugged from the first
+label and then fixed, so renaming keeps the data. Values are one JSON object in
+`assets.custom_data`; a value for a field since removed is carried across untouched.
+Rendered on the machine form (`cf_<key>` inputs, validated per type), the overview tab
+(filled-in only), the list (fields flagged `list`), the CSV export, and searched by
+`LIKE` on the JSON. The editor is a repeater on `settings.php?tab=fields`
+(action `save_fields`); a rejected save re-renders what was typed.
+
+### Quick expansion
+Any form with a machine picker shows "Not in the list? Add it" to anyone with
+`assets.create`; the link carries `return=<current path>` (validated by
+`Request::safeRedirect()`) and the new machine's save redirects back with `asset_id`.
+Drafts never blank a select that the page opened with a value. `asset-edit.php?copy_from=ID`
+pre-fills a new machine from an existing one (batch-alike fields only; not serials, VIN,
+meter reading or photo) with `Asset::nextName()` and `Asset::suggestTag()`; "Save and add
+another like it" chains it.
+
 ### Users, settings, audit
 User CRUD with role assignment, activate/deactivate, force password change, reset password,
 avatar. Self-service profile + password change. Settings page grouped into tabs
-(General · Localization · Maintenance · Uploads · Email · Security · Branding · System)
-with a "send test email" button. The System tab (`App\Health`) is a plain-language health
+(General · Features · Fields · Localization · Maintenance · Uploads · Email · Slack ·
+Security · Branding · System) with a "send test email" button. The System tab (`App\Health`) is a plain-language health
 report — PHP, extensions, database, writable folders, setup files, HTTPS, nightly job,
 error log, disk, labour rate, email — plus counts and a one-click full export
 (`export.php`: one CSV per table in a ZIP, or a single JSON file without `zip`; secrets
@@ -610,9 +667,11 @@ via `App\Mailer` (PHP `mail()` or SMTP over raw sockets — no external library)
 Steps: Welcome → Requirements → Database → Administrator → Site settings → Install → Done.
 Session-backed, back/forward navigation, inline validation, live DB connection test,
 optional demo data, writes `config/config.php` (0640 where possible) + `config/installed.lock`,
-generates a random `cron_token` and app key, and shows post-install security advice
-(delete `install/`, chmod, HTTPS). `install/upgrade.php` runs pending files from
-`install/migrations/` and updates the `schema_version` setting.
+generates a random `cron_token` and app key, records every file in `install/migrations/`
+as already applied (schema.sql is always current), and shows post-install security advice
+(delete `install/`, chmod, HTTPS). `install/upgrade.php` re-applies schema.sql and
+seed.sql, runs the migration files not yet listed in the `applied_migrations` setting,
+and updates the `schema_version` setting.
 
 ### Cron (`cron.php?token=…`)
 Recompute PM due dates, raise due/overdue notifications, expire old sessions & reset tokens,

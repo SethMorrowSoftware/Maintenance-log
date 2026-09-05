@@ -185,7 +185,7 @@ final class AssetsController
                 'status'        => (string) $asset['status'],
                 'status_label'  => Status::label((string) $asset['status'], 'asset'),
                 'status_tone'   => Status::tone((string) $asset['status'], 'asset'),
-                'meter_type'    => (string) $asset['meter_type'],
+                'meter_type'    => feature_on('meters') ? (string) $asset['meter_type'] : 'none',
                 'meter_reading' => decimal($asset['meter_reading']),
                 'url'           => url('asset-view.php', ['id' => (int) $asset['id']]),
                 'history_url'   => url('asset-view.php', ['id' => (int) $asset['id'], 'tab' => 'timeline']),

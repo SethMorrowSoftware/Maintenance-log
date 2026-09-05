@@ -26,7 +26,7 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
 
 <form method="post" action="<?= e(url('log-edit.php', $editing ? ['id' => (int) $log['id']] : [])) ?>"
       enctype="multipart/form-data" data-validate data-guard data-cost-scope
-      data-draft="log-<?= $editing ? (int) $log['id'] : 'new' ?>">
+      <?= feature_on('drafts') ? 'data-draft="log-' . ($editing ? (int) $log['id'] : 'new') . '"' : '' ?>>
     <?= csrf_field() ?>
 
     <?php if ($schedule !== null): ?>
@@ -128,6 +128,7 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
             </div>
 
             <?php // ================== Parts used (optional) ================== ?>
+            <?php if (feature_on('parts')): ?>
             <details class="card" <?= $logParts !== [] ? 'open' : '' ?>>
                 <summary class="card-header" style="cursor:pointer;list-style:none">
                     <h2 class="card-title"><?= icon('package', '', 18) ?> Parts used</h2>
@@ -252,6 +253,7 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                     </div>
                 </div>
             </details>
+            <?php endif; ?>
 
             <?php // ============ Time, cost and condition (optional) ============ ?>
             <details class="card"
@@ -273,17 +275,19 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                             'hint'   => 'In hours. 1.5 means an hour and a half.',
                         ]); ?>
 
-                        <?php View::partial('form-field', [
-                            'name'   => 'downtime_minutes',
-                            'label'  => 'Time out of service',
-                            'type'   => 'number',
-                            'value'  => $values['downtime_minutes'],
-                            'suffix' => 'minutes',
-                            'attrs'  => ['min' => '0'],
-                            'hint'   => 'How long guests could not use it.',
-                        ]); ?>
+                        <?php if (feature_on('downtime')): ?>
+                            <?php View::partial('form-field', [
+                                'name'   => 'downtime_minutes',
+                                'label'  => 'Time out of service',
+                                'type'   => 'number',
+                                'value'  => $values['downtime_minutes'],
+                                'suffix' => 'minutes',
+                                'attrs'  => ['min' => '0'],
+                                'hint'   => 'How long guests could not use it.',
+                            ]); ?>
+                        <?php endif; ?>
 
-                        <?php if ($hasMeter): ?>
+                        <?php if ($hasMeter && feature_on('meters')): ?>
                             <?php View::partial('form-field', [
                                 'name'   => 'meter_reading',
                                 'label'  => 'Meter reading',
@@ -460,6 +464,7 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                 'events' => $assetHistory,
             ]); ?>
 
+            <?php if (feature_on('photos')): ?>
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title"><?= icon('camera', '', 17) ?> Photos</h3>
@@ -476,6 +481,7 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                     <div class="mt-3" data-dropzone-preview hidden></div>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
     </div>
 </form>

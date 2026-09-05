@@ -238,6 +238,7 @@ CREATE TABLE IF NOT EXISTS {assets} (
   retired_date        DATE         DEFAULT NULL,
   description         TEXT         DEFAULT NULL,
   notes               TEXT         DEFAULT NULL,
+  custom_data         TEXT         DEFAULT NULL,
   image_path          VARCHAR(255) DEFAULT NULL,
   qr_slug             VARCHAR(32)  DEFAULT NULL,
   sort_order          SMALLINT     NOT NULL DEFAULT 0,

@@ -44,6 +44,10 @@ if (is_post()) {
         }
     }
 
+    if (in_array($action, ['upload_attachment', 'delete_attachment', 'set_photo'], true)) {
+        require_feature('photos');
+    }
+
     if ($action === 'upload_attachment') {
         Acl::requirePermission('assets.edit');
 
@@ -120,6 +124,21 @@ $tab = Request::enum(
 $q    = trim(Request::string('q'));
 $data = [];
 
+// A tab whose module is switched off (or that this person may not see)
+// falls back to the overview rather than showing an empty page.
+$tabGates = [
+    'schedules'   => can('schedules.view'),
+    'inspections' => can('inspections.view'),
+    'workorders'  => can('workorders.view'),
+    'files'       => feature_on('photos'),
+    'meter'       => feature_on('meters'),
+    'history'     => can('audit.view'),
+];
+
+if (isset($tabGates[$tab]) && !$tabGates[$tab]) {
+    $tab = 'overview';
+}
+
 switch ($tab) {
     case 'timeline':
         // Everything that ever happened to it, in one list, searchable.
@@ -189,13 +208,13 @@ switch ($tab) {
              ORDER BY l.performed_at DESC LIMIT 6',
             [$id]
         );
-        $data['dueSchedules'] = Scheduler::forAsset($id);
-        $data['openWorkOrders'] = db()->all(
+        $data['dueSchedules']   = can('schedules.view') ? Scheduler::forAsset($id) : [];
+        $data['openWorkOrders'] = can('workorders.view') ? db()->all(
             "SELECT id, wo_number, title, status, priority FROM {work_orders}
              WHERE asset_id = ? AND deleted_at IS NULL AND status NOT IN ('completed','cancelled')
              ORDER BY FIELD(priority,'urgent','high','normal','low') LIMIT 5",
             [$id]
-        );
+        ) : [];
         break;
 }
 
@@ -219,8 +238,15 @@ if (can('assets.edit')) {
         . icon('edit', '', 17) . ' Edit</a>';
 }
 
-$actions .= '<a class="btn btn-secondary btn-icon" href="' . e(url('labels.php', ['id' => $id]))
-    . '" title="Print a label" aria-label="Print a label">' . icon('qr-code', '', 17) . '</a>';
+if (can('assets.create')) {
+    $actions .= '<a class="btn btn-secondary btn-icon" href="' . e(url('asset-edit.php', ['copy_from' => $id]))
+        . '" title="Add another like this" aria-label="Add another like this">' . icon('copy', '', 17) . '</a>';
+}
+
+if (feature_on('labels')) {
+    $actions .= '<a class="btn btn-secondary btn-icon" href="' . e(url('labels.php', ['id' => $id]))
+        . '" title="Print a label" aria-label="Print a label">' . icon('qr-code', '', 17) . '</a>';
+}
 
 View::render('assets/view', [
     'title'       => (string) $asset['name'],

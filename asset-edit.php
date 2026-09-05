@@ -21,6 +21,16 @@ $id      = Request::int('id');
 $editing = $id > 0;
 $asset   = null;
 
+// Where to go once a new machine is saved. A form with a machine picker sends
+// people here with its own address, so they land back on it with the new
+// machine already chosen. Only a same-site path is ever honoured.
+$return = Request::safeRedirect('return');
+
+// "Add another like this": a new machine that starts as a copy of one that
+// exists, for entering the second of twenty identical karts.
+$copyFrom = $editing ? 0 : Request::int('copy_from');
+$template = $copyFrom > 0 ? Asset::find($copyFrom) : null;
+
 if ($editing) {
     Acl::requirePermission('assets.edit');
 
@@ -39,6 +49,13 @@ if ($editing) {
 
 if (is_post()) {
     Csrf::verify();
+
+    // With meters switched off the form has no meter fields: keep whatever
+    // is stored rather than failing "meter type is required".
+    if (!feature_on('meters')) {
+        $_POST['meter_type']    = $editing ? (string) $asset['meter_type'] : 'none';
+        $_POST['meter_reading'] = $editing ? (string) $asset['meter_reading'] : '';
+    }
 
     $rules = [
         'name'                => 'required|string|max:150',
@@ -80,12 +97,25 @@ if (is_post()) {
         'meter_reading'     => 'Meter reading',
     ]);
 
-    if ($validator->fails()) {
-        flash_errors($validator->errors(), $_POST);
-        redirect(url('asset-edit.php', $editing ? ['id' => $id] : []));
+    // The extra fields from Settings → Fields are checked against their own
+    // definitions; values for fields since removed are carried across untouched.
+    $customErrors = [];
+    $customValues = \App\CustomFields::fromInput(
+        $_POST,
+        $editing ? \App\CustomFields::decode($asset['custom_data'] ?? null) : [],
+        $customErrors
+    );
+
+    if ($validator->fails() || $customErrors !== []) {
+        flash_errors($validator->errors() + $customErrors, $_POST);
+        redirect(url('asset-edit.php', $editing ? ['id' => $id] : ['return' => $return, 'copy_from' => $copyFrom ?: null]));
     }
 
     $data = $validator->validated();
+
+    if (\App\CustomFields::any()) {
+        $data['custom_data'] = \App\CustomFields::encode($customValues);
+    }
 
     // The purchase price is not on the form for somebody who cannot see money,
     // and an absent field must never wipe the one that is there.
@@ -149,16 +179,24 @@ if (is_post()) {
             }
         }
 
-        // "Save and add another" keeps a fleet entry session moving.
+        // "Save and add another like it" keeps a fleet entry session moving:
+        // the next form starts as a copy of the one just saved.
         if (Request::string('after') === 'new') {
-            redirect(url('asset-edit.php', ['category_id' => $data['category_id']]));
+            redirect(url('asset-edit.php', ['copy_from' => $savedId, 'return' => $return]));
+        }
+
+        // Back to the form that sent them here, with the new machine chosen.
+        if (!$editing && $return !== null) {
+            $to = strpos($return, '/') === 0 ? $return : url($return);
+
+            redirect($to . (strpos($to, '?') === false ? '?' : '&') . 'asset_id=' . $savedId);
         }
 
         redirect(url('asset-view.php', ['id' => $savedId]));
     } catch (Throwable $e) {
         log_error(asset_word(false, true) . ' save failed: ' . $e->getMessage());
         flash('error', 'The ' . asset_word() . ' could not be saved. The error has been logged.');
-        redirect(url('asset-edit.php', $editing ? ['id' => $id] : []));
+        redirect(url('asset-edit.php', $editing ? ['id' => $id] : ['return' => $return, 'copy_from' => $copyFrom ?: null]));
     }
 }
 
@@ -197,7 +235,23 @@ $defaults = [
     'notes'               => '',
 ];
 
-$values = $editing ? array_merge($defaults, $asset) : $defaults;
+$values       = $editing ? array_merge($defaults, $asset) : $defaults;
+$customValues = $editing ? \App\CustomFields::decode($asset['custom_data'] ?? null) : [];
+
+if ($template !== null) {
+    // Everything that tends to be the same across a batch. Not the things
+    // that make a unit itself: serial numbers, VIN, meter reading, photo.
+    foreach (['category_id', 'location_id', 'criticality', 'manufacturer', 'model',
+              'year_manufactured', 'purchase_date', 'purchase_cost', 'warranty_expires',
+              'engine_make', 'engine_model', 'fuel_type', 'tire_size', 'capacity_passengers',
+              'meter_type', 'in_service_date', 'description', 'notes'] as $key) {
+        $values[$key] = $template[$key] ?? $values[$key];
+    }
+
+    $values['name']      = Asset::nextName((string) $template['name']);
+    $values['asset_tag'] = Asset::suggestTag((int) $template['category_id'] ?: null);
+    $customValues        = \App\CustomFields::decode($template['custom_data'] ?? null);
+}
 
 View::render('assets/edit', [
     'title'       => $editing ? 'Edit ' . (string) $asset['name'] : 'Add ' . an_asset(),
@@ -215,4 +269,8 @@ View::render('assets/edit', [
     'values'     => $values,
     'categories' => $categories,
     'locations'  => Asset::locationOptions(),
+    'customFields' => \App\CustomFields::all(),
+    'customValues' => $customValues,
+    'returnTo'     => $return,
+    'template'     => $template,
 ]);

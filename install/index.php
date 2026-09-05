@@ -486,15 +486,22 @@ function run_installation(array $state): array
     // --- Settings -----------------------------------------------------------
     $cronToken = Str::random(48);
 
+    // schema.sql already includes every change in install/migrations, so a
+    // fresh install records them as applied and the upgrade runner leaves
+    // them alone.
+    $migrationFiles = glob(__DIR__ . '/migrations/*.sql') ?: [];
+    sort($migrationFiles, SORT_NATURAL);
+
     try {
         $settings = [
-            'site_name'         => (string) $state['site_name'],
-            'organization_name' => (string) $state['organization_name'],
-            'timezone'          => (string) $state['timezone'],
-            'mail_from_name'    => (string) $state['site_name'],
-            'cron_token'        => $cronToken,
-            'app_installed_at'  => Dates::nowUtc(),
-            'schema_version'    => RIDELOG_VERSION,
+            'site_name'          => (string) $state['site_name'],
+            'organization_name'  => (string) $state['organization_name'],
+            'timezone'           => (string) $state['timezone'],
+            'mail_from_name'     => (string) $state['site_name'],
+            'cron_token'         => $cronToken,
+            'app_installed_at'   => Dates::nowUtc(),
+            'schema_version'     => RIDELOG_VERSION,
+            'applied_migrations' => (string) json_encode(array_values(array_map('basename', $migrationFiles))),
         ];
 
         foreach ($settings as $key => $value) {

@@ -120,14 +120,31 @@ final class Reports
             }
         }
 
+        // Reports about a module that is switched off are not offered.
+        foreach (['parts' => 'parts', 'compliance' => 'inspections', 'downtime' => 'downtime'] as $report => $module) {
+            if (!feature_on($module)) {
+                unset($catalogue[$report]);
+            }
+        }
+
         if (!costs_visible()) {
             unset($catalogue['cost']);
 
             // The one-line descriptions must not promise columns that are
-            // about to be taken out.
-            $catalogue['monthly']['blurb']   = 'Jobs, hours and downtime per month, so you can see a trend.';
-            $catalogue['inventory']['blurb'] = 'Every ' . asset_word() . ' with its meter, status and last service.';
-            $catalogue['parts']['blurb']     = 'What came off the shelf, and how much of it.';
+            // about to be taken out. Only for reports still on offer: writing
+            // to an entry that was just dropped would resurrect a half-built one.
+            $plain = [
+                'monthly'   => 'Jobs, hours and downtime per month, so you can see a trend.',
+                'inventory' => 'Every ' . asset_word() . ' with its ' . (feature_on('meters') ? 'meter, ' : '')
+                    . 'status and last service.',
+                'parts'     => 'What came off the shelf, and how much of it.',
+            ];
+
+            foreach ($plain as $report => $blurb) {
+                if (isset($catalogue[$report])) {
+                    $catalogue[$report]['blurb'] = $blurb;
+                }
+            }
         }
 
         return $catalogue;

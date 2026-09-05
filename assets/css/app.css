@@ -2073,6 +2073,51 @@ a.stat-card:hover {
 .form-section-title { margin: 0 0 2px; font-size: var(--text-md); font-weight: 650; }
 .form-section .form-hint { margin: 0; }
 
+/* Roles: the permission grid */
+.roles-matrix th.is-role,
+.roles-matrix td.is-role { text-align: center; width: 8.5rem; }
+.roles-matrix th.is-role small {
+    display: block;
+    margin-top: 2px;
+    font-weight: 500;
+    font-size: var(--text-xs);
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text-muted);
+}
+.roles-matrix .roles-group th {
+    position: static;
+    background: var(--surface-2);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+}
+.roles-matrix .roles-group .badge { margin-left: var(--space-2); }
+.roles-matrix input[type="checkbox"] { width: 1.15rem; height: 1.15rem; cursor: pointer; }
+.roles-matrix input[type="checkbox"]:disabled { cursor: default; opacity: .5; }
+.roles-matrix td.is-changed { background: var(--brand-50); box-shadow: inset 3px 0 0 var(--brand-400); }
+.roles-matrix tr.is-dimmed td { opacity: .55; }
+.roles-mark {
+    display: inline-block;
+    width: .9em;
+    height: .9em;
+    vertical-align: -1px;
+    background: var(--brand-50);
+    box-shadow: inset 3px 0 0 var(--brand-400);
+    border: 1px solid var(--border);
+}
+
+/* Settings → Fields: one block per extra field */
+.fields-editor .repeater-row {
+    padding: var(--space-4);
+    margin-bottom: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+}
+.fields-editor [data-repeater-add] { margin-top: var(--space-2); }
+
 /* Numbered set-up steps (Settings → Slack) */
 .setup-steps { margin: 0 0 var(--space-3); padding-left: var(--space-5); }
 .setup-steps li { margin-bottom: var(--space-2); font-size: var(--text-sm); color: var(--text-muted); }

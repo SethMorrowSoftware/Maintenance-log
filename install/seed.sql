@@ -37,6 +37,34 @@ VALUES
   ('asset_noun_plural', 'Machines', 'string', 'general', 1,
    '…and several of them?', 'Machines, Rides, Assets, Appliances… Shown in the menu and on list pages.', 70),
 
+  -- Features (every module is a switch) --------------------------------------
+  ('feature_work_orders', '1', 'bool', 'features', 0,
+   'Work orders', 'Reporting problems, assigning them, closing them, and the alerts about them.', 10),
+  ('feature_schedules', '1', 'bool', 'features', 0,
+   'Scheduled service', 'Recurring service by date or by meter, the due list, and the reminders.', 20),
+  ('feature_inspections', '1', 'bool', 'features', 0,
+   'Checklists and inspections', 'Daily checks, checklist templates, and the "still to check today" list.', 30),
+  ('feature_parts', '1', 'bool', 'features', 0,
+   'Parts', 'Stock on the shelf, parts used on jobs, and low-stock warnings.', 40),
+  ('feature_meters', '1', 'bool', 'features', 0,
+   'Meters', 'Hour meters, lap counters, meter readings and meter-based service.', 50),
+  ('feature_downtime', '1', 'bool', 'features', 0,
+   'Downtime', 'Time out of service on jobs and problems, and the downtime report.', 60),
+  ('feature_costs', '1', 'bool', 'features', 0,
+   'Money', 'Prices, costs and spend, for the people allowed to see them. Off hides money from everybody, administrators included.', 70),
+  ('feature_photos', '1', 'bool', 'features', 0,
+   'Photos and files', 'Attachments on machines, jobs, problems and inspections.', 80),
+  ('feature_labels', '1', 'bool', 'features', 0,
+   'QR labels', 'Printable labels that open a machine on a phone.', 90),
+  ('feature_reports', '1', 'bool', 'features', 0,
+   'Reports', 'The reports page and CSV exports.', 100),
+  ('feature_notifications', '1', 'bool', 'features', 0,
+   'In-app notifications', 'The bell in the header and the notifications page. Email and Slack have their own switches.', 110),
+  ('feature_audit', '1', 'bool', 'features', 0,
+   'Audit log', 'Who changed what, when.', 120),
+  ('feature_drafts', '1', 'bool', 'features', 0,
+   'Form drafts', 'Keeping a draft of the log and report forms on the device as they are typed.', 130),
+
   -- Localization -------------------------------------------------------------
   ('timezone', 'America/New_York', 'select', 'localization', 1,
    'Time zone', 'All dates and times are shown in this zone. Stored internally as UTC.', 10),
@@ -133,6 +161,10 @@ VALUES
   ('slack_summary_channel', '', 'string', 'slack', 0,
    'Channel for the morning report', '', 131),
 
+  -- Fields (edited on their own screen, not the generic form) -----------------
+  ('asset_custom_fields', '', 'hidden', 'fields', 0,
+   'Extra fields', 'Fields added to every machine under Settings → Fields.', 10),
+
   -- Security -----------------------------------------------------------------
   ('session_timeout_minutes', '480', 'int', 'security', 0,
    'Session timeout (minutes)', 'Sign a user out after this much inactivity.', 10),
@@ -144,6 +176,8 @@ VALUES
    'Audit log retention (days)', 'Older audit entries are pruned. 0 keeps everything.', 40),
   ('cron_token', '', 'hidden', 'security', 0,
    'Cron token', 'Secret in the scheduled-task URL. Generated during installation.', 50),
+  ('role_permissions', '', 'hidden', 'security', 0,
+   'Role permissions', 'What each role may do, when changed from the defaults on the Roles page.', 60),
 
   -- Branding -----------------------------------------------------------------
   ('theme_default', 'system', 'select', 'branding', 1,
@@ -156,7 +190,9 @@ VALUES
   -- System (not user-editable) -----------------------------------------------
   ('schema_version', '1.0.0', 'hidden', 'system', 0, 'Schema version', '', 10),
   ('app_installed_at', '', 'hidden', 'system', 0, 'Installed at', '', 20),
-  ('last_cron_run', '', 'hidden', 'system', 0, 'Last scheduled run', '', 30);
+  ('last_cron_run', '', 'hidden', 'system', 0, 'Last scheduled run', '', 30),
+  ('applied_migrations', '', 'hidden', 'system', 0,
+   'Applied migrations', 'Database changes already applied by the installer or the upgrade runner.', 40);
 
 
 -- -----------------------------------------------------------------------------

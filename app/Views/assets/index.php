@@ -10,6 +10,10 @@ use App\Dates;
 use App\Status;
 use App\View;
 
+$showMeters     = feature_on('meters');
+$showWorkOrders = feature_on('work_orders');
+$listFields     = \App\CustomFields::inList();
+
 $statusTabs = [
     ''               => ['label' => 'Active',         'count' => array_sum(array_intersect_key($statusCounts, array_flip(['in_service','maintenance','out_of_service'])))],
     'in_service'     => ['label' => 'In service',     'count' => (int) ($statusCounts['in_service'] ?? 0)],
@@ -118,13 +122,13 @@ $statusTabs = [
                                     &middot; <?= e((string) $asset['location_name']) ?>
                                 <?php endif; ?>
                             </div>
-                            <?php if ((string) $asset['meter_type'] !== 'none'): ?>
+                            <?php if ($showMeters && (string) $asset['meter_type'] !== 'none'): ?>
                                 <div class="text-sm mt-2">
                                     <?= icon('gauge', '', 14) ?>
                                     <?= e(decimal($asset['meter_reading'])) ?> <?= e((string) $asset['meter_type']) ?>
                                 </div>
                             <?php endif; ?>
-                            <?php if ((int) $asset['open_work_orders'] > 0): ?>
+                            <?php if ($showWorkOrders && (int) $asset['open_work_orders'] > 0): ?>
                                 <div class="mt-2">
                                     <span class="badge badge-warn">
                                         <?= (int) $asset['open_work_orders'] ?> open work order<?= (int) $asset['open_work_orders'] === 1 ? '' : 's' ?>
@@ -147,7 +151,12 @@ $statusTabs = [
                         <th data-sort><?= sort_link('category', 'Category', $sort, $direction) ?></th>
                         <th data-sort><?= sort_link('location', 'Location', $sort, $direction) ?></th>
                         <th data-sort><?= sort_link('status', 'Status', $sort, $direction) ?></th>
-                        <th class="is-numeric" data-sort><?= sort_link('meter', 'Meter', $sort, $direction) ?></th>
+                        <?php foreach ($listFields as $field): ?>
+                            <th<?= $field['type'] === 'number' ? ' class="is-numeric"' : '' ?>><?= e((string) $field['label']) ?></th>
+                        <?php endforeach; ?>
+                        <?php if ($showMeters): ?>
+                            <th class="is-numeric" data-sort><?= sort_link('meter', 'Meter', $sort, $direction) ?></th>
+                        <?php endif; ?>
                         <th data-sort><?= sort_link('last_service', 'Last service', $sort, $direction) ?></th>
                         <th class="is-actions no-print">Actions</th>
                     </tr>
@@ -161,7 +170,7 @@ $statusTabs = [
                                 </a>
                                 <span class="cell-secondary">
                                     <?= e((string) $asset['asset_tag']) ?>
-                                    <?php if ((int) $asset['open_work_orders'] > 0): ?>
+                                    <?php if ($showWorkOrders && (int) $asset['open_work_orders'] > 0): ?>
                                         &middot; <span style="color:var(--warn)"><?= (int) $asset['open_work_orders'] ?> open</span>
                                     <?php endif; ?>
                                 </span>
@@ -171,15 +180,27 @@ $statusTabs = [
                             <td data-label="Status">
                                 <?php View::partial('status-badge', ['value' => (string) $asset['status'], 'vocabulary' => 'asset']); ?>
                             </td>
-                            <td data-label="Meter" class="is-numeric"
-                                data-value="<?= e((string) $asset['meter_reading']) ?>">
-                                <?php if ((string) $asset['meter_type'] === 'none'): ?>
-                                    <span class="text-subtle">—</span>
-                                <?php else: ?>
-                                    <?= e(decimal($asset['meter_reading'])) ?>
-                                    <span class="text-subtle text-xs"><?= e((string) $asset['meter_type']) ?></span>
-                                <?php endif; ?>
-                            </td>
+                            <?php foreach ($listFields as $field): ?>
+                                <?php $customValue = \App\CustomFields::valueOn($field, $asset); ?>
+                                <td data-label="<?= attr((string) $field['label']) ?>"<?= $field['type'] === 'number' ? ' class="is-numeric"' : '' ?>>
+                                    <?php if ($customValue === ''): ?>
+                                        <span class="text-subtle">—</span>
+                                    <?php else: ?>
+                                        <?= e($customValue) ?>
+                                    <?php endif; ?>
+                                </td>
+                            <?php endforeach; ?>
+                            <?php if ($showMeters): ?>
+                                <td data-label="Meter" class="is-numeric"
+                                    data-value="<?= e((string) $asset['meter_reading']) ?>">
+                                    <?php if ((string) $asset['meter_type'] === 'none'): ?>
+                                        <span class="text-subtle">—</span>
+                                    <?php else: ?>
+                                        <?= e(decimal($asset['meter_reading'])) ?>
+                                        <span class="text-subtle text-xs"><?= e((string) $asset['meter_type']) ?></span>
+                                    <?php endif; ?>
+                                </td>
+                            <?php endif; ?>
                             <td data-label="Last service"
                                 data-value="<?= e((string) ($asset['last_service'] ?? '')) ?>">
                                 <?php if (!empty($asset['last_service'])): ?>

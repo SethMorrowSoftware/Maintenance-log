@@ -2357,6 +2357,13 @@
                             checked[pair[0]][pair[1]] = true;
                         }
                     } else if (field.tagName === 'SELECT') {
+                        // An empty draft never blanks a choice the page opened
+                        // with, such as the machine somebody has just come
+                        // back from adding.
+                        if (pair[1] === '' && field.value !== '') {
+                            return;
+                        }
+
                         field.value = pair[1];
                         field.dispatchEvent(new Event('change', { bubbles: true }));
                     }

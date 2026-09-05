@@ -22,6 +22,7 @@ use App\View;
 
 Auth::requireLogin();
 Acl::requirePermission('assets.view');
+require_feature('labels');
 
 $size   = Request::enum('size', ['small', 'medium', 'large'], 'medium');
 $action = Request::enum('go', ['view', 'log', 'inspect', 'issue'], 'view');

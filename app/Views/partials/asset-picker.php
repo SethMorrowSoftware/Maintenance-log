@@ -54,3 +54,15 @@ View::partial('form-field', [
     'empty'    => $emptyLabel,
     'attrs'    => ['data-asset-picker' => '1'],
 ]);
+
+// Something new on the floor should not stop a job being logged. Anyone
+// allowed to add machines can do it from here and land straight back on this
+// form with the new one chosen.
+if (can('assets.create')):
+?>
+    <p class="form-hint picker-add" style="margin-top:calc(var(--space-2) * -1)">
+        Not in the list?
+        <a href="<?= e(url('asset-edit.php', ['return' => current_url()])) ?>" data-no-guard>Add it</a>
+        and come straight back here.
+    </p>
+<?php endif; ?>

@@ -72,12 +72,12 @@ $canSeeCosts = costs_visible();
                         <dd><?= e(Dates::humanHours((float) $log['labor_hours'])) ?></dd>
                     <?php endif; ?>
 
-                    <?php if ($log['downtime_minutes'] !== null && (int) $log['downtime_minutes'] > 0): ?>
+                    <?php if (feature_on('downtime') && $log['downtime_minutes'] !== null && (int) $log['downtime_minutes'] > 0): ?>
                         <dt>Out of service for</dt>
                         <dd><?= e(Dates::humanDuration((int) $log['downtime_minutes'])) ?></dd>
                     <?php endif; ?>
 
-                    <?php if ($log['meter_reading'] !== null): ?>
+                    <?php if (feature_on('meters') && $log['meter_reading'] !== null): ?>
                         <dt>Meter at the time</dt>
                         <dd><?= e(decimal($log['meter_reading'])) ?> <?= e((string) $log['meter_type']) ?></dd>
                     <?php endif; ?>
@@ -87,12 +87,12 @@ $canSeeCosts = costs_visible();
                         <dd><?php View::partial('status-badge', ['value' => (string) $log['status_after'], 'vocabulary' => 'asset']); ?></dd>
                     <?php endif; ?>
 
-                    <?php if (!empty($log['schedule_name'])): ?>
+                    <?php if (feature_on('schedules') && !empty($log['schedule_name'])): ?>
                         <dt>Scheduled job</dt>
                         <dd><?= e((string) $log['schedule_name']) ?></dd>
                     <?php endif; ?>
 
-                    <?php if (!empty($log['wo_number'])): ?>
+                    <?php if (feature_on('work_orders') && !empty($log['wo_number'])): ?>
                         <dt>Work order</dt>
                         <dd>
                             <?php if ($printing): ?>
@@ -142,7 +142,7 @@ $canSeeCosts = costs_visible();
             </div>
         </div>
 
-        <?php if ($parts !== []): ?>
+        <?php if (feature_on('parts') && $parts !== []): ?>
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title"><?= icon('package', '', 18) ?> Parts used</h2>
@@ -188,7 +188,7 @@ $canSeeCosts = costs_visible();
             </div>
         <?php endif; ?>
 
-        <?php if (!$printing): ?>
+        <?php if (!$printing && feature_on('photos')): ?>
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title"><?= icon('paperclip', '', 18) ?> Photos and documents</h2>
@@ -204,7 +204,7 @@ $canSeeCosts = costs_visible();
                     ]); ?>
                 </div>
             </div>
-        <?php elseif ($attachments !== []): ?>
+        <?php elseif ($printing && feature_on('photos') && $attachments !== []): ?>
             <div class="card">
                 <div class="card-header"><h2 class="card-title">Photos</h2></div>
                 <div class="card-body">

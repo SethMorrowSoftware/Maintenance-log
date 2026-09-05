@@ -156,6 +156,122 @@ View::partial('tabs', ['tabs' => $tabLinks, 'active' => $tab]);
         </div>
     </div>
 
+<?php elseif ($tab === 'fields'): ?>
+    <?php
+    // ==================== Fields: extra questions on every machine ====================
+    $fieldTypes   = \App\CustomFields::TYPES;
+    $customFields = $customFields ?? [];
+
+    // One row of the editor. $i is the row index, or '__INDEX__' in the template.
+    $fieldRow = static function ($i, array $field) use ($fieldTypes): void {
+        $n = 'fields[' . $i . ']';
+        ?>
+        <input type="hidden" name="<?= e($n) ?>[key]" value="<?= attr((string) ($field['key'] ?? '')) ?>">
+        <div class="form-row cols-3">
+            <div class="form-group">
+                <label class="form-label">Field name</label>
+                <input type="text" class="form-input" name="<?= e($n) ?>[label]"
+                       value="<?= attr((string) ($field['label'] ?? '')) ?>"
+                       maxlength="80" placeholder="Seat size" aria-label="Field name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Kind of answer</label>
+                <select class="form-select" name="<?= e($n) ?>[type]" data-reveal="ftype<?= e((string) $i) ?>">
+                    <?php foreach ($fieldTypes as $value => $label): ?>
+                        <option value="<?= e($value) ?>" <?= selected((string) ($field['type'] ?? 'text'), $value) ?>>
+                            <?= e($label) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Hint <span class="text-subtle">(optional)</span></label>
+                <input type="text" class="form-input" name="<?= e($n) ?>[hint]"
+                       value="<?= attr((string) ($field['hint'] ?? '')) ?>"
+                       maxlength="200" placeholder="Shown in small print under the box">
+            </div>
+        </div>
+        <div class="form-group" data-reveal-for="ftype<?= e((string) $i) ?>" data-reveal-when="choice">
+            <label class="form-label">The choices, separated by commas</label>
+            <input type="text" class="form-input" name="<?= e($n) ?>[options]"
+                   value="<?= attr(implode(', ', (array) ($field['options'] ?? []))) ?>"
+                   placeholder="Small, Medium, Large">
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <label class="form-check">
+                <input type="checkbox" value="1" name="<?= e($n) ?>[list]" <?= !empty($field['list']) ? 'checked' : '' ?>>
+                <span class="form-check-label">Show as a column on the <?= e(asset_word()) ?> list</span>
+            </label>
+            <button type="button" class="btn btn-ghost btn-sm text-danger" data-repeater-remove
+                    aria-label="Remove this field">
+                <?= icon('trash', '', 15) ?> Remove
+            </button>
+        </div>
+        <?php
+    };
+    ?>
+
+    <form method="post" action="<?= e(url('settings.php', ['tab' => 'fields'])) ?>">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="save_fields">
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title"><?= icon('list', '', 18) ?> Extra fields on every <?= e(asset_word()) ?></h2>
+                    <p class="card-subtitle">
+                        The built-in form covers make, model, serial numbers, engine, tyres and dates.
+                        Anything else this site needs to record — seat size, restrictor plate, gas or
+                        electric, a supplier's part number — add here. Each field goes on the
+                        <?= e(asset_word()) ?> form, the <?= e(asset_word()) ?> page and the export.
+                    </p>
+                </div>
+            </div>
+            <div class="card-body">
+                <?php if (has_error('fields')): ?>
+                    <div class="alert alert-error">
+                        <?= icon('alert-circle', '', 18) ?>
+                        <div class="alert-body"><?= e(error_for('fields')) ?></div>
+                    </div>
+                <?php endif; ?>
+
+                <div class="fields-editor" data-repeater data-repeater-index="<?= count($customFields) ?>">
+                    <div data-repeater-rows>
+                        <?php foreach ($customFields as $i => $field): ?>
+                            <div class="repeater-row" data-repeater-row>
+                                <?php $fieldRow($i, $field); ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <template data-repeater-template>
+                        <?php $fieldRow('__INDEX__', ['type' => 'text', 'list' => false]); ?>
+                    </template>
+
+                    <?php if ($customFields === []): ?>
+                        <p class="text-muted">
+                            No extra fields yet. The built-in form may be all you need.
+                        </p>
+                    <?php endif; ?>
+
+                    <button type="button" class="btn btn-secondary" data-repeater-add>
+                        <?= icon('plus', '', 16) ?> Add a field
+                    </button>
+                </div>
+
+                <p class="form-hint mt-3">
+                    Removing a field hides it. What was typed into it stays on each
+                    <?= e(asset_word()) ?> and comes back if the field is added again with the same name.
+                </p>
+            </div>
+            <div class="card-footer">
+                <button type="submit" class="btn btn-primary">
+                    <?= icon('save', '', 17) ?> Save fields
+                </button>
+            </div>
+        </div>
+    </form>
+
 <?php else: ?>
 
 <form method="post" action="<?= e(url('settings.php', ['tab' => $tab])) ?>" data-guard>
@@ -172,7 +288,16 @@ View::partial('tabs', ['tabs' => $tabLinks, 'active' => $tab]);
                         Everything works without it.
                     </p>
                 <?php elseif ($tab === 'security'): ?>
-                    <p class="card-subtitle">Sensible defaults are already set. Change these only if you need to.</p>
+                    <p class="card-subtitle">
+                        Sensible defaults are already set. Change these only if you need to.
+                        What each role is allowed to do lives on the
+                        <a href="<?= e(url('roles.php')) ?>">Roles</a> page.
+                    </p>
+                <?php elseif ($tab === 'features'): ?>
+                    <p class="card-subtitle">
+                        Use what you need and switch off the rest. Off means gone from the menu and the
+                        forms — nothing is deleted, and switching it back on brings the records straight back.
+                    </p>
                 <?php elseif ($tab === 'slack'): ?>
                     <p class="card-subtitle">
                         Alerts in a Slack channel, as chatty or as quiet as you like.

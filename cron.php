@@ -83,12 +83,20 @@ $lines[] = '';
 // -----------------------------------------------------------------------------
 
 $step('Recompute due dates', static function (): string {
+    if (!feature_on('schedules')) {
+        return 'scheduled service is switched off';
+    }
+
     $count = Scheduler::recomputeAll();
 
     return $count . ' schedule' . ($count === 1 ? '' : 's') . ' checked';
 });
 
 $step('Due and overdue notices', static function (): string {
+    if (!feature_on('schedules')) {
+        return 'scheduled service is switched off';
+    }
+
     $result = Scheduler::raiseDueNotifications();
 
     return ($result['due'] ?? 0) . ' due, ' . ($result['overdue'] ?? 0) . ' overdue, '
@@ -104,6 +112,10 @@ $step('Slack: service due', static function (): string {
 // -----------------------------------------------------------------------------
 
 $step('Low stock warnings', static function (): string {
+    if (!feature_on('parts')) {
+        return 'parts are switched off';
+    }
+
     if (!Settings::bool('low_stock_alerts', true)) {
         return 'switched off in Settings';
     }
