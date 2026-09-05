@@ -69,8 +69,8 @@ if (Request::string('export') === 'csv') {
     $columns = [
         'Date'            => static fn (array $r) => Dates::date((string) $r['performed_at'], ''),
         'Time'            => static fn (array $r) => Dates::time((string) $r['performed_at'], ''),
-        'Machine tag'       => static fn (array $r) => $r['asset_tag'],
-        'Machine'           => static fn (array $r) => $r['asset_name'],
+        asset_word(false, true) . ' tag'       => static fn (array $r) => $r['asset_tag'],
+        asset_word(false, true)           => static fn (array $r) => $r['asset_name'],
         'Category'        => static fn (array $r) => $r['category'],
         'Location'        => static fn (array $r) => $r['location'],
         'Type'            => static fn (array $r) => Status::label((string) $r['log_type'], 'log_type'),

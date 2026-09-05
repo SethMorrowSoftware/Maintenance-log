@@ -31,14 +31,14 @@ if ($code === '') {
 
 if ($code === '') {
     flash('error', 'That code could not be read. Try scanning it again, or find the '
-        . 'machine on the machines list.');
+        . asset_word() . ' on the ' . asset_word(true) . ' list.');
     redirect(url('assets.php'));
 }
 
 $asset = Asset::findByTagOrSlug($code);
 
 if ($asset === null) {
-    flash('warning', 'No machine matches the code on that label. It may have been '
+    flash('warning', 'No ' . asset_word() . ' matches the code on that label. It may have been '
         . 'retired, or the label may belong to a different system.');
     redirect(url('assets.php', ['q' => $code]));
 }

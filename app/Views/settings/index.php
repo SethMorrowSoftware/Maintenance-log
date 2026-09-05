@@ -109,7 +109,7 @@ View::partial('tabs', ['tabs' => $tabLinks, 'active' => $tab]);
             </div>
             <div class="card-body">
                 <p class="text-sm text-muted">
-                    Machines, jobs, parts, work orders, inspections, schedules, people and the change log,
+                    <?= e(asset_word(true, true)) ?>, jobs, parts, work orders, inspections, schedules, people and the change log,
                     as spreadsheet files<?= class_exists('ZipArchive') ? ' inside one ZIP' : '' ?>.
                     Passwords and secret tokens are left out. Photos are not included: they live in
                     <code>storage/uploads</code>, which cPanel's backup covers.
@@ -173,6 +173,11 @@ View::partial('tabs', ['tabs' => $tabLinks, 'active' => $tab]);
                     </p>
                 <?php elseif ($tab === 'security'): ?>
                     <p class="card-subtitle">Sensible defaults are already set. Change these only if you need to.</p>
+                <?php elseif ($tab === 'slack'): ?>
+                    <p class="card-subtitle">
+                        Alerts in a Slack channel, as chatty or as quiet as you like.
+                        Set it up with the steps below, test it, then turn it on.
+                    </p>
                 <?php endif; ?>
             </div>
         </div>
@@ -191,10 +196,18 @@ View::partial('tabs', ['tabs' => $tabLinks, 'active' => $tab]);
                     continue;
                 }
 
-                $visible++;
+                if ($type !== 'heading') {
+                    $visible++;
+                }
                 ?>
 
-                <?php if ($type === 'bool'): ?>
+                <?php if ($type === 'heading'): ?>
+                    <div class="form-section">
+                        <h3 class="form-section-title"><?= e($label) ?></h3>
+                        <?php if ($hint !== ''): ?><p class="form-hint"><?= e($hint) ?></p><?php endif; ?>
+                    </div>
+
+                <?php elseif ($type === 'bool'): ?>
                     <label class="form-check" for="f_s_<?= e($key) ?>">
                         <input type="checkbox" id="f_s_<?= e($key) ?>" name="s_<?= e($key) ?>" value="1"
                             <?= checked($value, '1') ?>>
@@ -303,6 +316,57 @@ View::partial('tabs', ['tabs' => $tabLinks, 'active' => $tab]);
                 </div>
             </div>
         </form>
+    </div>
+<?php endif; ?>
+
+<?php // ==================== Slack: set-up steps and a test ==================== ?>
+<?php if ($tab === 'slack'): ?>
+    <div class="grid grid-2">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title"><?= icon('check-circle', '', 18) ?> Does it work?</h2>
+                    <p class="card-subtitle">Save the token and channel above first, then send a test.</p>
+                </div>
+            </div>
+            <form method="post" action="<?= e(url('settings.php')) ?>">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="test_slack">
+                <div class="card-body">
+                    <p class="text-sm text-muted">
+                        Posts one line to the main channel. If it arrives, turn <strong>Post to Slack</strong>
+                        on above and save. If it does not, the message here says what to fix.
+                    </p>
+                    <button type="submit" class="btn btn-secondary">
+                        <?= icon('play', '', 17) ?> Send a test message
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title"><?= icon('info', '', 18) ?> Setting up the Slack side</h2>
+            </div>
+            <div class="card-body">
+                <ol class="setup-steps">
+                    <li>Go to <strong>api.slack.com/apps</strong> and choose <strong>Create New App → From scratch</strong>.
+                        Name it something like <em><?= e(Settings::siteName()) ?></em> and pick your workspace.</li>
+                    <li>Under <strong>OAuth &amp; Permissions → Scopes → Bot Token Scopes</strong>, add <code>chat:write</code>.</li>
+                    <li>Click <strong>Install to Workspace</strong> and allow it.</li>
+                    <li>Copy the <strong>Bot User OAuth Token</strong> — it starts with <code>xoxb-</code> — into the
+                        <em>Bot token</em> box above.</li>
+                    <li>In Slack, open the channel you want the alerts in and type
+                        <code>/invite @<?= e(preg_replace('/\s+/', '', Settings::siteName()) ?: 'YourApp') ?></code>
+                        (use whatever you named the app). Do the same for any extra channels you name above.</li>
+                    <li>Save, send a test, then turn <strong>Post to Slack</strong> on.</li>
+                </ol>
+                <p class="form-hint">
+                    The token is stored like a password and is never shown again or included in exports.
+                    Anyone with it can post as the app, so treat it like one.
+                </p>
+            </div>
+        </div>
     </div>
 <?php endif; ?>
 

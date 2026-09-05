@@ -328,6 +328,7 @@ final class Settings
             'maintenance'  => 'Maintenance',
             'uploads'      => 'Uploads',
             'email'        => 'Email',
+            'slack'        => 'Slack',
             'security'     => 'Security',
             'branding'     => 'Branding',
             'system'       => 'System',

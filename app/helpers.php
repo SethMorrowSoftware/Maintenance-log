@@ -176,6 +176,55 @@ if (!function_exists('costs_visible')) {
     }
 }
 
+if (!function_exists('asset_word')) {
+    /**
+     * The word this site uses for the things it looks after.
+     *
+     * The code says "asset". Castle Fun Center says "machine". A site that
+     * tracks kitchen appliances or delivery vans can say so under Settings →
+     * General, and every label follows.
+     *
+     * @param bool $plural  "machines" rather than "machine"
+     * @param bool $capital "Machine" rather than "machine"
+     */
+    function asset_word(bool $plural = false, bool $capital = false): string
+    {
+        static $cache = null;
+
+        if ($cache === null) {
+            try {
+                $one  = trim((string) Settings::get('asset_noun_singular', ''));
+                $many = trim((string) Settings::get('asset_noun_plural', ''));
+            } catch (Throwable $e) {
+                $one  = '';
+                $many = '';
+            }
+
+            $one   = $one !== '' ? $one : 'Machine';
+            $many  = $many !== '' ? $many : ($one . 's');
+            $cache = [$one, $many];
+        }
+
+        $word = $cache[$plural ? 1 : 0];
+
+        return $capital
+            ? mb_strtoupper(mb_substr($word, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($word, 1, null, 'UTF-8')
+            : mb_strtolower(mb_substr($word, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($word, 1, null, 'UTF-8');
+    }
+}
+
+if (!function_exists('an_asset')) {
+    /** "a machine", "an appliance" — the word with the right article in front. */
+    function an_asset(bool $capital = false): string
+    {
+        $word    = asset_word();
+        $vowel   = preg_match('/^[aeiou]/i', $word) === 1;
+        $article = $vowel ? 'an' : 'a';
+
+        return ($capital ? ucfirst($article) : $article) . ' ' . $word;
+    }
+}
+
 if (!function_exists('can_any')) {
     /**
      * @param list<string> $permissions

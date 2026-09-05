@@ -109,13 +109,24 @@ final class Reports
     {
         $catalogue = self::CATALOGUE;
 
+        // The catalogue is a constant; the site's word for its machines is not.
+        foreach ($catalogue as $key => $entry) {
+            foreach (['label', 'blurb'] as $field) {
+                $catalogue[$key][$field] = str_replace(
+                    ['Machines', 'machines', 'Machine', 'machine'],
+                    [asset_word(true, true), asset_word(true), asset_word(false, true), asset_word()],
+                    (string) ($entry[$field] ?? '')
+                );
+            }
+        }
+
         if (!costs_visible()) {
             unset($catalogue['cost']);
 
             // The one-line descriptions must not promise columns that are
             // about to be taken out.
             $catalogue['monthly']['blurb']   = 'Jobs, hours and downtime per month, so you can see a trend.';
-            $catalogue['inventory']['blurb'] = 'Every machine with its meter, status and last service.';
+            $catalogue['inventory']['blurb'] = 'Every ' . asset_word() . ' with its meter, status and last service.';
             $catalogue['parts']['blurb']     = 'What came off the shelf, and how much of it.';
         }
 
@@ -261,7 +272,7 @@ final class Reports
         return [
             'columns' => [
                 ['key' => 'performed_at', 'label' => 'When',      'format' => 'datetime'],
-                ['key' => 'asset_name',   'label' => 'Machine',     'format' => 'text'],
+                ['key' => 'asset_name',   'label' => asset_word(false, true),     'format' => 'text'],
                 ['key' => 'asset_tag',    'label' => 'Tag',       'format' => 'text'],
                 ['key' => 'log_type',     'label' => 'Type',      'format' => 'log_type'],
                 ['key' => 'title',        'label' => 'Job',       'format' => 'text'],
@@ -314,14 +325,14 @@ final class Reports
             }
         }
 
-        $totals['asset_name'] = 'All ' . count($rows) . ' machines';
+        $totals['asset_name'] = 'All ' . count($rows) . ' ' . asset_word(true);
 
         // The ten dearest, for the chart.
         $chartRows = array_slice($rows, 0, 10);
 
         return [
             'columns' => [
-                ['key' => 'asset_name',    'label' => 'Machine',    'format' => 'text'],
+                ['key' => 'asset_name',    'label' => asset_word(false, true),    'format' => 'text'],
                 ['key' => 'asset_tag',     'label' => 'Tag',      'format' => 'text'],
                 ['key' => 'category_name', 'label' => 'Category', 'format' => 'text'],
                 ['key' => 'jobs',          'label' => 'Jobs',     'format' => 'number', 'align' => 'right'],
@@ -335,7 +346,7 @@ final class Reports
             'totals' => $totals,
             'chart'  => [
                 'type'   => 'bar',
-                'title'  => 'The ten most expensive machines',
+                'title'  => 'The ten most expensive ' . asset_word(true),
                 'labels' => array_column($chartRows, 'asset_name'),
                 'series' => [[
                     'label'  => 'Total cost',
@@ -457,13 +468,13 @@ final class Reports
             $totals['downtime_minutes'] += (int) $row['downtime_minutes'];
         }
 
-        $totals['asset_name'] = count($rows) . ' machine' . (count($rows) === 1 ? '' : 's');
+        $totals['asset_name'] = count($rows) . ' ' . (count($rows) === 1 ? asset_word() : asset_word(true));
 
         $chartRows = array_slice($rows, 0, 10);
 
         return [
             'columns' => [
-                ['key' => 'asset_name',       'label' => 'Machine',        'format' => 'text'],
+                ['key' => 'asset_name',       'label' => asset_word(false, true),        'format' => 'text'],
                 ['key' => 'asset_tag',        'label' => 'Tag',          'format' => 'text'],
                 ['key' => 'status',           'label' => 'Status now',   'format' => 'asset_status'],
                 ['key' => 'incidents',        'label' => 'Times down',   'format' => 'number',   'align' => 'right'],
@@ -533,11 +544,11 @@ final class Reports
 
         $finishedTotal      = $totals['passed'] + $totals['failed'];
         $totals['pass_rate'] = $finishedTotal === 0 ? null : round($totals['passed'] / $finishedTotal * 100, 1);
-        $totals['asset_name'] = count($rows) . ' machine' . (count($rows) === 1 ? '' : 's');
+        $totals['asset_name'] = count($rows) . ' ' . (count($rows) === 1 ? asset_word() : asset_word(true));
 
         return [
             'columns' => [
-                ['key' => 'asset_name', 'label' => 'Machine',      'format' => 'text'],
+                ['key' => 'asset_name', 'label' => asset_word(false, true),      'format' => 'text'],
                 ['key' => 'asset_tag',  'label' => 'Tag',        'format' => 'text'],
                 ['key' => 'runs',       'label' => 'Checks',     'format' => 'number',  'align' => 'right'],
                 ['key' => 'passed',     'label' => 'Passed',     'format' => 'number',  'align' => 'right'],
@@ -607,11 +618,11 @@ final class Reports
             $totals['lifetime_cost'] += (float) $row['lifetime_cost'];
         }
 
-        $totals['asset_name'] = count($rows) . ' machine' . (count($rows) === 1 ? '' : 's');
+        $totals['asset_name'] = count($rows) . ' ' . (count($rows) === 1 ? asset_word() : asset_word(true));
 
         return [
             'columns' => [
-                ['key' => 'asset_name',    'label' => 'Machine',        'format' => 'text'],
+                ['key' => 'asset_name',    'label' => asset_word(false, true),        'format' => 'text'],
                 ['key' => 'asset_tag',     'label' => 'Tag',          'format' => 'text'],
                 ['key' => 'category_name', 'label' => 'Category',     'format' => 'text'],
                 ['key' => 'location_name', 'label' => 'Where',        'format' => 'text'],
@@ -624,7 +635,7 @@ final class Reports
             ],
             'rows'   => $rows,
             'totals' => $totals,
-            'empty'  => 'No machines match that.',
+            'empty'  => 'No ' . asset_word(true) . ' match that.',
         ];
     }
 

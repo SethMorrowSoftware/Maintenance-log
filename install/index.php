@@ -346,12 +346,16 @@ if ($posted) {
                 $errors['app_url'] = 'Enter the full web address, starting with http:// or https://.';
             }
 
+            // What to start with: nothing, the real fleet, or the fictional sample.
+            $installData = (string) ($_POST['install_data'] ?? 'fleet');
+            $installData = in_array($installData, ['none', 'fleet', 'demo'], true) ? $installData : 'fleet';
+
             if ($errors === []) {
                 $state['site_name']         = $siteName;
                 $state['organization_name'] = $orgName !== '' ? $orgName : $siteName;
                 $state['timezone']          = $timezone;
                 $state['app_url']           = $appUrl;
-                $state['install_demo']      = !empty($_POST['install_demo']);
+                $state['install_data']      = $installData;
 
                 redirect_step('install');
             }
@@ -360,7 +364,7 @@ if ($posted) {
             $state['organization_name'] = $orgName;
             $state['timezone']          = $timezone;
             $state['app_url']           = $appUrl;
-            $state['install_demo']      = !empty($_POST['install_demo']);
+            $state['install_data']      = $installData;
             break;
 
         // ---------------------------------------------------------------------
@@ -373,7 +377,7 @@ if ($posted) {
                     'app_url'   => (string) ($state['app_url'] ?? ''),
                     'username'  => (string) ($state['admin_username'] ?? ''),
                     'cron_url'  => $result['cron_url'],
-                    'demo'      => !empty($state['install_demo']),
+                    'data'      => (string) ($state['install_data'] ?? 'none'),
                     'warnings'  => $result['warnings'],
                 ];
 
@@ -503,16 +507,23 @@ function run_installation(array $state): array
         $warnings[] = 'Some settings could not be saved: ' . $e->getMessage();
     }
 
-    // --- Demo data ----------------------------------------------------------
-    if (!empty($state['install_demo'])) {
-        $demo = SqlRunner::executeFile($pdo, __DIR__ . '/demo.sql', $prefix, false);
+    // --- Starting data ------------------------------------------------------
+    // Either the real Castle Fun Center fleet (machines, checklists and
+    // schedules, no history) or the fictional sample with a year of history.
+    $installData = (string) ($state['install_data'] ?? 'none');
 
-        if (!$demo['ok']) {
-            $warnings[] = 'The sample data was only partly loaded. This does not affect the application; '
-                        . 'you can delete the sample records and enter your own.';
+    if ($installData === 'fleet' || $installData === 'demo') {
+        $file   = $installData === 'fleet' ? 'fleet.sql' : 'demo.sql';
+        $loaded = SqlRunner::executeFile($pdo, __DIR__ . '/' . $file, $prefix, false);
+
+        if (!$loaded['ok']) {
+            $warnings[] = ($installData === 'fleet' ? 'The starting fleet' : 'The sample data')
+                        . ' was only partly loaded. This does not affect the application; '
+                        . 'add or delete machines from the Machines screen.';
         }
 
         try {
+            // Every schedule starts one interval out from today.
             \App\Scheduler::recomputeAll();
         } catch (\Throwable $e) {
             // Not important enough to fail the install.
@@ -1116,14 +1127,38 @@ switch ($step) {
                         'hint'     => 'All times are stored in UTC and displayed in this zone.',
                     ]) ?>
 
-                    <div class="form-check-card mt-4">
-                        <input type="checkbox" id="f_install_demo" name="install_demo" value="1"
-                               <?= !empty($state['install_demo']) ? 'checked' : '' ?>>
-                        <label class="form-check-label" for="f_install_demo">
-                            Install sample data
-                            <small>Adds a fictional kart fleet, a year of maintenance history, schedules,
-                            work orders and parts, so you can see how everything fits together. Easy to
-                            delete later. Leave this unticked if you are setting up for real use now.</small>
+                    <?php $installData = (string) ($state['install_data'] ?? 'fleet'); ?>
+                    <p class="form-label mt-4">What should it start with?</p>
+
+                    <div class="form-check-card">
+                        <input type="radio" id="f_data_fleet" name="install_data" value="fleet"
+                               <?= $installData === 'fleet' ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="f_data_fleet">
+                            The Castle Fun Center fleet
+                            <small>Twenty go-karts, the Freefall, Dragon Coaster and Swings, the zip line,
+                            eight bowling lanes, six axe-throwing lanes and a few others, each with its daily
+                            checklist and service schedule — and no made-up history. Rename or delete anything
+                            afterwards from the Machines screen.</small>
+                        </label>
+                    </div>
+
+                    <div class="form-check-card mt-2">
+                        <input type="radio" id="f_data_demo" name="install_data" value="demo"
+                               <?= $installData === 'demo' ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="f_data_demo">
+                            Fictional sample data, for a look around
+                            <small>A made-up kart fleet with a year of maintenance history, work orders and
+                            parts, so you can see how everything fits together. Easy to delete later.</small>
+                        </label>
+                    </div>
+
+                    <div class="form-check-card mt-2">
+                        <input type="radio" id="f_data_none" name="install_data" value="none"
+                               <?= $installData === 'none' ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="f_data_none">
+                            Nothing — start empty
+                            <small>Just the categories, locations and the two standard checklists. You add every
+                            machine yourself.</small>
                         </label>
                     </div>
                 </div>
@@ -1173,8 +1208,12 @@ switch ($step) {
                             &middot; <?= esc((string) ($state['admin_email'] ?? '')) ?>
                         </dd>
 
-                        <dt>Sample data</dt>
-                        <dd><?= !empty($state['install_demo']) ? 'Yes, install it' : 'No, start empty' ?></dd>
+                        <dt>Starting data</dt>
+                        <dd><?= [
+                            'fleet' => 'The Castle Fun Center fleet',
+                            'demo'  => 'Fictional sample data',
+                            'none'  => 'Nothing, start empty',
+                        ][(string) ($state['install_data'] ?? 'none')] ?? 'Nothing, start empty' ?></dd>
                     </dl>
 
                     <div class="alert alert-info mt-5">
@@ -1287,7 +1326,25 @@ switch ($step) {
             </div>
         </div>
 
-        <?php if (!empty($done['demo'])): ?>
+        <?php if (($done['data'] ?? '') === 'fleet'): ?>
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">About the starting fleet</h3>
+                </div>
+                <div class="card-body">
+                    <p>Forty-four machines are ready: twenty go-karts, the Freefall, Dragon Coaster and
+                    Swings, the zip line, eight bowling lanes, six axe-throwing lanes, and the laser tag
+                    arena, roller rink, climbing wall, mini golf course, arcade and shop compressor.</p>
+                    <p>Every one of them can be renamed, re-tagged, moved to another category or deleted
+                    from the <strong>Machines</strong> screen. The counts that were guesses — bowling lanes,
+                    the indoor extras — are the ones to check first. Add anything else the same way,
+                    appliances included: a category is just a label.</p>
+                    <p class="mb-0">Each machine already has its daily checklist and service schedule.
+                    Hour meters start at zero; type in the real readings as you go round, and the 50-hour
+                    kart services will fall due from there.</p>
+                </div>
+            </div>
+        <?php elseif (($done['data'] ?? '') === 'demo'): ?>
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">About the sample data</h3>

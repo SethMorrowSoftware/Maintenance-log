@@ -16,6 +16,7 @@
 -- Settings
 --   setting_type drives how the Settings screen renders the field:
 --   string | text | int | bool | select | password | color | email | hidden
+--   (heading = a titled break in the form, not a value)
 -- -----------------------------------------------------------------------------
 INSERT IGNORE INTO {settings}
   (setting_key, setting_value, setting_type, setting_group, is_public, label, description, sort_order)
@@ -31,6 +32,10 @@ VALUES
    'Rows per page', 'How many records each list shows before paginating.', 40),
   ('dashboard_pm_lookahead_days', '14', 'int', 'general', 0,
    'Upcoming maintenance window', 'How many days ahead the dashboard looks for due maintenance.', 50),
+  ('asset_noun_singular', 'Machine', 'string', 'general', 1,
+   'What do you call one of the things you look after?', 'Machine, Ride, Asset, Appliance, Vehicle, Unit… Used everywhere one is mentioned, so pick the word your team says.', 60),
+  ('asset_noun_plural', 'Machines', 'string', 'general', 1,
+   '…and several of them?', 'Machines, Rides, Assets, Appliances… Shown in the menu and on list pages.', 70),
 
   -- Localization -------------------------------------------------------------
   ('timezone', 'America/New_York', 'select', 'localization', 1,
@@ -81,6 +86,52 @@ VALUES
   ('smtp_secure', 'tls', 'select', 'email', 0, 'SMTP encryption', 'tls, ssl or none.', 70),
   ('smtp_user', '', 'string', 'email', 0, 'SMTP username', '', 80),
   ('smtp_pass', '', 'password', 'email', 0, 'SMTP password', '', 90),
+
+  -- Slack --------------------------------------------------------------------
+  ('slack_enabled', '0', 'bool', 'slack', 0,
+   'Post to Slack', 'Turn on once the token and channel below are filled in and the test works.', 10),
+  ('slack_bot_token', '', 'password', 'slack', 0,
+   'Bot token', 'The Bot User OAuth Token from your Slack app. It starts with xoxb-. The steps are beside this form.', 20),
+  ('slack_channel', '#maintenance', 'string', 'slack', 0,
+   'Main channel', 'Where alerts go unless one below names its own channel. Use the name with the #, or the channel ID. The bot has to be invited to it.', 30),
+  ('slack_mention', '', 'string', 'slack', 0,
+   'Who to alert for urgent and safety problems', 'Optional. @here, @channel, or a member ID like U0123ABCD. Added to urgent and safety messages so somebody sees them.', 40),
+  ('slack_min_criticality', 'any', 'select', 'slack', 0,
+   'Only for machines at least this important', 'Skip alerts about the less important machines. Importance is set on each machine.', 50),
+  ('slack_h_events', '', 'heading', 'slack', 0,
+   'What to post', 'Each kind of alert can go to its own channel. Leave a channel blank to use the main one.', 60),
+  ('slack_on_problem', 'high', 'select', 'slack', 0,
+   'Problems reported', 'Which reported problems to post, by how urgent they were marked.', 70),
+  ('slack_problem_channel', '', 'string', 'slack', 0,
+   'Channel for problems', '', 71),
+  ('slack_on_safety', '1', 'bool', 'slack', 0,
+   'Always post safety issues', 'A problem flagged as a safety issue is posted whatever its urgency, with the alert mention above.', 72),
+  ('slack_on_fixed', '1', 'bool', 'slack', 0,
+   'Problems fixed or closed', 'Post when a reported problem is completed or cancelled, to the same channel as problems.', 73),
+  ('slack_on_inspection', 'critical', 'select', 'slack', 0,
+   'Failed inspections', 'Post when a daily check fails.', 80),
+  ('slack_inspection_channel', '', 'string', 'slack', 0,
+   'Channel for failed inspections', '', 81),
+  ('slack_on_status', '1', 'bool', 'slack', 0,
+   'Machines going out of or back into service', 'Post every status change: out of service, in the shop, back in service, retired.', 90),
+  ('slack_status_channel', '', 'string', 'slack', 0,
+   'Channel for status changes', '', 91),
+  ('slack_on_job', 'followup', 'select', 'slack', 0,
+   'Work logged', 'Post when a job is logged. "Only jobs needing follow-up" keeps the channel quiet.', 100),
+  ('slack_job_channel', '', 'string', 'slack', 0,
+   'Channel for work logged', '', 101),
+  ('slack_on_due', '1', 'bool', 'slack', 0,
+   'Service due, once a day', 'A morning list of overdue and upcoming service, posted by the nightly job.', 110),
+  ('slack_due_channel', '', 'string', 'slack', 0,
+   'Channel for service due', '', 111),
+  ('slack_on_stock', '1', 'bool', 'slack', 0,
+   'Parts running low', 'Post the moment a part drops to its reorder level.', 120),
+  ('slack_stock_channel', '', 'string', 'slack', 0,
+   'Channel for parts', '', 121),
+  ('slack_daily_summary', '0', 'bool', 'slack', 0,
+   'Morning report, once a day', 'What is not running, open problems, service due and parts running low, posted by the nightly job.', 130),
+  ('slack_summary_channel', '', 'string', 'slack', 0,
+   'Channel for the morning report', '', 131),
 
   -- Security -----------------------------------------------------------------
   ('session_timeout_minutes', '480', 'int', 'security', 0,

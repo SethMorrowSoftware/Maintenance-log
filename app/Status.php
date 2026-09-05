@@ -160,6 +160,11 @@ final class Status
     /** Human label for a value, falling back to a tidied version of it. */
     public static function label(string $value, string $vocabulary = 'asset'): string
     {
+        // The kind of record called "asset" is named by the site itself.
+        if ($vocabulary === 'entity' && $value === 'asset') {
+            return asset_word(false, true);
+        }
+
         $entry = self::entry($value, $vocabulary);
 
         return $entry === null ? Str::label($value) : $entry[0];

@@ -18,7 +18,7 @@ use App\View;
     <?php View::partial('filter-bar', [
         'action'  => 'inspections.php',
         'filters' => [
-            'asset_id'     => ['label' => 'Machine', 'type' => 'select', 'value' => $filters['asset_id'], 'options' => $assets, 'empty' => 'All machines'],
+            'asset_id'     => ['label' => asset_word(false, true), 'type' => 'select', 'value' => $filters['asset_id'], 'options' => $assets, 'empty' => 'All ' . asset_word(true)],
             'checklist_id' => ['label' => 'Checklist', 'type' => 'select', 'value' => $filters['checklist_id'], 'options' => $checklists, 'empty' => 'All checklists'],
             'from'         => ['label' => 'From', 'type' => 'date', 'value' => $filters['from']],
             'to'           => ['label' => 'To', 'type' => 'date', 'value' => $filters['to']],
@@ -40,7 +40,7 @@ use App\View;
         <div class="table-wrap">
             <table class="table is-stacked">
                 <thead>
-                    <tr><th>When</th><th>Machine</th><th>Checklist</th><th>Result</th><th>Inspector</th></tr>
+                    <tr><th>When</th><th><?= e(asset_word(false, true)) ?></th><th>Checklist</th><th>Result</th><th>Inspector</th></tr>
                 </thead>
                 <tbody>
                     <?php foreach ($rows as $row): ?>
@@ -52,7 +52,7 @@ use App\View;
                                 </a>
                                 <span class="cell-secondary"><?= e(Dates::time((string) $row['started_at'])) ?></span>
                             </td>
-                            <td data-label="Machine">
+                            <td data-label="<?= attr(asset_word(false, true)) ?>">
                                 <a href="<?= e(url('asset-view.php', ['id' => (int) $row['asset_id']])) ?>">
                                     <?= e((string) $row['asset_name']) ?>
                                 </a>

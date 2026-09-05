@@ -15,7 +15,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
         <?= icon('shield', '', 18) ?>
         <div class="alert-body">
             <strong class="alert-title">Reported as a safety issue</strong>
-            <p style="margin:4px 0 0">Deal with this before the machine carries guests again.</p>
+            <p style="margin:4px 0 0">Deal with this before the <?= e(asset_word()) ?> carries guests again.</p>
         </div>
     </div>
 <?php endif; ?>
@@ -35,7 +35,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
             </div>
             <div class="card-body">
                 <dl class="detail-list">
-                    <dt>Machine</dt>
+                    <dt><?= e(asset_word(false, true)) ?></dt>
                     <dd>
                         <?php if (!empty($workOrder['asset_id'])): ?>
                             <a href="<?= e(url('asset-view.php', ['id' => (int) $workOrder['asset_id']])) ?>">
@@ -48,7 +48,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                                 </div>
                             <?php endif; ?>
                         <?php else: ?>
-                            <span class="text-subtle">Not linked to a machine</span>
+                            <span class="text-subtle">Not linked to <?= e(an_asset()) ?></span>
                         <?php endif; ?>
                     </dd>
 

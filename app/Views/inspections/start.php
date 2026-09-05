@@ -10,11 +10,11 @@ use App\View;
         <div class="card-body">
             <?php View::partial('asset-picker', [
                 'name'     => 'asset_id',
-                'label'    => 'Machine',
+                'label'    => asset_word(false, true),
                 'value'    => '',
                 'assets'   => $assets,
                 'required' => true,
-                'hint'     => 'Pick the kart, ride or machine you are standing in front of.',
+                'hint'     => 'Pick the kart, ride or ' . asset_word() . ' you are standing in front of.',
             ]); ?>
         </div>
         <div class="card-footer">

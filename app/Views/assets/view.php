@@ -36,7 +36,7 @@ if (can('audit.view')) {
         <?= icon('alert-triangle', '', 18) ?>
         <div class="alert-body">
             <strong class="alert-title">
-                This machine is <?= e(strtolower(Status::label((string) $asset['status'], 'asset'))) ?>
+                This <?= e(asset_word()) ?> is <?= e(strtolower(Status::label((string) $asset['status'], 'asset'))) ?>
             </strong>
             <p style="margin:4px 0 0">It is not available to guests. Change the status when it is back in service.</p>
         </div>
@@ -335,8 +335,8 @@ if (can('audit.view')) {
                         <div class="input-group">
                             <span class="input-addon"><?= icon('search', '', 16) ?></span>
                             <input type="search" name="q" class="form-input" value="<?= attr($q) ?>"
-                                   placeholder="Search this machine's history — “brake”, “chain”, “won't start”"
-                                   aria-label="Search this machine's history" autocomplete="off">
+                                   placeholder="Search this <?= attr(asset_word()) ?>'s history — “brake”, “chain”, “won't start”"
+                                   aria-label="Search this <?= attr(asset_word()) ?>'s history" autocomplete="off">
                         </div>
                         <button type="submit" class="btn btn-secondary">Search</button>
                         <?php if ($searching): ?>
@@ -348,7 +348,7 @@ if (can('audit.view')) {
                     <?php if ($searching): ?>
                         <p class="form-hint">
                             <?= count($events) === 0 ? 'Nothing' : num(count($events)) . ' thing' . (count($events) === 1 ? '' : 's') ?>
-                            matching “<?= e($q) ?>” in this machine's jobs, checks and problems.
+                            matching “<?= e($q) ?>” in this <?= e(asset_word()) ?>'s jobs, checks and problems.
                         </p>
                     <?php endif; ?>
                 </div>
@@ -475,7 +475,7 @@ if (can('audit.view')) {
                     <?php View::partial('empty-state', [
                         'icon'        => 'calendar',
                         'title'       => 'No scheduled maintenance',
-                        'message'     => 'Set up a schedule and this machine will appear on the dashboard when a service falls due.',
+                        'message'     => 'Set up a schedule and this ' . asset_word() . ' will appear on the dashboard when a service falls due.',
                         'actionLabel' => can('schedules.manage') ? 'Add a schedule' : '',
                         'actionUrl'   => can('schedules.manage') ? url('schedule-edit.php', ['asset_id' => $assetId]) : '',
                     ]); ?>
@@ -773,12 +773,12 @@ if (can('audit.view')) {
             </div>
             <div class="card-body">
                 <dl class="detail-list">
-                    <dt>Machine tag</dt>
+                    <dt><?= e(asset_word(false, true)) ?> tag</dt>
                     <dd>
                         <code><?= e((string) $asset['asset_tag']) ?></code>
                         <button type="button" class="btn btn-ghost btn-sm btn-icon no-print"
                                 data-copy="<?= attr((string) $asset['asset_tag']) ?>"
-                                aria-label="Copy machine tag" title="Copy"><?= icon('copy', '', 14) ?></button>
+                                aria-label="Copy <?= attr(asset_word()) ?> tag" title="Copy"><?= icon('copy', '', 14) ?></button>
                     </dd>
                     <dt>Added</dt>
                     <dd><?= e(Dates::date((string) $asset['created_at'])) ?></dd>
@@ -788,7 +788,7 @@ if (can('audit.view')) {
                     <?= icon('qr-code', '', 16) ?> Print a label
                 </a>
                 <p class="form-hint">
-                    Stick the label on the machine. Scanning it opens this page on a phone.
+                    Stick the label on the <?= e(asset_word()) ?>. Scanning it opens this page on a phone.
                 </p>
             </div>
         </div>

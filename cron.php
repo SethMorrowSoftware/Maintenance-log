@@ -95,6 +95,10 @@ $step('Due and overdue notices', static function (): string {
         . ($result['notified'] ?? 0) . ' notified';
 });
 
+$step('Slack: service due', static function (): string {
+    return \App\Slack::dueDigest();
+});
+
 // -----------------------------------------------------------------------------
 // Parts running out
 // -----------------------------------------------------------------------------
@@ -157,6 +161,14 @@ $step('Orphaned uploads', static function (): string {
 
     return ($result['files'] ?? 0) . ' files, '
         . ($result['rows'] ?? 0) . ' records tidied';
+});
+
+// -----------------------------------------------------------------------------
+// The morning report, last, so it reflects the tidying above
+// -----------------------------------------------------------------------------
+
+$step('Slack: morning report', static function (): string {
+    return \App\Slack::dailySummary();
 });
 
 // -----------------------------------------------------------------------------

@@ -111,12 +111,12 @@ if ($labels === []) {
     redirect(url('assets.php'));
 }
 
-audit('print', 'asset', null, 'Printed ' . count($labels) . ' machine label'
+audit('print', 'asset', null, 'Printed ' . count($labels) . ' ' . asset_word() . ' label'
     . (count($labels) === 1 ? '' : 's'));
 
 View::render('assets/labels', [
-    'title'     => 'Machine labels',
-    'docTitle'  => 'Machine labels',
+    'title'     => asset_word(false, true) . ' labels',
+    'docTitle'  => asset_word(false, true) . ' labels',
     'printMeta' => [
         'Labels' => (string) count($labels),
         'Size'   => ucfirst($size),

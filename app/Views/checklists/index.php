@@ -19,7 +19,7 @@ $canManage = can('checklists.manage');
         'title'       => 'No checklists yet',
         'message'     => 'A checklist is the list of things somebody works through before a kart '
                        . 'or a ride opens for the day. Make one and it appears automatically when '
-                       . 'a matching machine is inspected.',
+                       . 'a matching ' . asset_word() . ' is inspected.',
         'actionLabel' => $canManage ? 'New checklist' : '',
         'actionUrl'   => $canManage ? url('checklist-edit.php') : '',
     ]); ?>
@@ -61,11 +61,11 @@ $canManage = can('checklists.manage');
                             </td>
                             <td data-label="Covers">
                                 <?php if ((string) $row['applies_to'] === 'all'): ?>
-                                    Every machine
+                                    Every <?= e(asset_word()) ?>
                                 <?php elseif ((string) $row['applies_to'] === 'category'): ?>
                                     <?= e((string) ($row['category_name'] ?? 'a category')) ?>
                                 <?php else: ?>
-                                    <?= e((string) ($row['asset_name'] ?? 'one machine')) ?>
+                                    <?= e((string) ($row['asset_name'] ?? 'one ' . asset_word())) ?>
                                 <?php endif; ?>
                             </td>
                             <td data-label="How often">
@@ -140,7 +140,7 @@ $canManage = can('checklists.manage');
     </div>
 
     <p class="text-sm text-muted mt-4">
-        A checklist shows up on an inspection when it matches the machine being checked.
+        A checklist shows up on an inspection when it matches the <?= e(asset_word()) ?> being checked.
         The most specific one wins: a checklist for one particular kart beats one for
         all go-karts, which beats one for everything.
     </p>

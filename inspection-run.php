@@ -39,7 +39,7 @@ if ($inspectionId === 0) {
     $asset = Asset::find($assetId);
 
     if ($asset === null) {
-        abort(404, 'That machine does not exist.');
+        abort(404, 'That ' . asset_word() . ' does not exist.');
     }
 
     $checklists = Inspection::checklistsFor($assetId);

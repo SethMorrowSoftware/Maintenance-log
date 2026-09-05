@@ -33,7 +33,7 @@ $currency = Settings::currency();
     <?php endif; ?>
     <?php if (can('assets.create')): ?>
         <a class="btn btn-secondary" href="<?= e(url('asset-edit.php')) ?>">
-            <?= icon('assets', '', 17) ?> Add a machine
+            <?= icon('assets', '', 17) ?> Add <?= e(an_asset()) ?>
         </a>
     <?php endif; ?>
 </div>
@@ -43,7 +43,7 @@ $currency = Settings::currency();
     <?php View::partial('stat-card', [
         'label' => 'In service',
         'value' => num($counts['assets_in_service']),
-        'sub'   => 'of ' . num($counts['assets_total']) . ' machines',
+        'sub'   => 'of ' . num($counts['assets_total']) . ' ' . asset_word(true),
         'icon'  => 'check-circle',
         'tone'  => 'ok',
         'href'  => can('assets.view') ? url('assets.php', ['status' => 'in_service']) : '',
@@ -133,7 +133,7 @@ $currency = Settings::currency();
                     <table class="table is-stacked">
                         <thead>
                             <tr>
-                                <th>Machine</th>
+                                <th><?= e(asset_word(false, true)) ?></th>
                                 <th>Status</th>
                                 <th>Location</th>
                                 <th>Since</th>
@@ -142,7 +142,7 @@ $currency = Settings::currency();
                         <tbody>
                             <?php foreach ($assetsDown as $asset): ?>
                                 <tr data-row-href="<?= e(url('asset-view.php', ['id' => (int) $asset['id']])) ?>">
-                                    <td data-label="Machine" class="is-row-title">
+                                    <td data-label="<?= attr(asset_word(false, true)) ?>" class="is-row-title">
                                         <a href="<?= e(url('asset-view.php', ['id' => (int) $asset['id']])) ?>">
                                             <?= e((string) $asset['name']) ?>
                                         </a>
@@ -187,7 +187,7 @@ $currency = Settings::currency();
                         <table class="table is-stacked">
                             <thead>
                                 <tr>
-                                    <th>Machine</th>
+                                    <th><?= e(asset_word(false, true)) ?></th>
                                     <th>Job</th>
                                     <th>Due</th>
                                     <th>Assigned</th>
@@ -198,7 +198,7 @@ $currency = Settings::currency();
                                 <?php foreach ($dueList as $due): ?>
                                     <?php $state = (string) $due['due_state']; ?>
                                     <tr class="<?= $state === 'overdue' ? 'is-danger' : '' ?>">
-                                        <td data-label="Machine" class="is-row-title">
+                                        <td data-label="<?= attr(asset_word(false, true)) ?>" class="is-row-title">
                                             <a href="<?= e(url('asset-view.php', ['id' => (int) $due['asset_id']])) ?>">
                                                 <?= e((string) $due['asset_name']) ?>
                                             </a>
@@ -246,7 +246,7 @@ $currency = Settings::currency();
                 <div class="card-header">
                     <div>
                         <h2 class="card-title"><?= icon('clipboard-check', '', 18) ?> Daily inspections outstanding</h2>
-                        <p class="card-subtitle">In-service machines with no completed check today</p>
+                        <p class="card-subtitle">In-service <?= e(asset_word(true)) ?> with no completed check today</p>
                     </div>
                 </div>
                 <div class="card-body is-tight">
@@ -289,7 +289,7 @@ $currency = Settings::currency();
                             <thead>
                                 <tr>
                                     <th>Work order</th>
-                                    <th>Machine</th>
+                                    <th><?= e(asset_word(false, true)) ?></th>
                                     <th>Priority</th>
                                     <th>Status</th>
                                     <th>Assigned</th>
@@ -305,7 +305,7 @@ $currency = Settings::currency();
                                             </a>
                                             <span class="cell-secondary"><?= e((string) $wo['wo_number']) ?></span>
                                         </td>
-                                        <td data-label="Machine"><?= e((string) ($wo['asset_name'] ?? '—')) ?></td>
+                                        <td data-label="<?= attr(asset_word(false, true)) ?>"><?= e((string) ($wo['asset_name'] ?? '—')) ?></td>
                                         <td data-label="Priority">
                                             <?php View::partial('status-badge', ['value' => (string) $wo['priority'], 'vocabulary' => 'priority']); ?>
                                         </td>
@@ -392,7 +392,7 @@ $currency = Settings::currency();
                                     <?= e((string) $wo['title']) ?>
                                 </a>
                                 <div class="text-sm text-muted">
-                                    <?= e((string) ($wo['asset_name'] ?? 'No machine')) ?>
+                                    <?= e((string) ($wo['asset_name'] ?? 'No ' . asset_word())) ?>
                                     <?php if (!empty($wo['due_date'])): ?>
                                         &middot; due <?= e(Dates::dateOnly((string) $wo['due_date'])) ?>
                                     <?php endif; ?>
@@ -418,7 +418,7 @@ $currency = Settings::currency();
                 </div>
                 <div class="card-body">
                     <div data-chart="donut" data-chart-src="chart-status" data-chart-size="190"
-                         data-chart-centre-label="Machines" data-chart-title="Machines by status"></div>
+                         data-chart-centre-label="<?= attr(asset_word(true, true)) ?>" data-chart-title="<?= attr(asset_word(true, true)) ?> by status"></div>
                     <script type="application/json" id="chart-status"><?= js(['slices' => $statusChart]) ?></script>
                 </div>
             </div>

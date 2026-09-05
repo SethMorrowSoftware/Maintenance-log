@@ -53,7 +53,7 @@ $navigation = [
         ['label' => 'Inspections',      'url' => 'inspections.php', 'icon' => 'clipboard-check',  'permission' => 'inspections.view'],
     ],
     'Equipment' => [
-        ['label' => 'Machines',          'url' => 'assets.php', 'icon' => 'assets',  'permission' => 'assets.view'],
+        ['label' => asset_word(true, true),          'url' => 'assets.php', 'icon' => 'assets',  'permission' => 'assets.view'],
         ['label' => 'Parts',           'url' => 'parts.php',  'icon' => 'package', 'permission' => 'parts.view'],
     ],
     'Insight' => [
@@ -121,6 +121,7 @@ $currentNav = $navAliases[$activeNav] ?? $activeNav;
     'currency'   => Settings::currency(),
     'canNotify'  => $me !== null,
     'clearDrafts' => \App\Flash::draftsToClear(),
+    'assetWord'  => ['one' => asset_word(), 'many' => asset_word(true)],
 ]) ?></script>
 </head>
 
@@ -192,7 +193,7 @@ $currentNav = $navAliases[$activeNav] ?? $activeNav;
             <?php if ($me !== null): ?>
                 <div class="header-search" id="header-search">
                     <?= icon('search', '', 17) ?>
-                    <label class="sr-only" for="global-search">Search machines, logs and work orders</label>
+                    <label class="sr-only" for="global-search">Search <?= e(asset_word(true)) ?>, logs and work orders</label>
                     <input type="search" id="global-search" placeholder="Search…"
                            autocomplete="off" spellcheck="false" data-global-search>
                     <span class="kbd hide-sm" aria-hidden="true">/</span>

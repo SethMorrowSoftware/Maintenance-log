@@ -236,7 +236,7 @@ final class WorkOrder
                     'wo_updated',
                     ((string) ($data['priority'] ?? '') === 'urgent' ? 'Urgent: ' : 'New work order: ')
                     . (string) $data['title'],
-                    ($row['asset_name'] ?? 'No machine') . ' — ' . $data['wo_number'],
+                    ($row['asset_name'] ?? 'No ' . asset_word()) . ' — ' . $data['wo_number'],
                     'workorder-view.php?id=' . $id,
                     'work_order',
                     $id
@@ -245,6 +245,8 @@ final class WorkOrder
                 log_error('Work order notification failed: ' . $e->getMessage());
             }
         }
+
+        \App\Slack::problemReported($id);
 
         return $id;
     }
@@ -293,6 +295,11 @@ final class WorkOrder
                 (string) $before['status'],
                 (string) $data['status']
             );
+
+            if (Status::isClosedWorkOrder((string) $data['status'])
+                && !Status::isClosedWorkOrder((string) $before['status'])) {
+                \App\Slack::problemFixed($id);
+            }
         }
 
         if (isset($data['assigned_to'])

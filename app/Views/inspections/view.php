@@ -193,7 +193,7 @@ $inspector    = trim((string) $inspection['first_name'] . ' ' . (string) $inspec
             <div class="card-header"><h3 class="card-title">Details</h3></div>
             <div class="card-body">
                 <dl class="detail-list">
-                    <dt>Machine</dt>
+                    <dt><?= e(asset_word(false, true)) ?></dt>
                     <dd>
                         <?php if ($printing): ?>
                             <?= e((string) $inspection['asset_name']) ?>
@@ -291,7 +291,7 @@ $inspector    = trim((string) $inspection['first_name'] . ' ' . (string) $inspec
                 <div class="card-body">
                     <p class="text-sm text-muted mb-3">
                         Inspection records are safety history. Delete one only if it was
-                        recorded against the wrong machine.
+                        recorded against the wrong <?= e(asset_word()) ?>.
                     </p>
                     <?php View::partial('confirm-delete', [
                         'url'         => url('inspection-view.php', ['id' => $inspectionId]),

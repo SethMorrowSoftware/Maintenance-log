@@ -170,12 +170,12 @@ final class Acl
      */
     public static function roleDescriptions(): array
     {
-        return [
+        return array_map([self::class, 'reword'], [
             self::ROLE_ADMIN      => 'Full access, including user accounts, site settings, and the only role that sees prices and costs.',
             self::ROLE_MANAGER    => 'Runs maintenance: manages machines, schedules, checklists, parts and work orders, and can edit or delete any record. Does not see prices or costs.',
             self::ROLE_TECHNICIAN => 'Does the work: logs maintenance, runs inspections, updates meters and work orders. Can edit their own logs.',
             self::ROLE_VIEWER     => 'Read-only. Sees records and reports but changes nothing.',
-        ];
+        ]);
     }
 
     public static function roleLabel(?string $role): string
@@ -195,7 +195,25 @@ final class Acl
      */
     public static function catalogue(): array
     {
-        return self::CATALOGUE;
+        // The catalogue is a constant, so the site's own word for its
+        // machines is swapped in here rather than baked in.
+        $out = [];
+
+        foreach (self::CATALOGUE as $group => $permissions) {
+            $out[self::reword($group)] = array_map([self::class, 'reword'], $permissions);
+        }
+
+        return $out;
+    }
+
+    /** "machines" → whatever Settings → General says the things are called. */
+    private static function reword(string $text): string
+    {
+        return str_replace(
+            ['Machines', 'machines', 'Machine', 'machine'],
+            [asset_word(true, true), asset_word(true), asset_word(false, true), asset_word()],
+            $text
+        );
     }
 
     /**
@@ -220,7 +238,7 @@ final class Acl
     {
         foreach (self::CATALOGUE as $group) {
             if (isset($group[$permission])) {
-                return $group[$permission];
+                return self::reword($group[$permission]);
             }
         }
 

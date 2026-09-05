@@ -53,7 +53,7 @@ if (is_post()) {
     ], [
         'title.required' => 'Say briefly what the problem is.',
     ], [
-        'asset_id'        => 'Machine',
+        'asset_id'        => asset_word(false, true),
         'assigned_to'     => 'Assigned to',
         'due_date'        => 'Due date',
         'estimated_hours' => 'Estimated hours',
@@ -136,7 +136,7 @@ View::render('workorders/edit', [
     'title'    => $editing ? 'Edit ' . (string) $workOrder['wo_number'] : 'Report an issue',
     'subtitle' => $editing
         ? (string) $workOrder['title']
-        : 'Tell the maintenance team about a problem with a kart, ride or machine',
+        : 'Tell the maintenance team about a problem with a kart, ride or ' . asset_word(),
     'activeNav'   => 'workorders.php',
     'breadcrumbs' => [
         ['label' => 'Work Orders', 'url' => url('workorders.php')],

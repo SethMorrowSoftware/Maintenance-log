@@ -87,11 +87,11 @@ $statusTabs = [
 
         <?php View::partial('empty-state', [
             'icon'        => 'assets',
-            'title'       => $hasFilters ? 'No machines match those filters' : 'No machines yet',
+            'title'       => $hasFilters ? 'No ' . asset_word(true) . ' match those filters' : 'No ' . asset_word(true) . ' yet',
             'message'     => $hasFilters
                 ? 'Try widening the search, or clear the filters to see everything.'
-                : 'Add your karts, rides and machines so their maintenance can be recorded against them.',
-            'actionLabel' => $hasFilters ? 'Clear filters' : (can('assets.create') ? 'Add your first machine' : ''),
+                : 'Add your karts, rides and ' . asset_word(true) . ' so their maintenance can be recorded against them.',
+            'actionLabel' => $hasFilters ? 'Clear filters' : (can('assets.create') ? 'Add your first ' . asset_word() : ''),
             'actionUrl'   => $hasFilters ? url('assets.php') : (can('assets.create') ? url('asset-edit.php') : ''),
             'actionIcon'  => $hasFilters ? 'x' : 'plus',
         ]); ?>
@@ -143,7 +143,7 @@ $statusTabs = [
             <table class="table is-stacked table-sortable">
                 <thead>
                     <tr>
-                        <th data-sort><?= sort_link('name', 'Machine', $sort, $direction) ?></th>
+                        <th data-sort><?= sort_link('name', asset_word(false, true), $sort, $direction) ?></th>
                         <th data-sort><?= sort_link('category', 'Category', $sort, $direction) ?></th>
                         <th data-sort><?= sort_link('location', 'Location', $sort, $direction) ?></th>
                         <th data-sort><?= sort_link('status', 'Status', $sort, $direction) ?></th>
@@ -155,7 +155,7 @@ $statusTabs = [
                 <tbody>
                     <?php foreach ($assets as $asset): ?>
                         <tr data-row-href="<?= e(url('asset-view.php', ['id' => (int) $asset['id']])) ?>">
-                            <td data-label="Machine" class="is-row-title">
+                            <td data-label="<?= attr(asset_word(false, true)) ?>" class="is-row-title">
                                 <a href="<?= e(url('asset-view.php', ['id' => (int) $asset['id']])) ?>" class="cell-primary">
                                     <?= e((string) $asset['name']) ?>
                                 </a>
@@ -193,7 +193,7 @@ $statusTabs = [
                                 <?php if (can('logs.create')): ?>
                                     <a class="btn btn-secondary btn-sm"
                                        href="<?= e(url('log-edit.php', ['asset_id' => (int) $asset['id']])) ?>"
-                                       title="Log maintenance on this machine">
+                                       title="Log maintenance on this <?= attr(asset_word()) ?>">
                                         <?= icon('wrench', '', 15) ?> Log
                                     </a>
                                 <?php endif; ?>

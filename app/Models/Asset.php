@@ -212,7 +212,7 @@ final class Asset
 
         $id = db()->insert('assets', $data);
 
-        Audit::created('asset', $id, 'Added machine "' . (string) $data['name'] . '"', $data);
+        Audit::created('asset', $id, 'Added ' . asset_word() . ' "' . (string) $data['name'] . '"', $data);
 
         // A first meter reading is history too.
         if (!empty($data['meter_reading']) && (float) $data['meter_reading'] > 0) {
@@ -239,7 +239,7 @@ final class Asset
 
         db()->update('assets', $data, ['id' => $id]);
 
-        Audit::updated('asset', $id, 'Updated machine "' . (string) $before['name'] . '"', $before, $data);
+        Audit::updated('asset', $id, 'Updated ' . asset_word() . ' "' . (string) $before['name'] . '"', $before, $data);
 
         // A status change is the thing people most often want to look back on,
         // so it gets its own audit line in plain words.
@@ -292,6 +292,8 @@ final class Asset
             . ($reason !== '' ? ' — ' . $reason : '')
         );
 
+        \App\Slack::statusChanged($asset, $status, $reason);
+
         return true;
     }
 
@@ -312,7 +314,7 @@ final class Asset
             'updated_by' => Auth::id(),
         ], ['id' => $id]);
 
-        Audit::deleted('asset', $id, 'Deleted machine "' . (string) $asset['name'] . '"', [
+        Audit::deleted('asset', $id, 'Deleted ' . asset_word() . ' "' . (string) $asset['name'] . '"', [
             'asset_tag' => $asset['asset_tag'],
             'name'      => $asset['name'],
         ]);
@@ -329,7 +331,7 @@ final class Asset
         }
 
         db()->update('assets', ['deleted_at' => null, 'updated_by' => Auth::id()], ['id' => $id]);
-        Audit::record('restore', 'asset', $id, 'Restored machine "' . (string) $asset['name'] . '"');
+        Audit::record('restore', 'asset', $id, 'Restored ' . asset_word() . ' "' . (string) $asset['name'] . '"');
 
         return true;
     }
@@ -354,11 +356,11 @@ final class Asset
         $asset = self::find($id);
 
         if ($asset === null) {
-            return ['ok' => false, 'error' => 'That machine does not exist.'];
+            return ['ok' => false, 'error' => 'That ' . asset_word() . ' does not exist.'];
         }
 
         if ((string) $asset['meter_type'] === 'none') {
-            return ['ok' => false, 'error' => 'This machine does not have a meter.'];
+            return ['ok' => false, 'error' => 'This ' . asset_word() . ' does not have a meter.'];
         }
 
         if ($reading < 0) {
@@ -376,7 +378,7 @@ final class Asset
                 'ok'    => false,
                 'error' => 'That reading (' . decimal($reading) . ') is lower than the last one ('
                     . decimal($previous) . ' ' . (string) $asset['meter_type'] . '). '
-                    . 'Check the number. If the meter was replaced or reset, change it on the machine itself.',
+                    . 'Check the number. If the meter was replaced or reset, change it on the ' . asset_word() . ' itself.',
             ];
         }
 

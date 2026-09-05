@@ -27,7 +27,7 @@ if ($editing) {
     $asset = Asset::find($id);
 
     if ($asset === null) {
-        abort(404, 'That machine does not exist. It may have been deleted.');
+        abort(404, 'That ' . asset_word() . ' does not exist. It may have been deleted.');
     }
 } else {
     Acl::requirePermission('assets.create');
@@ -72,7 +72,7 @@ if (is_post()) {
     $rules['capacity_passengers'] = 'nullable|int|min:0|max:999';
 
     $validator = Validator::make($_POST, $rules, [], [
-        'asset_tag'         => 'Machine tag',
+        'asset_tag'         => asset_word(false, true) . ' tag',
         'category_id'       => 'Category',
         'location_id'       => 'Location',
         'year_manufactured' => 'Year',
@@ -121,7 +121,7 @@ if (is_post()) {
             if ($data['meter_type'] !== 'none' && abs($newMeter - $previousMeter) > 0.004) {
                 // Editing the machine is the one place a meter is allowed to go
                 // backwards: it is where you correct a replaced or reset unit.
-                Asset::updateMeter($id, $newMeter, 'Set while editing the machine', 'manual', null, true);
+                Asset::updateMeter($id, $newMeter, 'Set while editing the ' . asset_word(), 'manual', null, true);
 
                 if ($newMeter < $previousMeter) {
                     flash('info', 'The meter has been set back to ' . decimal($newMeter)
@@ -143,7 +143,7 @@ if (is_post()) {
             $result = Uploader::handle($photo, 'asset', $savedId, Auth::id());
 
             if (!$result['ok']) {
-                flash('warning', 'The machine was saved, but the photo was not: ' . $result['error']);
+                flash('warning', 'The ' . asset_word() . ' was saved, but the photo was not: ' . $result['error']);
             } elseif ((int) ($result['attachment']['is_image'] ?? 0) === 1) {
                 db()->update('assets', ['image_path' => (string) $result['attachment']['file_path']], ['id' => $savedId]);
             }
@@ -156,8 +156,8 @@ if (is_post()) {
 
         redirect(url('asset-view.php', ['id' => $savedId]));
     } catch (Throwable $e) {
-        log_error('Machine save failed: ' . $e->getMessage());
-        flash('error', 'The machine could not be saved. The error has been logged.');
+        log_error(asset_word(false, true) . ' save failed: ' . $e->getMessage());
+        flash('error', 'The ' . asset_word() . ' could not be saved. The error has been logged.');
         redirect(url('asset-edit.php', $editing ? ['id' => $id] : []));
     }
 }
@@ -200,11 +200,11 @@ $defaults = [
 $values = $editing ? array_merge($defaults, $asset) : $defaults;
 
 View::render('assets/edit', [
-    'title'       => $editing ? 'Edit ' . (string) $asset['name'] : 'Add a machine',
+    'title'       => $editing ? 'Edit ' . (string) $asset['name'] : 'Add ' . an_asset(),
     'subtitle'    => $editing ? (string) $asset['asset_tag'] : 'A kart, a ride, a vehicle or a piece of shop equipment',
     'activeNav'   => 'assets.php',
     'breadcrumbs' => [
-        ['label' => 'Machines', 'url' => url('assets.php')],
+        ['label' => asset_word(true, true), 'url' => url('assets.php')],
         $editing
             ? ['label' => (string) $asset['name'], 'url' => url('asset-view.php', ['id' => $id])]
             : ['label' => 'Add'],

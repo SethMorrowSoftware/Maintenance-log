@@ -221,7 +221,7 @@ final class MaintenanceLog
     {
         $userId = Auth::id();
 
-        return db()->transaction(static function (Database $db) use ($data, $parts, $userId): int {
+        $logId = db()->transaction(static function (Database $db) use ($data, $parts, $userId): int {
             $scheduleId = $data['schedule_id'] ?? null;
             $meter      = $data['meter_reading'] ?? null;
             $statusAfter = $data['status_after'] ?? null;
@@ -246,6 +246,11 @@ final class MaintenanceLog
 
             return $logId;
         });
+
+        // Only once the record is safely committed.
+        \App\Slack::jobLogged($logId);
+
+        return $logId;
     }
 
     /**

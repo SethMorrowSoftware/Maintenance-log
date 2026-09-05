@@ -1636,7 +1636,7 @@
             var searchInput = RL.el('input', {
                 type: 'search',
                 class: 'spotlight-input',
-                placeholder: 'Search machines, logs, work orders and parts…',
+                placeholder: 'Search ' + ((RL.config.assetWord || {}).many || 'machines') + ', logs, work orders and parts…',
                 autocomplete: 'off',
                 autofocus: true,
                 'aria-label': 'Search'
@@ -2472,7 +2472,7 @@
             var assetId = button.dataset.meterUpdate;
             var current = button.dataset.meterCurrent || '0';
             var unit = button.dataset.meterUnit || 'hours';
-            var assetName = button.dataset.meterAsset || 'this machine';
+            var assetName = button.dataset.meterAsset || ('this ' + ((RL.config.assetWord || {}).one || 'machine'));
 
             var field = RL.el('input', {
                 type: 'number',

@@ -41,7 +41,7 @@ use App\View;
                     <div class="form-row cols-2">
                         <?php View::partial('form-field', [
                             'name'     => 'asset_tag',
-                            'label'    => 'Machine tag',
+                            'label'    => asset_word(false, true) . ' tag',
                             'type'     => 'text',
                             'value'    => $values['asset_tag'],
                             'required' => true,
@@ -291,7 +291,7 @@ use App\View;
                                style="display:none">
                     </label>
                     <p class="form-hint">
-                        A photo makes a machine easy to identify on a phone. Up to
+                        A photo makes <?= e(an_asset()) ?> easy to identify on a phone. Up to
                         <?= (int) round(App\Settings::maxUploadBytes() / 1048576) ?> MB.
                     </p>
                 </div>
@@ -301,7 +301,7 @@ use App\View;
                 <div class="card-body">
                     <button type="submit" class="btn btn-primary btn-block btn-lg">
                         <?= icon('save', '', 18) ?>
-                        <?= $editing ? 'Save changes' : 'Add machine' ?>
+                        <?= $editing ? 'Save changes' : 'Add ' . asset_word() ?>
                     </button>
 
                     <?php if (!$editing): ?>
@@ -324,13 +324,13 @@ use App\View;
                     </div>
                     <div class="card-body">
                         <p class="text-sm text-muted mb-3">
-                            Deleting hides the machine from every list. Its maintenance history is kept,
+                            Deleting hides the <?= e(asset_word()) ?> from every list. Its maintenance history is kept,
                             so past reports stay accurate.
                         </p>
                         <?php View::partial('confirm-delete', [
                             'url'         => url('assets.php'),
                             'id'          => (int) $asset['id'],
-                            'label'       => 'Delete this machine',
+                            'label'       => 'Delete this ' . asset_word(),
                             'message'     => 'Delete “' . (string) $asset['name'] . '”? It will disappear from lists, '
                                            . 'but its maintenance history will be kept.',
                             'buttonClass' => 'btn btn-danger-outline btn-block',

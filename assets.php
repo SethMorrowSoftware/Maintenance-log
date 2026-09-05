@@ -32,9 +32,9 @@ if (is_post()) {
         Acl::requirePermission('assets.delete');
 
         if (Asset::delete($id)) {
-            flash('success', 'Machine deleted. Its maintenance history has been kept.');
+            flash('success', asset_word(false, true) . ' deleted. Its maintenance history has been kept.');
         } else {
-            flash('error', 'That machine could not be found.');
+            flash('error', 'That ' . asset_word() . ' could not be found.');
         }
     }
 
@@ -82,10 +82,10 @@ if (Request::string('export') === 'csv') {
 
     $rows = Asset::forExport($filters);
 
-    audit('export', 'asset', null, 'Exported ' . count($rows) . ' machines to CSV');
+    audit('export', 'asset', null, 'Exported ' . count($rows) . ' ' . asset_word(true) . ' to CSV');
 
     $columns = [
-        'Machine tag'        => static fn (array $r) => $r['asset_tag'],
+        asset_word(false, true) . ' tag'        => static fn (array $r) => $r['asset_tag'],
         'Name'             => static fn (array $r) => $r['name'],
         'Category'         => static fn (array $r) => $r['category'],
         'Location'         => static fn (array $r) => $r['location'],
@@ -154,7 +154,7 @@ $actions = '';
 
 if (can('assets.create')) {
     $actions .= '<a class="btn btn-primary" href="' . e(url('asset-edit.php')) . '">'
-        . icon('plus', '', 17) . ' Add machine</a>';
+        . icon('plus', '', 17) . ' Add ' . asset_word() . '</a>';
 }
 
 if (can('reports.export')) {
@@ -167,8 +167,8 @@ $actions .= '<a class="btn btn-secondary" href="' . e(url('labels.php')) . '">'
     . icon('qr-code', '', 17) . ' Print labels</a>';
 
 View::render('assets/index', [
-    'title'        => 'Machines',
-    'subtitle'     => 'Every kart, ride and machine you look after',
+    'title'        => asset_word(true, true),
+    'subtitle'     => 'Every kart, ride and ' . asset_word() . ' you look after',
     'activeNav'    => 'assets.php',
     'pageActions'  => $actions,
     'assets'       => $assets,

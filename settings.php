@@ -58,6 +58,23 @@ if (is_post()) {
         redirect(url('settings.php', ['tab' => 'email']));
     }
 
+    // ----------------------------------------------------------- test Slack
+    if ($action === 'test_slack') {
+        $result = \App\Slack::test();
+
+        if ($result['ok']) {
+            flash('success', 'Posted to Slack'
+                . ($result['error'] !== '' ? ' (workspace: ' . $result['error'] . ')' : '')
+                . '. If you can see it in the channel, turn "Post to Slack" on and save.');
+        } else {
+            flash('error', 'Slack test failed: ' . $result['error']);
+        }
+
+        audit('settings.test_slack', 'setting', null, 'Sent a Slack test message' . ($result['ok'] ? '' : ' (failed)'));
+
+        redirect(url('settings.php', ['tab' => 'slack']));
+    }
+
     // ----------------------------------------------------------- new cron token
     if ($action === 'new_cron_token') {
         Settings::set('cron_token', Str::random(48));
@@ -127,7 +144,8 @@ if (is_post()) {
         $type = (string) $row['setting_type'];
 
         // Internal keys are not on the form and must not be writable from it.
-        if ($type === 'hidden') {
+        // A heading is just a title in the form, with nothing to save.
+        if ($type === 'hidden' || $type === 'heading') {
             continue;
         }
 
@@ -212,6 +230,28 @@ $choices = [
     'theme_default'  => ['system' => 'Match the device', 'light' => 'Always light', 'dark' => 'Always dark'],
     'mail_transport' => Mailer::transportChoices(),
     'smtp_secure'    => Mailer::encryptionChoices(),
+    'slack_min_criticality' => [
+        'any'      => 'Every ' . asset_word(),
+        'medium'   => 'Medium importance and up',
+        'high'     => 'High importance and up',
+        'critical' => 'Critical ' . asset_word(true) . ' only',
+    ],
+    'slack_on_problem' => [
+        'off'    => 'Do not post problems',
+        'urgent' => 'Urgent only',
+        'high'   => 'High and urgent',
+        'all'    => 'Every problem',
+    ],
+    'slack_on_inspection' => [
+        'off'      => 'Do not post',
+        'critical' => 'Only when a safety-critical item fails',
+        'any'      => 'Any failed item',
+    ],
+    'slack_on_job' => [
+        'off'      => 'Do not post',
+        'followup' => 'Only jobs needing follow-up',
+        'all'      => 'Every job',
+    ],
 ];
 
 View::render('settings/index', [

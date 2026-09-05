@@ -14,10 +14,10 @@ use App\View;
 $name           = $name           ?? 'asset_id';
 $value          = $value          ?? '';
 $required       = $required       ?? true;
-$label          = $label          ?? 'Machine';
+$label          = $label          ?? asset_word(false, true);
 $hint           = $hint           ?? '';
 $includeRetired = $includeRetired ?? false;
-$emptyLabel     = $emptyLabel     ?? 'Choose a machine…';
+$emptyLabel     = $emptyLabel     ?? 'Choose ' . an_asset() . '…';
 
 if (!isset($assets)) {
     $sql = "SELECT a.id, a.name, a.asset_tag, a.status, c.name AS category_name

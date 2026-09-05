@@ -91,8 +91,15 @@ final class Inspection
      */
     public static function items(int $inspectionId): array
     {
+        // Whether an item may be left blank lives on the template. An item
+        // whose template line has since been deleted is treated as required,
+        // which is the safe way round.
         return db()->all(
-            'SELECT * FROM {inspection_items} WHERE inspection_id = ? ORDER BY sort_order ASC, id ASC',
+            'SELECT ii.*, COALESCE(ci.is_required, 1) AS is_required
+             FROM {inspection_items} ii
+             LEFT JOIN {checklist_items} ci ON ci.id = ii.checklist_item_id
+             WHERE ii.inspection_id = ?
+             ORDER BY ii.sort_order ASC, ii.id ASC',
             [$inspectionId]
         );
     }
@@ -225,13 +232,15 @@ final class Inspection
             } elseif ($response === 'na') {
                 $na++;
             } elseif (in_array($type, ['text', 'number', 'meter'], true)) {
-                // A value counts as answered for these types.
+                // A value counts as answered for these types. An optional one
+                // — "tyre pressure, if you measured it" — may be left blank
+                // without holding up the sign-off.
                 if ($valueText !== '' || $valueNumber !== null) {
                     $passed++;
-                } else {
+                } elseif ((int) ($item['is_required'] ?? 1) === 1) {
                     $missing++;
                 }
-            } else {
+            } elseif ((int) ($item['is_required'] ?? 1) === 1) {
                 $missing++;
             }
         }
@@ -382,6 +391,10 @@ final class Inspection
             } catch (Throwable $e) {
                 log_error('Inspection notification failed: ' . $e->getMessage());
             }
+        }
+
+        if ((int) $inspection['failed_count'] > 0) {
+            \App\Slack::inspectionFailed($inspection, $takeOutOfService);
         }
 
         Audit::record(

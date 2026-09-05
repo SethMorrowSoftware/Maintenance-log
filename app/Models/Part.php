@@ -237,6 +237,8 @@ final class Part
             } catch (Throwable $e) {
                 log_error('Low stock notification failed: ' . $e->getMessage());
             }
+
+            \App\Slack::lowStock(array_merge($part, ['quantity_on_hand' => $balance]));
         }
 
         return ['ok' => true, 'balance' => $balance];

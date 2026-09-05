@@ -310,7 +310,7 @@ final class Notifier
         self::pushToRole(
             'workorders.assign',
             'inspection_failed',
-            'Inspection failed: ' . (string) ($inspection['asset_name'] ?? 'a machine'),
+            'Inspection failed: ' . (string) ($inspection['asset_name'] ?? an_asset()),
             $failed . ' item' . ($failed === 1 ? '' : 's') . ' failed'
             . ((int) $inspection['critical_failed'] ? ', including a safety-critical one.' : '.'),
             'inspection-view.php?id=' . (int) $inspection['id'],

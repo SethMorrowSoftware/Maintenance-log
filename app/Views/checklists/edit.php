@@ -26,7 +26,7 @@ $canDelete = $editing && can('checklists.manage');
                         <h2 class="card-title"><?= icon('checklist', '', 18) ?> What gets checked</h2>
                         <p class="card-subtitle">
                             One line per thing to look at. Write them in the order somebody
-                            would walk around the machine.
+                            would walk around the <?= e(asset_word()) ?>.
                         </p>
                     </div>
                 </div>
@@ -202,7 +202,7 @@ $canDelete = $editing && can('checklists.manage');
                     </datalist>
 
                     <p class="form-hint mt-3">
-                        Mark a line <strong>safety-critical</strong> if failing it means the machine
+                        Mark a line <strong>safety-critical</strong> if failing it means the <?= e(asset_word()) ?>
                         should not carry guests. Failing one raises an urgent work order by itself.
                     </p>
                 </div>
@@ -229,8 +229,8 @@ $canDelete = $editing && can('checklists.manage');
                         'type'    => 'select',
                         'value'   => $values['applies_to'],
                         'options' => [
-                            'category' => 'A kind of machine (all go-karts, all rides…)',
-                            'asset'    => 'One particular machine',
+                            'category' => 'A kind of ' . asset_word() . ' (all go-karts, all rides…)',
+                            'asset'    => 'One particular ' . asset_word(),
                             'all'      => 'Everything',
                         ],
                         'hint'    => 'Decides when this list is offered during an inspection.',
@@ -251,7 +251,7 @@ $canDelete = $editing && can('checklists.manage');
                     <div data-reveal-for="scope" data-reveal-when="asset">
                         <?php View::partial('form-field', [
                             'name'    => 'asset_id',
-                            'label'   => 'Which machine',
+                            'label'   => 'Which ' . asset_word(),
                             'type'    => 'select',
                             'value'   => $values['asset_id'],
                             'options' => $assets,
@@ -305,7 +305,7 @@ $canDelete = $editing && can('checklists.manage');
                             <?= checked((int) $values['require_meter'], 1) ?>>
                         <span class="form-check-label">
                             Ask for the meter reading
-                            <small>Hours or miles on the machine, if it has one. Skipped
+                            <small>Hours or miles on the <?= e(asset_word()) ?>, if it has one. Skipped
                             automatically if a line above already asks for it.</small>
                         </span>
                     </label>

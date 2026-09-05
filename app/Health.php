@@ -46,6 +46,7 @@ final class Health
             [self::class, 'diskSpace'],
             [self::class, 'labourRate'],
             [self::class, 'email'],
+            [self::class, 'slack'],
         ] as $check) {
             try {
                 $result = $check();
@@ -217,7 +218,7 @@ final class Health
 
         return self::row('Secure connection', 'Plain HTTP', $local ? 'info' : 'warn',
             $local
-                ? 'Fine for a machine on the local network.'
+                ? 'Fine for ' . an_asset() . ' on the local network.'
                 : 'Passwords are sent unencrypted. Turn on SSL in cPanel (AutoSSL is free) and set the site address to https.');
     }
 
@@ -353,6 +354,26 @@ final class Health
             'Send yourself a test under Settings → Email if you are not sure it works.');
     }
 
+    /** @return array<string, string> */
+    private static function slack(): array
+    {
+        $token   = trim((string) Settings::get('slack_bot_token', '')) !== '';
+        $enabled = Settings::bool('slack_enabled', false);
+
+        if ($enabled && $token) {
+            return self::row('Slack', 'On, posting to ' . (string) Settings::get('slack_channel', ''), 'ok',
+                'Which alerts go where is under Settings → Slack.');
+        }
+
+        if ($token) {
+            return self::row('Slack', 'Set up but switched off', 'info',
+                'A token is saved. Send a test under Settings → Slack, then turn "Post to Slack" on.');
+        }
+
+        return self::row('Slack', 'Off', 'info',
+            'Optional. Alerts about problems, failed checks and service due can go to a Slack channel. Settings → Slack.');
+    }
+
     // -------------------------------------------------------------------------
     // Plain facts
     // -------------------------------------------------------------------------
@@ -386,7 +407,7 @@ final class Health
     private static function counts(): array
     {
         $queries = [
-            ['Machines',     'assets',           'assets',          'deleted_at IS NULL'],
+            [asset_word(true, true),     'assets',           'assets',          'deleted_at IS NULL'],
             ['Jobs logged',  'wrench',           'maintenance_logs', 'deleted_at IS NULL'],
             ['Work orders',  'work-order',       'work_orders',      'deleted_at IS NULL'],
             ['Inspections',  'clipboard-check',  'inspections',      '1=1'],

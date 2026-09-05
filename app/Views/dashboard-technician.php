@@ -42,8 +42,8 @@ foreach ($dueList as $due) {
             <span class="action-text">
                 <strong>Run today's check</strong>
                 <small><?= $inspections === []
-                    ? 'Every machine is checked for today'
-                    : count($inspections) . ' machine' . (count($inspections) === 1 ? '' : 's') . ' still to check' ?></small>
+                    ? 'Every ' . asset_word() . ' is checked for today'
+                    : count($inspections) . ' ' . (count($inspections) === 1 ? asset_word() : asset_word(true)) . ' still to check' ?></small>
             </span>
             <?= icon('chevron-right', 'action-arrow', 20) ?>
         </a>
@@ -81,7 +81,7 @@ foreach ($dueList as $due) {
                             <?= e((string) $wo['title']) ?>
                         </a>
                         <div class="text-sm text-muted">
-                            <?= e((string) ($wo['asset_name'] ?? 'No machine')) ?>
+                            <?= e((string) ($wo['asset_name'] ?? 'No ' . asset_word())) ?>
                             &middot; <?= e(Status::label((string) $wo['priority'], 'priority')) ?>
                             <?php if (!empty($wo['due_date'])): ?>
                                 &middot; due <?= e(Dates::dateOnly((string) $wo['due_date'])) ?>
@@ -150,7 +150,7 @@ foreach ($dueList as $due) {
         <div class="card-header">
             <div>
                 <h2 class="card-title"><?= icon('clipboard-check', '', 18) ?> Still to check today</h2>
-                <p class="card-subtitle">Tap a machine to start its check</p>
+                <p class="card-subtitle">Tap <?= e(an_asset()) ?> to start its check</p>
             </div>
         </div>
         <div class="card-body is-tight">
@@ -258,7 +258,7 @@ foreach ($dueList as $due) {
                                     <?= e((string) $wo['title']) ?>
                                 </a>
                                 <div class="text-sm text-muted">
-                                    <?= e((string) ($wo['asset_name'] ?? 'No machine')) ?>
+                                    <?= e((string) ($wo['asset_name'] ?? 'No ' . asset_word())) ?>
                                     &middot;
                                     <?php if (!empty($wo['assignee_id'])): ?>
                                         <?= e(trim((string) $wo['first_name'] . ' ' . (string) $wo['last_name'])) ?>

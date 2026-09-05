@@ -72,6 +72,19 @@ expires.
 the storage folders, the nightly job and the error log in plain language, and
 has a one-click download of every record as a ZIP of spreadsheets.
 
+**It talks to Slack.** With a bot token and one `chat:write` scope, problems
+reported, failed checks, machines going out of service, jobs needing follow-up,
+parts running low and a morning "what is due" list post to a channel. Each is
+its own switch with its own channel, a priority floor, and an @mention for
+urgent and safety messages.
+
+**It starts with the real fleet.** The installer offers the Castle Fun Center
+fleet — twenty go-karts, the Freefall, Dragon Coaster and Swings, the zip line,
+bowling lanes, axe-throwing lanes and the indoor attractions — each with its
+daily checklist and service schedule. Everything is renamable, and the word
+"machines" itself is a setting: call them rides, assets or appliances and every
+label follows.
+
 ---
 
 ## What it needs

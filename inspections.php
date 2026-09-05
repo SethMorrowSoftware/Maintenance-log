@@ -59,7 +59,7 @@ if (Request::string('export') === 'csv') {
 
     Csv::stream(
         Csv::filename('inspections'),
-        ['Started', 'Completed', 'Machine tag', 'Machine', 'Checklist', 'Result',
+        ['Started', 'Completed', asset_word(false, true) . ' tag', asset_word(false, true), 'Checklist', 'Result',
          'Passed', 'Failed', 'N/A', 'Critical failure', 'Meter', 'Minutes',
          'Signed by', 'Inspector', 'Notes'],
         $rows,

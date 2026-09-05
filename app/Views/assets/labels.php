@@ -15,7 +15,7 @@ $sizes = [
 ];
 
 $actions = [
-    'view'    => 'Open the machine’s page',
+    'view'    => 'Open the ' . asset_word() . '’s page',
     'log'     => 'Start a maintenance log',
     'inspect' => 'Start an inspection',
     'issue'   => 'Report a problem',
@@ -27,8 +27,8 @@ $actions = [
         <div>
             <h2 class="card-title"><?= icon('qr-code', '', 18) ?> Labels to print</h2>
             <p class="card-subtitle">
-                Stick one on each machine. Pointing a phone camera at it opens that
-                machine here — no typing, no hunting through a list.
+                Stick one on each <?= e(asset_word()) ?>. Pointing a phone camera at it opens that
+                <?= e(asset_word()) ?> here — no typing, no hunting through a list.
             </p>
         </div>
     </div>

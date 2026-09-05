@@ -29,7 +29,7 @@ if (mb_strlen($query) >= 2) {
     $like = Str::likeContains($query);
 
     if (can('assets.view')) {
-        $results['Machines'] = db()->all(
+        $results[asset_word(true, true)] = db()->all(
             "SELECT a.id, a.name, a.asset_tag, a.status, a.model, a.manufacturer,
                     c.name AS category_name, loc.name AS location_name
              FROM {assets} a

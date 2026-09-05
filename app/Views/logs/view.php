@@ -31,7 +31,7 @@ $canSeeCosts = costs_visible();
             </div>
             <div class="card-body">
                 <dl class="detail-list">
-                    <dt>Machine</dt>
+                    <dt><?= e(asset_word(false, true)) ?></dt>
                     <dd>
                         <?php if ($printing): ?>
                             <?= e((string) $log['asset_name']) ?> (<?= e((string) $log['asset_tag']) ?>)

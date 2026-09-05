@@ -88,7 +88,7 @@ $canSeeCosts = costs_visible();
                         <thead>
                             <tr>
                                 <th>When</th>
-                                <th>Machine</th>
+                                <th><?= e(asset_word(false, true)) ?></th>
                                 <th>Job</th>
                                 <th class="is-numeric">Used</th>
                                 <?php if ($canSeeCosts): ?><th class="is-numeric">Cost</th><?php endif; ?>
@@ -98,7 +98,7 @@ $canSeeCosts = costs_visible();
                             <?php foreach ($usage as $row): ?>
                                 <tr>
                                     <td data-label="When"><?= e(Dates::date((string) $row['performed_at'])) ?></td>
-                                    <td data-label="Machine"><?= e((string) $row['asset_name']) ?></td>
+                                    <td data-label="<?= attr(asset_word(false, true)) ?>"><?= e((string) $row['asset_name']) ?></td>
                                     <td data-label="Job">
                                         <a href="<?= e(url('log-view.php', ['id' => (int) $row['log_id']])) ?>">
                                             <?= e((string) $row['title']) ?>

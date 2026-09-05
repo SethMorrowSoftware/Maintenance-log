@@ -91,9 +91,18 @@ email address; it is how you get back in if you forget the password.
 **About your park.** The site name (which appears in the header and on printed
 reports), your organisation's name, your time zone, and the web address the site
 will live at. Get the time zone right — every date in the system is displayed in
-it. There is also a tick box here for **demonstration data**: fourteen made-up
-karts and rides with a year of history behind them. Good for a look around, and
-easy to clear out afterwards.
+it. You also choose what to **start with**:
+
+- **The Castle Fun Center fleet** (the default) — twenty go-karts, the Freefall,
+  Dragon Coaster and Swings, the zip line, eight bowling lanes, six axe-throwing
+  lanes, and the laser tag arena, roller rink, climbing wall, mini golf course,
+  arcade and shop compressor. Each comes with its daily checklist and its service
+  schedule, and with no made-up history. Every name, tag and category can be
+  changed afterwards from the Machines screen; the counts that were guesses
+  (bowling lanes, the indoor extras) are the ones to check first.
+- **Fictional sample data** — fourteen made-up karts and rides with a year of
+  history behind them. Good for a look around, and easy to clear out afterwards.
+- **Nothing** — just the categories, locations and the two standard checklists.
 
 **Install.** Ten seconds or so. Then a page with your cron command on it and a
 short list of things to do.
@@ -122,6 +131,39 @@ old records. Nothing breaks without it; you just stop getting told things.
 has not already. Then open `.htaccess` in the root of the site and uncomment the
 five lines under "Force HTTPS", and the `Strict-Transport-Security` line just
 above them. Passwords going over plain HTTP is not a thing to leave for later.
+
+---
+
+## Slack alerts (optional)
+
+RideLog can post to a Slack channel when a problem is reported, a daily check
+fails, a machine goes out of service, a job needs follow-up, a part runs low,
+and once a morning with what is due. Each of those can be switched on or off
+and sent to its own channel, so the maintenance channel is as busy or as quiet
+as you like.
+
+You need a Slack app with a bot token. Five minutes:
+
+1. Go to **api.slack.com/apps** → **Create New App** → **From scratch**. Name it
+   (something like *Castle Maintenance*) and pick your workspace.
+2. **OAuth & Permissions** → **Scopes** → **Bot Token Scopes** → add `chat:write`.
+3. **Install to Workspace** and allow it.
+4. Copy the **Bot User OAuth Token** — it starts with `xoxb-`.
+5. In Slack, open the channel you want alerts in and type `/invite @` followed by
+   the app's name. Do the same for any other channel you name in the settings.
+6. In RideLog, **Settings → Slack**: paste the token, set the main channel (with
+   the `#`), save, and press **Send a test message**. If it arrives, turn
+   **Post to Slack** on and save.
+
+If the test fails, the message on screen says what is wrong: the token was not
+accepted, the bot has not been invited to the channel, the app is missing the
+`chat:write` scope, or the server cannot reach Slack at all (rare on cPanel;
+ask your host about outgoing connections).
+
+The token is stored like a password: it is never shown again, never included in
+exports, and anyone with it can post as the app. The "who to alert" box takes
+`@here`, `@channel` or a member ID and is added only to urgent and safety
+messages.
 
 ---
 

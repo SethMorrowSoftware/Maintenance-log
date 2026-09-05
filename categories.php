@@ -40,7 +40,7 @@ if (is_post()) {
         );
 
         if ($inUse > 0) {
-            flash('error', 'That is still used by ' . $inUse . ' machine' . ($inUse === 1 ? '' : 's') . '. '
+            flash('error', 'That is still used by ' . $inUse . ' ' . ($inUse === 1 ? asset_word() : asset_word(true)) . '. '
                 . 'Move them somewhere else first, or switch this off instead of deleting it.');
             redirect($back);
         }
@@ -159,7 +159,7 @@ if ($editId > 0) {
 
 View::render('categories/index', [
     'title'      => 'Categories & Locations',
-    'subtitle'   => 'How your machines are grouped, and where they live',
+    'subtitle'   => 'How your ' . asset_word(true) . ' are grouped, and where they live',
     'activeNav'  => 'categories.php',
     'tab'        => $tab,
     'categories' => $categories,

@@ -237,6 +237,28 @@ Ask an administrator.
 
 ---
 
+## Slack
+
+If the administrator has set it up (Settings → Slack), the channel gets a
+message when a problem is reported, a daily check fails, a machine goes out of
+or back into service, a job is logged that needs follow-up, a part runs low,
+and each morning with what service is due. Every one of those is a separate
+switch and can go to its own channel; urgent and safety messages can @mention
+somebody. Nothing about Slack changes what you do in RideLog — it just tells
+the channel.
+
+---
+
+## Calling them something other than machines
+
+RideLog says "machines" everywhere: the menu, the forms, the reports. If that
+is not the word your team uses — rides, assets, appliances, vehicles — change
+it once under **Settings → General** ("What do you call one of the things you
+look after?") and every label follows. Categories are just labels too: add an
+*Appliances* category and start logging the walk-in fridge alongside the karts.
+
+---
+
 ## Things worth knowing
 
 **Nothing is really deleted.** Deleting a machine keeps its whole maintenance

@@ -40,12 +40,12 @@ use App\View;
 
                     <?php View::partial('asset-picker', [
                         'name'     => 'asset_id',
-                        'label'    => 'Which machine?',
+                        'label'    => 'Which ' . asset_word() . '?',
                         'value'    => $values['asset_id'],
                         'assets'   => $assets,
                         'required' => false,
-                        'hint'     => 'Leave blank if it is not about a particular machine.',
-                        'emptyLabel' => 'Not about a specific machine',
+                        'hint'     => 'Leave blank if it is not about a particular ' . asset_word() . '.',
+                        'emptyLabel' => 'Not about a specific ' . asset_word(),
                     ]); ?>
 
                     <?php View::partial('form-field', [
@@ -95,7 +95,7 @@ use App\View;
                                    <?= checked((int) $values['took_out_of_service']) ?>>
                             <span class="form-check-label">
                                 I have taken it out of service
-                                <small>Marks the machine unavailable to guests straight away.</small>
+                                <small>Marks the <?= e(asset_word()) ?> unavailable to guests straight away.</small>
                             </span>
                         </label>
                     <?php endif; ?>

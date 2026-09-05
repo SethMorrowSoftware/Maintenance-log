@@ -55,7 +55,7 @@ if (is_post()) {
     ], [
         'name.required' => 'Give the job a name, such as "50 hour service".',
     ], [
-        'asset_id'        => 'Machine',
+        'asset_id'        => asset_word(false, true),
         'frequency_type'  => 'How often',
         'frequency_value' => 'Interval',
         'meter_interval'  => 'Meter interval',

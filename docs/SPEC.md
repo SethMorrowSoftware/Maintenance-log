@@ -338,8 +338,23 @@ ignores any that arrive and prices parts from the shelf price and labour from
 `default_labor_rate`, so the administrator's figures stay right.
 
 **Vocabulary.** The code, URLs, database and permission names say `assets` and
-`schedules`; every label a person reads says **Machines** and **Scheduled Service**.
-Do not rename the identifiers.
+`schedules`; every label a person reads says **Scheduled Service** and, for assets,
+whatever `asset_noun_singular` / `asset_noun_plural` (Settings → General, default
+Machine / Machines) say — always through `asset_word($plural, $capital)` and
+`an_asset()`, never a literal. Constants that carry the word (`Acl::CATALOGUE`,
+`Reports::CATALOGUE`, `Status::MAP`) are reworded on the way out. Do not rename the
+identifiers.
+
+**Slack** (`App\Slack`). `chat.postMessage` with a bot token; every event method is
+gated by its own `slack_on_*` setting, a channel override, the `slack_min_criticality`
+floor and, for problems, a priority floor; `slack_on_safety` overrides the floor. The
+work-order, inspection, asset-status, log and part models call it after their own
+side effects; `cron.php` posts the due digest and the morning report. Never throws;
+`config app.slack_api` can point it at a stand-in for testing.
+
+**Starting data.** `install/fleet.sql` (real Castle Fun Center fleet, no history) or
+`install/demo.sql` (fictional, with history), chosen in the installer; both are
+`INSERT IGNORE` and are followed by `Scheduler::recomputeAll()`.
 
 API:
 ```php

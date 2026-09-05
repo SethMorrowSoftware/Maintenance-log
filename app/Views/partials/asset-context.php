@@ -26,7 +26,7 @@ $hasMeter   = $asset !== null && (string) $asset['meter_type'] !== 'none';
 <div data-asset-context data-asset-context-for="<?= attr($selectName) ?>" <?= $asset === null ? 'hidden' : '' ?>>
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">About this machine</h3>
+            <h3 class="card-title">About this <?= e(asset_word()) ?></h3>
         </div>
         <div class="card-body context-machine">
             <a class="context-machine-name" data-ctx-name

@@ -22,7 +22,7 @@ $id    = Request::int('id');
 $asset = Asset::find($id);
 
 if ($asset === null) {
-    abort(404, 'That machine does not exist. It may have been deleted.');
+    abort(404, 'That ' . asset_word() . ' does not exist. It may have been deleted.');
 }
 
 // -----------------------------------------------------------------------------
@@ -229,7 +229,7 @@ View::render('assets/view', [
     'activeNav'   => 'assets.php',
     'pageActions' => $actions,
     'breadcrumbs' => [
-        ['label' => 'Machines', 'url' => url('assets.php')],
+        ['label' => asset_word(true, true), 'url' => url('assets.php')],
         ['label' => (string) $asset['name']],
     ],
     'asset'    => $asset,

@@ -64,7 +64,7 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
 
                     <?php View::partial('asset-picker', [
                         'name'     => 'asset_id',
-                        'label'    => 'Which machine?',
+                        'label'    => 'Which ' . asset_word() . '?',
                         'value'    => $values['asset_id'],
                         'assets'   => $assets,
                         'required' => true,
@@ -349,13 +349,13 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
 
                     <?php View::partial('form-field', [
                         'name'    => 'status_after',
-                        'label'   => 'What state is the machine in now?',
+                        'label'   => 'What state is the ' . asset_word() . ' in now?',
                         'type'    => 'select',
                         'value'   => $values['status_after'],
                         'options' => Status::options('asset'),
                         'empty'   => 'Leave it as it is'
                             . ($asset === null ? '' : ' (' . Status::label((string) $asset['status'], 'asset') . ')'),
-                        'hint'    => 'Choosing one changes the machine\'s status straight away.',
+                        'hint'    => 'Choosing one changes the ' . asset_word() . '\'s status straight away.',
                     ]); ?>
 
                     <?php if ($assetSchedules !== []): ?>

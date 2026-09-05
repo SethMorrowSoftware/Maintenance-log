@@ -92,7 +92,7 @@ final class AssetsController
         $asset = Asset::find(Request::int('id'));
 
         if ($asset === null) {
-            Response::error('That machine does not exist.', 'not_found', 404);
+            Response::error('That ' . asset_word() . ' does not exist.', 'not_found', 404);
         }
 
         return [
@@ -161,7 +161,7 @@ final class AssetsController
         $asset = Asset::find(Request::int('id'));
 
         if ($asset === null) {
-            Response::error('That machine does not exist.', 'not_found', 404);
+            Response::error('That ' . asset_word() . ' does not exist.', 'not_found', 404);
         }
 
         $events = [];
@@ -206,7 +206,7 @@ final class AssetsController
         $assetId = Request::int('id');
 
         if ($assetId <= 0) {
-            Response::error('Which machine?', 'validation_failed', 422);
+            Response::error('Which ' . asset_word() . '?', 'validation_failed', 422);
         }
 
         return ['schedules' => \App\Scheduler::forAsset($assetId)];

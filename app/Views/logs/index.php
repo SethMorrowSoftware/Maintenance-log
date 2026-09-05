@@ -61,8 +61,8 @@ foreach ($assets as $asset) {
     <?php View::partial('filter-bar', [
         'action'  => 'logs.php',
         'filters' => [
-            'q'           => ['label' => 'Search', 'type' => 'text', 'value' => $filters['q'], 'placeholder' => 'Job, notes, machine…'],
-            'asset_id'    => ['label' => 'Machine', 'type' => 'select', 'value' => $filters['asset_id'], 'options' => $assetOptions, 'empty' => 'All machines'],
+            'q'           => ['label' => 'Search', 'type' => 'text', 'value' => $filters['q'], 'placeholder' => 'Job, notes, ' . asset_word() . '…'],
+            'asset_id'    => ['label' => asset_word(false, true), 'type' => 'select', 'value' => $filters['asset_id'], 'options' => $assetOptions, 'empty' => 'All ' . asset_word(true)],
             'category_id' => ['label' => 'Category', 'type' => 'select', 'value' => $filters['category_id'], 'options' => $categories, 'empty' => 'All'],
             'log_type'    => ['label' => 'Type', 'type' => 'select', 'value' => $filters['log_type'], 'options' => Status::options('log_type'), 'empty' => 'All types'],
             'user_id'     => ['label' => 'Technician', 'type' => 'select', 'value' => $filters['user_id'], 'options' => $technicians, 'empty' => 'Anyone'],
@@ -90,7 +90,7 @@ foreach ($assets as $asset) {
                 <thead>
                     <tr>
                         <th><?= sort_link('performed', 'When', $sort, $direction) ?></th>
-                        <th><?= sort_link('asset', 'Machine', $sort, $direction) ?></th>
+                        <th><?= sort_link('asset', asset_word(false, true), $sort, $direction) ?></th>
                         <th><?= sort_link('title', 'Job', $sort, $direction) ?></th>
                         <th><?= sort_link('type', 'Type', $sort, $direction) ?></th>
                         <th><?= sort_link('user', 'Who', $sort, $direction) ?></th>
@@ -107,7 +107,7 @@ foreach ($assets as $asset) {
                                 <?= e(Dates::date((string) $log['performed_at'])) ?>
                                 <span class="cell-secondary"><?= e(Dates::time((string) $log['performed_at'])) ?></span>
                             </td>
-                            <td data-label="Machine">
+                            <td data-label="<?= attr(asset_word(false, true)) ?>">
                                 <a href="<?= e(url('asset-view.php', ['id' => (int) $log['asset_id']])) ?>">
                                     <?= e((string) $log['asset_name']) ?>
                                 </a>

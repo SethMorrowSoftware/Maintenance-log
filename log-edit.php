@@ -71,9 +71,9 @@ if (is_post()) {
         'performed_at.not_future' => 'The date and time cannot be in the future. '
                                    . 'If you are logging work you are about to do, log it once it is done.',
         'title.required'          => 'Give the job a short title, so it is recognisable in a list.',
-        'asset_id.required'       => 'Choose which machine this work was done on.',
+        'asset_id.required'       => 'Choose which ' . asset_word() . ' this work was done on.',
     ], [
-        'asset_id'         => 'Machine',
+        'asset_id'         => asset_word(false, true),
         'log_type'         => 'Type of work',
         'performed_at'     => 'Date and time',
         'labor_hours'      => 'Time taken',
@@ -141,7 +141,7 @@ if (is_post()) {
         flash_errors([
             'meter_reading' => 'The meter currently reads ' . decimal($asset['meter_reading']) . ' '
                 . (string) $asset['meter_type'] . '. A reading cannot go backwards — check the number. '
-                . 'If the meter was replaced, change it on the machine itself.',
+                . 'If the meter was replaced, change it on the ' . asset_word() . ' itself.',
         ], $_POST);
 
         redirect(url('log-edit.php', $editing ? ['id' => $id] : []));
@@ -295,7 +295,7 @@ View::render('logs/edit', [
     'title'       => $editing ? 'Edit maintenance log' : 'Log maintenance',
     'subtitle'    => $editing
         ? (string) $log['asset_name']
-        : 'Record work you have done on a kart, ride or machine',
+        : 'Record work you have done on a kart, ride or ' . asset_word(),
     'activeNav'   => 'logs.php',
     'breadcrumbs' => [
         ['label' => 'Maintenance Logs', 'url' => url('logs.php')],
