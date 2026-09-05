@@ -78,8 +78,6 @@ if ($job === 'checks') {
         $result = 'FAILED (recorded in the error log)';
     }
 
-    Settings::set('last_checks_run', Dates::nowUtc());
-
     echo 'RideLog checks job — ' . Dates::datetime(Dates::nowUtc()) . "\n";
     echo sprintf('  %-28s %s', 'Unfinished checks', $result) . "\n";
     exit;

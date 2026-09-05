@@ -42,6 +42,7 @@ final class Health
             [self::class, 'installer'],
             [self::class, 'https'],
             [self::class, 'nightlyJob'],
+            [self::class, 'checksJob'],
             [self::class, 'errors'],
             [self::class, 'diskSpace'],
             [self::class, 'labourRate'],
@@ -254,6 +255,55 @@ final class Health
             . 'whenever somebody opens the dashboard'
             . ($light !== '' ? ' (last time ' . Dates::ago($light) . ')' : '')
             . ', but low stock warnings and tidying only happen in the real one.'
+        );
+    }
+
+    /**
+     * The every-five-minutes job that chases timed checks. Only worth a line
+     * once a checklist actually has a due time.
+     *
+     * @return array<string, string>|null
+     */
+    private static function checksJob(): ?array
+    {
+        if (!Features::on('inspections')) {
+            return null;
+        }
+
+        $timed = db()->count(
+            'SELECT COUNT(*) FROM {checklists} WHERE is_active = 1 AND due_time IS NOT NULL'
+        );
+
+        if ($timed === 0) {
+            return null;
+        }
+
+        $last = (string) Settings::get('last_checks_run', '');
+        $lists = $timed . ' checklist' . ($timed === 1 ? ' has' : 's have') . ' a due time. ';
+
+        if ($last === '') {
+            return self::row(
+                'Timed checks',
+                'Never checked',
+                'warn',
+                $lists . 'Nothing has looked for unfinished checks yet. Add the every-five-minutes cron job under Settings → Security; '
+                . 'until then RideLog only looks when somebody opens a page.'
+            );
+        }
+
+        $ageMinutes = (Dates::now()->getTimestamp() - (int) (Dates::parseUtc($last)?->getTimestamp() ?? 0)) / 60;
+
+        if ($ageMinutes <= 20) {
+            return self::row('Timed checks', 'Checked ' . Dates::ago($last), 'ok',
+                $lists . 'Unfinished checks are being noticed within a few minutes.');
+        }
+
+        return self::row(
+            'Timed checks',
+            'Last checked ' . Dates::ago($last),
+            'warn',
+            $lists . 'Alerts about unfinished checks may go out late. Make sure the every-five-minutes cron job under '
+            . 'Settings → Security is set up and its token matches.'
         );
     }
 

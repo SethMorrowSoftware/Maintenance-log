@@ -1360,6 +1360,10 @@ switch ($step) {
 
                 <p class="form-hint mt-3">That address contains a secret token. Treat it like a password —
                 anyone with it can trigger the task. You can regenerate it in Settings &rarr; Security.</p>
+
+                <p class="form-hint">If you later give checklists due times (Today's Checks), add a second job
+                that runs <em>every five minutes</em> with <code>&amp;job=checks</code> on the end of the same
+                address. The exact command is under Settings &rarr; Security too.</p>
             </div>
         </div>
 

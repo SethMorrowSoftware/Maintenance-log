@@ -3937,6 +3937,11 @@ details.card > summary:focus-visible {
 
     .stat-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .check-row { flex-wrap: wrap; padding: var(--space-3) var(--space-4); }
+
+    /* The flag ticks on each checklist line, and the forgot-password link,
+       get a thumb-sized target */
+    .builder-flags .form-check { min-height: 40px; }
+    .auth-card a.text-sm { display: inline-block; padding: var(--space-2) 0; }
     .check-action { flex-basis: 100%; display: flex; justify-content: flex-end; }
     .check-action:empty { display: none; }
     .check-summary { align-items: flex-start; }

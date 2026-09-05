@@ -789,6 +789,14 @@ final class Checks
         $slackOn = Slack::enabled() && Settings::bool('slack_on_unfinished', true);
         $bellOn  = Settings::bool('checks_notify_managers', true);
 
+        // Whoever ran this — cron, the nightly job or a page view — the health
+        // page can now say when today's checks were last looked at.
+        try {
+            Settings::set('last_checks_run', $nowUtc);
+        } catch (Throwable $e) {
+            // Not worth stopping for.
+        }
+
         foreach ($board as $group) {
             $checklist = $group['checklist'];
             $dueAt     = $group['due_at'];
