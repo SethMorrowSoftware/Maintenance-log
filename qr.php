@@ -24,6 +24,16 @@ use App\Request;
 Auth::requireLogin();
 require_feature('labels');
 
+// Somebody who cannot see machines at all — checks-only staff — can still
+// scan a sticker to start a check; anything else about the machine stays
+// out of reach, and a label they cannot use sends them back to their checks.
+$seesMachines = can('assets.view');
+$home         = $seesMachines ? 'assets.php' : 'checks.php';
+
+if (!$seesMachines && !can('inspections.perform')) {
+    abort(403, 'You do not have permission to look up ' . asset_word(true) . '.');
+}
+
 $code = trim(Request::string('c'));
 
 if ($code === '') {
@@ -31,9 +41,9 @@ if ($code === '') {
 }
 
 if ($code === '') {
-    flash('error', 'That code could not be read. Try scanning it again, or find the '
-        . asset_word() . ' on the ' . asset_word(true) . ' list.');
-    redirect(url('assets.php'));
+    flash('error', 'That code could not be read. Try scanning it again'
+        . ($seesMachines ? ', or find the ' . asset_word() . ' on the ' . asset_word(true) . ' list.' : '.'));
+    redirect(url($home));
 }
 
 $asset = Asset::findByTagOrSlug($code);
@@ -41,10 +51,16 @@ $asset = Asset::findByTagOrSlug($code);
 if ($asset === null) {
     flash('warning', 'No ' . asset_word() . ' matches the code on that label. It may have been '
         . 'retired, or the label may belong to a different system.');
-    redirect(url('assets.php', ['q' => $code]));
+    redirect(url($home, $seesMachines ? ['q' => $code] : []));
 }
 
 $assetId = (int) $asset['id'];
+
+if (!$seesMachines) {
+    // The only thing this person can do with a machine is check it; the
+    // runner decides whether it is in their area.
+    redirect(url('inspection-run.php', ['asset_id' => $assetId]));
+}
 
 audit('qr.scan', 'asset', $assetId, 'Scanned the label on ' . (string) $asset['name']);
 

@@ -75,8 +75,13 @@ $areaChecklists = $areaChecklists ?? [];
     </div>
 <?php elseif ($areaChecklists === []): ?>
     <?php View::partial('empty-state', [
-        'icon'    => 'clipboard-check',
-        'title'   => 'Nothing to check yet',
-        'message' => 'No checklist covers anything in your area. Ask whoever looks after checklists.',
+        'icon'        => 'clipboard-check',
+        'title'       => 'Nothing to check yet',
+        'message'     => \App\Scope::limited()
+            ? 'No checklist covers anything in your area. Ask whoever looks after checklists.'
+            : 'There are no ' . asset_word(true) . ' in service and no area checklists. Add ' . an_asset() . ' or a checklist first.',
+        'actionLabel' => can('checklists.manage') ? 'Checklists' : '',
+        'actionUrl'   => can('checklists.manage') ? url('checklists.php') : '',
+        'actionIcon'  => 'checklist',
     ]); ?>
 <?php endif; ?>

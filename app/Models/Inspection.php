@@ -202,12 +202,18 @@ final class Inspection
             return 0;
         }
 
+        // Carry on with an unfinished run from earlier today rather than start
+        // a second one. Yesterday's abandoned run is left alone: finishing it
+        // now would file today's check against yesterday's deadline.
+        [$dayStart] = Checks::dayBounds(Checks::today());
+
         $existing = db()->value(
             "SELECT id FROM {inspections}
              WHERE checklist_id = ? AND user_id = ? AND status = 'in_progress'
+               AND started_at >= ?
                AND " . ($isArea ? 'asset_id IS NULL' : 'asset_id = ?') . '
              ORDER BY id DESC LIMIT 1',
-            $isArea ? [$checklistId, $userId] : [$checklistId, $userId, $assetId]
+            $isArea ? [$checklistId, $userId, (string) $dayStart] : [$checklistId, $userId, (string) $dayStart, $assetId]
         );
 
         if ($existing !== null) {
@@ -224,7 +230,7 @@ final class Inspection
                 'status'         => 'in_progress',
                 'started_at'     => Dates::nowUtc(),
                 // The deadline as it stood today, kept on the record.
-                'due_at'         => Checks::dueAtFor($checklist, Dates::today()),
+                'due_at'         => Checks::dueAtFor($checklist, Checks::today()),
                 'created_at'     => Dates::nowUtc(),
             ]);
 

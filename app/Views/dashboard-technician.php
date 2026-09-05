@@ -42,8 +42,8 @@ foreach ($dueList as $due) {
             <span class="action-text">
                 <strong>Run today's check</strong>
                 <small><?= $inspections === []
-                    ? 'Every ' . asset_word() . ' is checked for today'
-                    : count($inspections) . ' ' . (count($inspections) === 1 ? asset_word() : asset_word(true)) . ' still to check' ?></small>
+                    ? 'Everything is checked for today'
+                    : ($checksOpen ?? count($inspections)) . ' check' . (($checksOpen ?? count($inspections)) === 1 ? '' : 's') . ' still to do' ?></small>
             </span>
             <?= icon('chevron-right', 'action-arrow', 20) ?>
         </a>
@@ -167,9 +167,10 @@ foreach ($dueList as $due) {
                        href="<?= e(url('inspection-run.php', $target)) ?>">
                         <?= icon($item['id'] === null ? 'map-pin' : 'clipboard', '', 15) ?>
                         <?= e((string) $item['name']) ?>
-                        <?php if (!empty($item['due_time'])): ?>
-                            <small class="text-muted">by <?= e(\App\Checks::timeLabel((string) $item['due_time'])) ?></small>
-                        <?php endif; ?>
+                        <small class="text-muted">
+                            <?= e(str_limit((string) $item['checklist_name'], 26)) ?>
+                            <?php if (!empty($item['due_time'])): ?>&middot; by <?= e(\App\Checks::timeLabel((string) $item['due_time'])) ?><?php endif; ?>
+                        </small>
                     </a>
                 <?php endforeach; ?>
             </div>

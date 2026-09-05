@@ -288,7 +288,7 @@ final class Dashboard
     public static function inspectionsDueToday(int $limit = 12): array
     {
         try {
-            $rows = \App\Checks::occurrences(Dates::today(), Auth::user());
+            $rows = \App\Checks::occurrences(\App\Checks::today(), Auth::user());
         } catch (Throwable $e) {
             log_error('Dashboard inspection query failed: ' . $e->getMessage());
 

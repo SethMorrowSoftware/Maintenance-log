@@ -80,11 +80,13 @@ if ($inspectionId === 0) {
     ));
 
     if ($checklists === []) {
+        // Somebody limited to an area is told no more than that — not the
+        // name of a machine they are not meant to see.
         flash('error', Scope::limited()
-            ? (string) $asset['name'] . ' is not in your area.'
+            ? 'That ' . asset_word() . ' is not in your area.'
             : 'There is no checklist set up for ' . (string) $asset['name']
               . '. Ask an administrator to create one under Checklists.');
-        redirect(url('inspections.php'));
+        redirect(url(Scope::limited() ? 'checks.php' : 'inspections.php'));
     }
 
     if ($checklistId === 0) {
@@ -106,7 +108,7 @@ if ($inspectionId === 0) {
     $inspectionId = Inspection::start($assetId, $checklistId);
 
     if ($inspectionId === 0) {
-        flash('error', 'That checklist could not be started.');
+        flash('error', 'That check could not be started.');
         redirect(url('inspections.php'));
     }
 

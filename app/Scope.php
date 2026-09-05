@@ -22,11 +22,23 @@ use Throwable;
  */
 final class Scope
 {
-    /** @var array<int, array{areas: list<int>, checklists: list<int>}> */
+    /** @var array<int, array{areas: list<int>, checklists: list<int>, error: bool}> */
     private static array $cache = [];
 
     private function __construct()
     {
+    }
+
+    /**
+     * A stand-in for "the whole site": the checks job runs for everybody,
+     * whoever's page view happened to trigger it. Passing null would mean the
+     * signed-in user, so this is what to pass instead.
+     *
+     * @return array<string, mixed>
+     */
+    public static function everyone(): array
+    {
+        return ['id' => 0, 'role' => Acl::ROLE_ADMIN, 'is_active' => 1];
     }
 
     // -------------------------------------------------------------------------
@@ -42,7 +54,7 @@ final class Scope
             return self::$cache[$userId];
         }
 
-        $out = ['areas' => [], 'checklists' => []];
+        $out = ['areas' => [], 'checklists' => [], 'error' => false];
 
         if ($userId > 0) {
             try {
@@ -55,7 +67,10 @@ final class Scope
                     [$userId]
                 ));
             } catch (Throwable $e) {
-                // A database from before this feature: nobody is limited.
+                // A database from before this feature, or a query that failed.
+                // Nobody is limited — except checks-only staff, who are then
+                // limited to nothing rather than shown everything.
+                $out['error'] = true;
             }
         }
 
@@ -100,6 +115,10 @@ final class Scope
         }
 
         $scope = self::forUser((int) $user['id']);
+
+        if ($scope['error']) {
+            return Acl::isStaff($user);
+        }
 
         return $scope['areas'] !== [] || $scope['checklists'] !== [];
     }
@@ -209,6 +228,10 @@ final class Scope
             $params  = array_merge($params, $scope['areas'], $scope['areas']);
         }
 
+        if ($parts === []) {
+            return ['0 = 1', []];
+        }
+
         return ['(' . implode(' OR ', $parts) . ')', $params];
     }
 
@@ -241,6 +264,10 @@ final class Scope
             $parts[] = $alias . '.category_id IN (SELECT category_id FROM {checklists} WHERE id IN (' . $marks . ") AND applies_to = 'category' AND category_id IS NOT NULL)";
             $parts[] = 'EXISTS (SELECT 1 FROM {checklists} WHERE id IN (' . $marks . ") AND applies_to = 'all')";
             $params  = array_merge($params, $scope['checklists'], $scope['checklists'], $scope['checklists']);
+        }
+
+        if ($parts === []) {
+            return ['0 = 1', []];
         }
 
         return ['(' . implode(' OR ', $parts) . ')', $params];

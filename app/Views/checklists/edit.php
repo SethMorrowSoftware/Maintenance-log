@@ -278,6 +278,7 @@ $canDelete = $editing && can('checklists.manage');
                         'type'    => 'select',
                         'value'   => $values['frequency'],
                         'options' => $frequencies,
+                        'hint'    => 'A daily list appears on Today\'s checks every day. Once a due time is set below, the days ticked there decide instead.',
                     ]); ?>
 
                     <?php View::partial('form-field', [
@@ -314,17 +315,27 @@ $canDelete = $editing && can('checklists.manage');
                         'label' => 'Due by',
                         'type'  => 'time',
                         'value' => $values['due_time'],
-                        'hint'  => 'Leave blank for a list that is only recorded when it is run, and never chased.',
+                        'hint'  => 'Leave blank and nobody is chased. A daily list still shows on Today\'s checks as "any time today" and counts in History; other frequencies only appear once they have a time.',
                         'attrs' => ['step' => 300],
                     ]); ?>
 
+                    <?php
+                    // After a rejected save, an unticked box is simply absent from what
+                    // came back, so "missing" has to mean "off" rather than "keep the
+                    // stored value". old('name') tells the two situations apart.
+                    $rejected = old('name', null) !== null;
+                    $wasTicked = static function (string $field, int $stored) use ($rejected): int {
+                        return $rejected ? (int) old($field, 0) : $stored;
+                    };
+                    ?>
+
                     <div class="form-group">
-                        <label class="form-label">On these days</label>
+                        <span class="form-label" id="due-days-label">On these days</span>
                         <?php
                         $tickedDays = old('due_days', str_split((string) ($values['due_days'] ?: '1234567')));
                         $tickedDays = array_map('intval', is_array($tickedDays) ? $tickedDays : []);
                         ?>
-                        <div class="day-picker" role="group" aria-label="Days of the week">
+                        <div class="day-picker" role="group" aria-labelledby="due-days-label">
                             <?php foreach ([1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun'] as $dayNumber => $dayName): ?>
                                 <label class="day-choice">
                                     <input type="checkbox" name="due_days[]" value="<?= $dayNumber ?>"
@@ -350,15 +361,20 @@ $canDelete = $editing && can('checklists.manage');
 
                     <label class="form-check" for="f_alert_missed">
                         <input type="checkbox" id="f_alert_missed" name="alert_missed" value="1"
-                            <?= checked((int) old('alert_missed', (int) $values['alert_missed']), 1) ?>>
+                            <?= checked($wasTicked('alert_missed', (int) $values['alert_missed']), 1) ?>>
                         <span class="form-check-label">
                             Post to Slack if it is not finished by then
                             <small>
                                 <?php if ($slackOn): ?>
-                                    Slack is connected. The message says what is still to do and who was due to do it.
-                                <?php else: ?>
+                                    Slack is connected. The message says what is still to do.
+                                <?php elseif (can('settings.manage')): ?>
                                     Slack is not posting at the moment — turn it on, and "Checks not finished on time",
-                                    under Settings → Slack. The people who manage checklists are told in the app either way.
+                                    under Settings → Slack.
+                                <?php else: ?>
+                                    Slack is not posting at the moment; an administrator can turn it on under Settings → Slack.
+                                <?php endif; ?>
+                                <?php if ($bellOn): ?>
+                                    Whoever manages checklists is told in the app as well.
                                 <?php endif; ?>
                             </small>
                         </span>
@@ -401,7 +417,7 @@ $canDelete = $editing && can('checklists.manage');
                 <div class="card-body">
                     <label class="form-check" for="f_require_signature">
                         <input type="checkbox" id="f_require_signature" name="require_signature" value="1"
-                            <?= checked((int) $values['require_signature'], 1) ?>>
+                            <?= checked($wasTicked('require_signature', (int) $values['require_signature']), 1) ?>>
                         <span class="form-check-label">
                             Ask for a name at the end
                             <small>Whoever runs it has to type their name to finish. It goes on
@@ -411,7 +427,7 @@ $canDelete = $editing && can('checklists.manage');
 
                     <label class="form-check" for="f_require_meter">
                         <input type="checkbox" id="f_require_meter" name="require_meter" value="1"
-                            <?= checked((int) $values['require_meter'], 1) ?>>
+                            <?= checked($wasTicked('require_meter', (int) $values['require_meter']), 1) ?>>
                         <span class="form-check-label">
                             Ask for the meter reading
                             <small>Hours or miles on the <?= e(asset_word()) ?>, if it has one. Skipped
@@ -421,7 +437,7 @@ $canDelete = $editing && can('checklists.manage');
 
                     <label class="form-check" for="f_is_active">
                         <input type="checkbox" id="f_is_active" name="is_active" value="1"
-                            <?= checked((int) $values['is_active'], 1) ?>>
+                            <?= checked($wasTicked('is_active', (int) $values['is_active']), 1) ?>>
                         <span class="form-check-label">
                             In use
                             <small>Untick to retire it without losing past inspections.</small>

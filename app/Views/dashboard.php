@@ -23,7 +23,7 @@ $currency = Settings::currency();
     <?php endif; ?>
     <?php if (can('inspections.perform')): ?>
         <a class="btn btn-secondary" href="<?= e(url('inspections.php', ['action' => 'start'])) ?>">
-            <?= icon('clipboard-check', '', 17) ?> Run an inspection
+            <?= icon('clipboard-check', '', 17) ?> Run a check
         </a>
     <?php endif; ?>
     <?php if (can('workorders.create')): ?>

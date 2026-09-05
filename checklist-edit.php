@@ -228,9 +228,14 @@ if (is_post()) {
             ($editing ? 'Updated ' : 'Created ') . (string) $data['name']
             . ' (' . count($items) . ' item' . (count($items) === 1 ? '' : 's') . ')');
 
-        flash('success', $editing
-            ? 'Checklist saved.'
-            : 'Checklist created. It will show up when somebody inspects a matching ' . asset_word() . '.');
+        if ($editing) {
+            flash('success', 'Checklist saved.');
+        } elseif ((string) $data['applies_to'] === 'location') {
+            flash('success', 'Checklist created. It is on the start-a-check page for that area'
+                . ($data['due_time'] !== null ? ', and on Today\'s checks from ' . Checks::daysLabel($data['due_days']) . '.' : '.'));
+        } else {
+            flash('success', 'Checklist created. It will show up when somebody checks a matching ' . asset_word() . '.');
+        }
 
         redirect(url('checklists.php'));
     } catch (Throwable $e) {
@@ -300,6 +305,7 @@ View::render('checklists/edit', [
     'assets'     => $assetOptions,
     'locations'  => Asset::locationOptions(false),
     'slackOn'    => \App\Slack::enabled() && Settings::bool('slack_on_unfinished', true),
+    'bellOn'     => Settings::bool('checks_notify_managers', true),
     // Only the frequencies the checklists table actually accepts, not the
     // wider set the PM schedules use.
     'frequencies' => array_intersect_key(

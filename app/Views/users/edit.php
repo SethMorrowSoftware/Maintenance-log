@@ -12,6 +12,13 @@ use App\Dates;
 use App\View;
 
 $targetId = $editing ? (int) $target['id'] : 0;
+
+// After a rejected save an unticked box is absent from what came back, so
+// "missing" has to mean "off" rather than "keep the stored value".
+$rejected  = old('username', null) !== null;
+$wasTicked = static function (string $field, int $stored) use ($rejected): int {
+    return $rejected ? (int) old($field, 0) : $stored;
+};
 ?>
 
 <form method="post" action="<?= e(url('user-edit.php', $editing ? ['id' => $targetId] : [])) ?>" data-guard>
@@ -135,11 +142,15 @@ $targetId = $editing ? (int) $target['id'] : 0;
                         <p class="card-subtitle">
                             Tick an area and they only see the checks for it: on their home page,
                             on the inspections list, when starting a check. Nothing ticked means
-                            they see every check. Staff should always have something ticked.
+                            they see every check. A Staff account needs at least one area or
+                            checklist; administrators always see everything, whatever is ticked.
                         </p>
                     </div>
                 </div>
                 <div class="card-body">
+                    <?php if (has_error('areas')): ?>
+                        <p class="form-error"><?= e(error_for('areas')) ?></p>
+                    <?php endif; ?>
                     <?php if ($areaOptions === []): ?>
                         <p class="text-muted" style="margin:0">
                             No locations yet. Add some under
@@ -200,7 +211,7 @@ $targetId = $editing ? (int) $target['id'] : 0;
                     <label class="form-check" for="f_must_change_password">
                         <input type="checkbox" id="f_must_change_password"
                                name="must_change_password" value="1"
-                            <?= checked((int) $values['must_change_password'], 1) ?>>
+                            <?= checked($wasTicked('must_change_password', (int) $values['must_change_password']), 1) ?>>
                         <span class="form-check-label">
                             Make them pick their own next time they sign in
                             <small>Recommended whenever you set a password for somebody else.</small>
@@ -250,7 +261,7 @@ $targetId = $editing ? (int) $target['id'] : 0;
                 <div class="card-body">
                     <label class="form-check" for="f_is_active">
                         <input type="checkbox" id="f_is_active" name="is_active" value="1"
-                            <?= checked((int) $values['is_active'], 1) ?>>
+                            <?= checked($wasTicked('is_active', (int) $values['is_active']), 1) ?>>
                         <span class="form-check-label">
                             Can sign in
                             <small>Untick when somebody leaves. Their work history stays.</small>
@@ -259,7 +270,7 @@ $targetId = $editing ? (int) $target['id'] : 0;
 
                     <label class="form-check" for="f_notify_email">
                         <input type="checkbox" id="f_notify_email" name="notify_email" value="1"
-                            <?= checked((int) $values['notify_email'], 1) ?>>
+                            <?= checked($wasTicked('notify_email', (int) $values['notify_email']), 1) ?>>
                         <span class="form-check-label">
                             Send them emails
                             <small>Work orders assigned to them, failed inspections, low stock.</small>

@@ -22,6 +22,16 @@ final class NotificationsController
     }
 
     /**
+     * The actions that change something: POST only, with the token.
+     *
+     * @return list<string>
+     */
+    public static function writes(): array
+    {
+        return ['read', 'read_all'];
+    }
+
+    /**
      * Just the count. Polled every minute, so it stays as small as possible.
      *
      * @return array<string, int>

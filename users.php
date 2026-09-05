@@ -36,6 +36,13 @@ if (is_post()) {
     $name = trim((string) $target['first_name'] . ' ' . (string) $target['last_name'])
         ?: (string) $target['username'];
 
+    // Somebody who manages people without being an administrator cannot
+    // switch off or remove an administrator.
+    if (!Acl::isAdmin() && (string) $target['role'] === Acl::ROLE_ADMIN) {
+        flash('error', 'Only an administrator can change another administrator\'s account.');
+        redirect(url('users.php', $_GET));
+    }
+
     if ($action === 'toggle') {
         $active = (int) $target['is_active'] === 1 ? 0 : 1;
 

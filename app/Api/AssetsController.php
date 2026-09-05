@@ -22,6 +22,16 @@ final class AssetsController
     }
 
     /**
+     * The actions that change something: POST only, with the token.
+     *
+     * @return list<string>
+     */
+    public static function writes(): array
+    {
+        return ['update_meter'];
+    }
+
+    /**
      * Machines matching a phrase, for a picker.
      *
      * @return array<string, mixed>

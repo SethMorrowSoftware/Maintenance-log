@@ -33,7 +33,7 @@ use App\View;
             'icon'        => 'clipboard-check',
             'title'       => 'No inspections recorded',
             'message'     => 'Daily checks before opening are what keep a ride safe and the paperwork straight. Run one and it appears here.',
-            'actionLabel' => can('inspections.perform') ? 'Run an inspection' : '',
+            'actionLabel' => can('inspections.perform') ? 'Run a check' : '',
             'actionUrl'   => can('inspections.perform') ? url('inspection-run.php') : '',
             'actionIcon'  => 'clipboard-check',
         ]); ?>

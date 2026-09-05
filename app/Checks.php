@@ -45,6 +45,38 @@ final class Checks
     }
 
     /**
+     * The clock on the wall at the site. Due times belong to the place, not
+     * to whoever happens to be signed in, so every day boundary and deadline
+     * here uses the site's timezone rather than the viewer's.
+     */
+    public static function zone(): string
+    {
+        $site = trim((string) Settings::get('timezone', ''));
+
+        if ($site === '') {
+            $site = trim((string) Config::get('app.timezone', ''));
+        }
+
+        return $site !== '' ? $site : 'UTC';
+    }
+
+    /** Today's date at the site, as Y-m-d. */
+    public static function today(): string
+    {
+        return Dates::today(self::zone());
+    }
+
+    /**
+     * The UTC bounds of a site-local day: [start, end) or [null, null].
+     *
+     * @return array{0: string|null, 1: string|null}
+     */
+    public static function dayBounds(string $localDate): array
+    {
+        return Dates::rangeToUtc($localDate, $localDate, self::zone());
+    }
+
+    /**
      * Is the checklist a timed check on this local date?
      *
      * @param array<string, mixed> $checklist
@@ -93,7 +125,7 @@ final class Checks
             return null;
         }
 
-        return Dates::toUtc($localDate . ' ' . substr((string) $checklist['due_time'], 0, 5));
+        return Dates::toUtc($localDate . ' ' . substr((string) $checklist['due_time'], 0, 5), self::zone());
     }
 
     /** "10:00" → "10:00 AM" in the site's time format. */
@@ -182,8 +214,10 @@ final class Checks
     }
 
     /**
-     * The in-service machines the user may see, with what is needed to match
-     * them to checklists.
+     * The machines the user may see, with what is needed to match them to
+     * checklists. Every live machine comes back, with its status: one that is
+     * out of service is only expected on a day it was actually checked, so a
+     * kart that failed its morning check stays on that day's board.
      *
      * @param  array<string, mixed>|null $user
      * @return list<array<string, mixed>>
@@ -197,7 +231,7 @@ final class Checks
                     loc.name AS location_name
              FROM {assets} a
              LEFT JOIN {locations} loc ON loc.id = a.location_id
-             WHERE a.deleted_at IS NULL AND a.status = 'in_service'"
+             WHERE a.deleted_at IS NULL AND a.status <> 'retired'"
             . ($scopeSql !== null ? ' AND ' . $scopeSql : '')
             . ' ORDER BY a.sort_order ASC, a.name ASC',
             $scopeParams
@@ -207,7 +241,9 @@ final class Checks
     /**
      * Every finished or in-progress inspection whose day falls in the range,
      * keyed by "checklist:asset" (or "checklist:area:location"), best first:
-     * a finished run beats an unfinished one, a later run beats an earlier.
+     * a finished run beats an unfinished one, and the first run finished that
+     * day is the one that counts — a re-check in the afternoon does not make
+     * a check that was done by ten o'clock late.
      *
      * @return array<string, array<string, mixed>>
      */
@@ -223,11 +259,10 @@ final class Checks
                     u.first_name, u.last_name, u.username, u.avatar_path
              FROM {inspections} i
              LEFT JOIN {users} u ON u.id = i.user_id
-             WHERE COALESCE(i.completed_at, i.started_at) >= ?
-               AND COALESCE(i.completed_at, i.started_at) < ?
+             WHERE ' . self::dayPredicate() . '
                AND i.checklist_id IN (' . implode(',', array_fill(0, count($checklistIds), '?')) . ')
-             ORDER BY (i.status = \'in_progress\') ASC, COALESCE(i.completed_at, i.started_at) DESC',
-            array_merge([$startUtc, $endUtc], $checklistIds)
+             ORDER BY (i.status = \'in_progress\') ASC, COALESCE(i.completed_at, i.started_at) ASC',
+            array_merge([$startUtc, $endUtc, $startUtc, $endUtc], $checklistIds)
         );
 
         $out = [];
@@ -241,6 +276,16 @@ final class Checks
         }
 
         return $out;
+    }
+
+    /**
+     * "Falls on the day": by completed_at when finished, by started_at when
+     * not. Written so the two indexes can be used. Binds start, end, start, end.
+     */
+    private static function dayPredicate(): string
+    {
+        return '((i.completed_at IS NOT NULL AND i.completed_at >= ? AND i.completed_at < ?)'
+            . ' OR (i.completed_at IS NULL AND i.started_at >= ? AND i.started_at < ?))';
     }
 
     private static function key(int $checklistId, ?int $assetId, int $locationId): string
@@ -270,7 +315,7 @@ final class Checks
      */
     private static function occurrencesFrom(string $localDate, array $checklists, array $machines, ?array $user, ?array $completions = null): array
     {
-        [$startUtc, $endUtc] = Dates::rangeToUtc($localDate, $localDate);
+        [$startUtc, $endUtc] = self::dayBounds($localDate);
 
         if ($startUtc === null || $endUtc === null) {
             return [];
@@ -293,7 +338,7 @@ final class Checks
         }
 
         $nowUtc  = Dates::nowUtc();
-        $isPast  = $localDate < Dates::today();
+        $isPast  = $localDate < self::today();
         $grace   = self::grace();
         $rows    = [];
         $byAsset = [];
@@ -317,6 +362,13 @@ final class Checks
                     || ((string) $checklist['applies_to'] === 'asset' && (int) $checklist['asset_id'] === (int) $machine['id']);
 
                 if (!$matches || !Scope::allowsChecklist($checklist, $machine, $user)) {
+                    continue;
+                }
+
+                // A machine that is down is not expected to be checked — unless
+                // it was, which is usually the check that found the problem.
+                if ((string) $machine['status'] !== 'in_service'
+                    && !isset($completions[self::key((int) $checklist['id'], (int) $machine['id'], 0)])) {
                     continue;
                 }
 
@@ -567,8 +619,8 @@ final class Checks
         $checklists = self::candidateChecklists();
         $machines   = self::machines($user);
 
-        [$startUtc] = Dates::rangeToUtc($from->format(Dates::DB_DATE), $from->format(Dates::DB_DATE));
-        [, $endUtc] = Dates::rangeToUtc($to->format(Dates::DB_DATE), $to->format(Dates::DB_DATE));
+        [$startUtc] = self::dayBounds($from->format(Dates::DB_DATE));
+        [, $endUtc] = self::dayBounds($to->format(Dates::DB_DATE));
 
         // Every relevant inspection in the range, then sliced per day in PHP.
         $all = $startUtc === null || $endUtc === null || $checklists === []
@@ -579,18 +631,17 @@ final class Checks
                         u.first_name, u.last_name, u.username, u.avatar_path
                  FROM {inspections} i
                  LEFT JOIN {users} u ON u.id = i.user_id
-                 WHERE COALESCE(i.completed_at, i.started_at) >= ?
-                   AND COALESCE(i.completed_at, i.started_at) < ?
+                 WHERE ' . self::dayPredicate() . '
                    AND i.checklist_id IN (' . implode(',', array_fill(0, count($checklists), '?')) . ')
-                 ORDER BY (i.status = \'in_progress\') ASC, COALESCE(i.completed_at, i.started_at) DESC',
-                array_merge([$startUtc, $endUtc], array_map(static fn (array $c): int => (int) $c['id'], $checklists))
+                 ORDER BY (i.status = \'in_progress\') ASC, COALESCE(i.completed_at, i.started_at) ASC',
+                array_merge([$startUtc, $endUtc, $startUtc, $endUtc], array_map(static fn (array $c): int => (int) $c['id'], $checklists))
             );
 
         // Bucket by local day.
         $byDay = [];
 
         foreach ($all as $row) {
-            $local = Dates::toLocal((string) ($row['completed_at'] ?? $row['started_at']));
+            $local = Dates::toLocal((string) ($row['completed_at'] ?? $row['started_at']), self::zone());
 
             if ($local === null) {
                 continue;
@@ -608,7 +659,7 @@ final class Checks
         $perArea      = [];
         $perPerson    = [];
         $totals       = self::emptyTotals();
-        $today        = Dates::today();
+        $today        = self::today();
         $days         = 0;
 
         for ($day = $from; $day <= $to; $day = $day->modify('+1 day')) {
@@ -779,10 +830,11 @@ final class Checks
             return 'checklists are switched off';
         }
 
-        $today   = Dates::today();
+        $today   = self::today();
         $nowUtc  = Dates::nowUtc();
         $grace   = self::grace();
-        $board   = self::board($today, null);
+        // The whole site's checks, whoever's page view happened to run this.
+        $board   = self::board($today, Scope::everyone());
         $counts  = ['reminder' => 0, 'missed' => 0, 'escalation' => 0];
         $timed   = 0;
 
@@ -833,9 +885,10 @@ final class Checks
                 }
             }
 
-            // Not finished on time.
+            // Not finished on time. Recorded only when somebody was actually
+            // told, so the board never claims an alert that never went out.
             if (!isset($sent['missed']) && $nowUtc >= $limit) {
-                $result = ['ok' => true, 'error' => '', 'channel' => ''];
+                $result = null;
 
                 if ($wantsMsg && $slackOn) {
                     $result = Slack::checkAlert('missed', $group, $missing);
@@ -843,11 +896,16 @@ final class Checks
 
                 if ($bellOn) {
                     self::tellManagers($group, $missing, $today);
+                    $result = $result ?? ['ok' => true, 'error' => '', 'channel' => ''];
+                    $result['note'] = 'app';
                 }
 
-                self::record((int) $checklist['id'], $today, 'missed', count($missing), $result);
                 $counts['missed']++;
-                $sent['missed'] = true;
+
+                if ($result !== null) {
+                    self::record((int) $checklist['id'], $today, 'missed', count($missing), $result);
+                    $sent['missed'] = true;
+                }
             }
 
             // Still not finished, a while later: say it again, louder.
@@ -869,7 +927,10 @@ final class Checks
     }
 
     /**
-     * @param array{ok: bool, error: string, channel?: string} $result
+     * detail holds the Slack error when the post failed, otherwise "app" when
+     * the people who manage checklists were told in the app.
+     *
+     * @param array{ok: bool, error: string, channel?: string, note?: string} $result
      */
     private static function record(int $checklistId, string $date, string $kind, int $missing, array $result): void
     {
@@ -881,7 +942,7 @@ final class Checks
                     $checklistId, $date, $kind, $missing,
                     mb_substr((string) ($result['channel'] ?? ''), 0, 80, 'UTF-8'),
                     $result['ok'] ? 1 : 0,
-                    mb_substr($result['error'], 0, 255, 'UTF-8'),
+                    mb_substr($result['error'] !== '' ? $result['error'] : (string) ($result['note'] ?? ''), 0, 255, 'UTF-8'),
                     Dates::nowUtc(),
                 ]
             );
@@ -917,7 +978,8 @@ final class Checks
             'checks.php?date=' . $date,
             'checklist_day',
             // One notice per checklist per day: the entity id folds the date in.
-            (int) $checklist['id'] * 100000 + (int) date('ymd', strtotime($date . ' UTC')) % 100000
+            (int) $checklist['id'] * 100000 + (int) date('ymd', strtotime($date . ' UTC')) % 100000,
+            true
         );
     }
 

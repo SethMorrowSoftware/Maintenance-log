@@ -171,8 +171,15 @@ function may_view_attachment(array $attachment): bool
                 && db()->exists('work_orders', ['id' => $id, 'deleted_at' => null]);
 
         case 'inspection':
-            return Acl::can('inspections.view')
-                && db()->exists('inspections', ['id' => $id]);
+            // The photo is as private as the check it was taken on: somebody
+            // limited to an area sees only that area's.
+            if (!Acl::can('inspections.view')) {
+                return false;
+            }
+
+            $inspection = \App\Models\Inspection::find($id);
+
+            return $inspection !== null && \App\Scope::allowsInspection($inspection);
 
         case 'part':
             return Acl::can('parts.view')

@@ -87,14 +87,21 @@ if (mb_strlen($query) >= 2) {
     }
 
     if (can('inspections.view')) {
+        // Somebody limited to an area only finds its checks. An area check has
+        // no machine, so the area's name stands in.
+        [$scopeSql, $scopeParams] = \App\Scope::inspectionFilter('i', 'a');
+
         $results['Inspections'] = db()->all(
             "SELECT i.id, i.checklist_name, i.status, i.started_at, i.notes,
-                    a.name AS asset_name
+                    COALESCE(a.name, iloc.name) AS asset_name
              FROM {inspections} i
-             INNER JOIN {assets} a ON a.id = i.asset_id
-             WHERE (i.checklist_name LIKE ? OR i.notes LIKE ? OR i.signature_name LIKE ?)
-             ORDER BY i.started_at DESC LIMIT 20",
-            [$like, $like, $like]
+             LEFT JOIN {assets} a ON a.id = i.asset_id
+             LEFT JOIN {locations} iloc ON iloc.id = i.location_id
+             WHERE (a.id IS NULL OR a.deleted_at IS NULL)
+               AND (i.checklist_name LIKE ? OR i.notes LIKE ? OR i.signature_name LIKE ?)"
+            . ($scopeSql !== null ? ' AND ' . $scopeSql : '') . '
+             ORDER BY i.started_at DESC LIMIT 20',
+            array_merge([$like, $like, $like], $scopeParams)
         );
     }
 

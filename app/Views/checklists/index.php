@@ -11,7 +11,8 @@ use App\Dates;
 use App\Status;
 use App\View;
 
-$canManage = can('checklists.manage');
+$canManage   = can('checklists.manage');
+$slackAlerts = \App\Slack::enabled() && \App\Settings::bool('slack_on_unfinished', true);
 ?>
 
 <?php if ($rows === []): ?>
@@ -79,8 +80,8 @@ $canManage = can('checklists.manage');
                                         <?= icon('clock', '', 12) ?>
                                         by <?= e(Checks::timeLabel((string) $row['due_time'])) ?>
                                         &middot; <?= e(Checks::daysLabel((string) $row['due_days'])) ?>
-                                        <?php if ((int) $row['alert_missed'] === 1): ?>
-                                            &middot; <span title="Posts to Slack if not finished on time"><?= icon('bell', '', 12) ?> Slack</span>
+                                        <?php if ((int) $row['alert_missed'] === 1 && $slackAlerts): ?>
+                                            &middot; <?= icon('bell', '', 12) ?> Slack alert
                                         <?php endif; ?>
                                     </span>
                                 <?php elseif (!empty($row['estimated_minutes'])): ?>

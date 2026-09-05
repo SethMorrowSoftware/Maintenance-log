@@ -22,6 +22,16 @@ final class PartsController
     }
 
     /**
+     * The actions that change something: POST only, with the token.
+     *
+     * @return list<string>
+     */
+    public static function writes(): array
+    {
+        return ['adjust'];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function list(): array

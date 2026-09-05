@@ -131,8 +131,9 @@ got done, how many on time, how many late, how many missed. It exports to CSV.
 **Staff who only do checks.** The fifth role, **Staff (checks only)**, sees none
 of the maintenance side: no machines, logs, parts or reports. Their home page is
 today's checks for their area, they can run those checks, and they can look at
-their own past inspections. Give them their area on their page under **Where
-they work**: tick one or more areas (locations), or particular checklists. Any
+the past checks in that area. Give them their area on their page under **Where
+they work**: tick one or more areas (locations), or particular checklists — a
+Staff account must have at least one. Any
 account can be narrowed the same way — a technician with an area ticked sees
 only that area's checks on the board and the inspections list, while the rest of
 their permissions carry on as before.

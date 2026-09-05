@@ -22,6 +22,16 @@ final class UsersController
     }
 
     /**
+     * The actions that change something: POST only, with the token.
+     *
+     * @return list<string>
+     */
+    public static function writes(): array
+    {
+        return ['set_theme'];
+    }
+
+    /**
      * Remember the light/dark choice against the account, so it follows
      * somebody from the workshop tablet to the office desktop.
      *

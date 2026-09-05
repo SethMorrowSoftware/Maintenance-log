@@ -34,7 +34,7 @@ if (is_post()) {
 
         if ($inspection !== null) {
             db()->delete('inspections', ['id' => $id]);
-            audit('delete', 'inspection', $id, 'Deleted inspection of ' . (string) $inspection['asset_name']);
+            audit('delete', 'inspection', $id, 'Deleted inspection of ' . Inspection::subject($inspection));
             flash('success', 'Inspection deleted.');
         }
     }
@@ -69,7 +69,7 @@ if (Request::string('export') === 'csv') {
                 Dates::datetime((string) $row['started_at'], ''),
                 Dates::datetime((string) ($row['completed_at'] ?? ''), ''),
                 Dates::datetime((string) ($row['due_at'] ?? ''), ''),
-                $row['due_at'] === null ? '' : ((int) $row['was_late'] === 1 ? 'No' : 'Yes'),
+                $row['due_at'] === null || $row['completed_at'] === null ? '' : ((int) $row['was_late'] === 1 ? 'No' : 'Yes'),
                 $row['asset_tag'], $row['asset_name'], $row['location_name'], $row['checklist_name'],
                 Status::label((string) $row['status'], 'inspection'),
                 $row['passed_count'], $row['failed_count'], $row['na_count'],
@@ -89,7 +89,7 @@ $actions = '';
 
 if (can('inspections.perform')) {
     $actions .= '<a class="btn btn-primary" href="' . e(url('inspection-run.php')) . '">'
-        . icon('clipboard-check', '', 17) . ' Run an inspection</a>';
+        . icon('clipboard-check', '', 17) . ' Run a check</a>';
 }
 
 if (can('reports.export')) {

@@ -27,7 +27,7 @@ Auth::requireLogin();
 Acl::requirePermission('inspections.view');
 
 $tab   = Request::enum('tab', ['today', 'history'], 'today');
-$today = Dates::today();
+$today = Checks::today();
 $user  = Auth::user();
 
 $actions = '';
@@ -43,7 +43,7 @@ if (can('inspections.perform')) {
 
 if ($tab === 'history') {
     $range = Request::enum('range', ['7', '14', '30', '90'], '30');
-    $from  = Dates::localNow()->modify('-' . ((int) $range - 1) . ' days')->format(Dates::DB_DATE);
+    $from  = Dates::localNow(Checks::zone())->modify('-' . ((int) $range - 1) . ' days')->format(Dates::DB_DATE);
 
     $history = Checks::history($from, $today, $user);
 

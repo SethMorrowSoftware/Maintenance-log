@@ -3942,6 +3942,15 @@ details.card > summary:focus-visible {
        get a thumb-sized target */
     .builder-flags .form-check { min-height: 40px; }
     .auth-card a.text-sm { display: inline-block; padding: var(--space-2) 0; }
+    .day-choice { height: 44px; min-width: 52px; }
+
+    /* A row of filter buttons wraps instead of running off the screen */
+    .table-toolbar .btn-group,
+    .btn-group.is-wrap { flex-wrap: wrap; gap: var(--space-1); }
+    .table-toolbar .btn-group .btn,
+    .table-toolbar .btn-group .btn:first-child,
+    .table-toolbar .btn-group .btn:last-child,
+    .btn-group.is-wrap .btn { border-radius: var(--radius-md); margin-left: 0; }
     .check-action { flex-basis: 100%; display: flex; justify-content: flex-end; }
     .check-action:empty { display: none; }
     .check-summary { align-items: flex-start; }

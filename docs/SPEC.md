@@ -644,9 +644,13 @@ status: `done`, `late` (finished after `due_at` + `checks_grace_minutes`), `in_p
 `due`, `overdue` (today, past time), `missed` (past day), `anytime`. `board()` groups by
 checklist with counts, a group status and the day's `checklist_alerts`; `history(from,
 to)` (≤ 92 days) gives expected/done/on-time/late/missed per checklist, area and person
-with rates, computed in PHP from one inspections query. `runAlerts()` — from
-`cron.php?job=checks`, from the nightly run, and opportunistically from
+with rates, computed in PHP from one inspections query. Every day boundary and deadline
+uses the **site's** timezone (`Checks::zone()`, the `timezone` setting), never the
+viewer's, and the first run finished on a day is the one that counts. A machine that
+is out of service is only expected on a day it was actually checked. `runAlerts()` —
+from `cron.php?job=checks`, from the nightly run, and opportunistically from
 `Checks::tick()` (a 5-minute marker file, run at shutdown after the page is sent) —
+evaluates the whole site via `Scope::everyone()`, whoever's page view triggered it, and
 posts the reminder (`remind_minutes` before), the "not finished" message at due +
 grace (Slack via `Slack::checkAlert()` when `slack_on_unfinished` and the list's
 `alert_missed`; the bell to `checklists.manage` holders when `checks_notify_managers`),

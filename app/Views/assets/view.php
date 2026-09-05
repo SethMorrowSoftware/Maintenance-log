@@ -565,7 +565,7 @@ if (can('audit.view')) {
                     <h2 class="card-title">Inspections</h2>
                     <?php if (can('inspections.perform')): ?>
                         <a class="btn btn-primary btn-sm" href="<?= e(url('inspection-run.php', ['asset_id' => $assetId])) ?>">
-                            <?= icon('clipboard-check', '', 15) ?> Run an inspection
+                            <?= icon('clipboard-check', '', 15) ?> Run a check
                         </a>
                     <?php endif; ?>
                 </div>

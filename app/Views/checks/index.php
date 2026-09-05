@@ -70,11 +70,12 @@ $isToday = ($date ?? '') === ($today ?? '');
             'icon'        => 'checklist',
             'title'       => $isToday ? 'Nothing is expected today' : 'Nothing was expected that day',
             'message'     => $limited
-                ? 'No checklist in your area is due today. If that seems wrong, ask whoever looks after checklists.'
+                ? 'No checklist in your area was ' . ($isToday ? 'due today' : 'expected that day') . '. If that seems wrong, ask whoever looks after checklists.'
                 : 'A checklist shows up here when it is daily, or when it has a due time on this day of the week. '
                   . 'Open a checklist and give it a time under "When it should be done".',
             'actionLabel' => can('checklists.manage') ? 'Checklists' : '',
             'actionUrl'   => can('checklists.manage') ? url('checklists.php') : '',
+            'actionIcon'  => 'checklist',
         ]); ?>
     <?php endif; ?>
 
@@ -95,7 +96,7 @@ $isToday = ($date ?? '') === ($today ?? '');
 
         $when = !empty($checklist['due_time'])
             ? 'by ' . Checks::timeLabel((string) $checklist['due_time'])
-            : 'any time today';
+            : ($isToday ? 'any time today' : 'any time that day');
         ?>
         <div class="card check-group is-<?= e($status) ?>" id="checklist-<?= (int) $checklist['id'] ?>">
             <div class="card-header">
@@ -195,7 +196,7 @@ $isToday = ($date ?? '') === ($today ?? '');
                                 <?php elseif ($rowStatus === 'due'): ?>
                                     Due by <?= e(Dates::time((string) $row['due_at'])) ?>
                                 <?php else: ?>
-                                    Any time today
+                                    <?= $isToday ? 'Any time today' : 'Any time that day' ?>
                                 <?php endif; ?>
                             </span>
                         </span>
@@ -208,14 +209,28 @@ $isToday = ($date ?? '') === ($today ?? '');
                 <div class="card-footer check-alerts text-sm text-muted">
                     <?= icon('bell', '', 14) ?>
                     <?php
+                    // What went out, and where. Slack's error text is for whoever
+                    // can fix it, not for everybody on the floor.
                     $said = [];
 
                     foreach ($group['alerts'] as $alert) {
                         $kindLabel = ['reminder' => 'Reminder', 'missed' => 'Not-finished alert', 'escalation' => 'Escalation'][(string) $alert['kind']] ?? (string) $alert['kind'];
-                        $said[]    = $kindLabel . ' at ' . Dates::time((string) $alert['sent_at'])
-                            . ((int) $alert['ok'] === 1
-                                ? ((string) $alert['channel'] !== '' ? ' to ' . (string) $alert['channel'] : '')
-                                : ' (Slack failed: ' . (string) $alert['detail'] . ')');
+                        $where     = [];
+
+                        if ((int) $alert['ok'] === 1 && (string) $alert['channel'] !== '') {
+                            $where[] = 'to Slack ' . (string) $alert['channel'];
+                        } elseif ((int) $alert['ok'] !== 1) {
+                            $where[] = can('checklists.manage')
+                                ? 'Slack failed: ' . (string) $alert['detail']
+                                : 'Slack failed';
+                        }
+
+                        if ((string) $alert['detail'] === 'app') {
+                            $where[] = 'managers told in the app';
+                        }
+
+                        $said[] = $kindLabel . ' at ' . Dates::time((string) $alert['sent_at'])
+                            . ($where !== [] ? ' (' . implode('; ', $where) . ')' : '');
                     }
                     ?>
                     <?= e(implode(' · ', $said)) ?>
@@ -230,7 +245,7 @@ $isToday = ($date ?? '') === ($today ?? '');
     <div class="table-toolbar no-print">
         <div class="btn-group">
             <?php foreach (['7' => 'Last 7 days', '14' => 'Last 14 days', '30' => 'Last 30 days', '90' => 'Last 90 days'] as $key => $label): ?>
-                <a class="btn btn-secondary btn-sm<?= $range === $key ? ' is-active' : '' ?>"
+                <a class="btn btn-secondary btn-sm<?= $range === (string) $key ? ' is-active' : '' ?>"
                    href="<?= e(url('checks.php', ['tab' => 'history', 'range' => $key])) ?>"><?= e($label) ?></a>
             <?php endforeach; ?>
         </div>

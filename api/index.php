@@ -73,6 +73,15 @@ if (!in_array($action, $public, true) && !Auth::check()) {
 // Anything that changes data must prove it came from our own page
 // -----------------------------------------------------------------------------
 
+// A controller lists the actions that change something. Those are never run
+// from a plain GET — a link in an email must not mark every notification read
+// — and they carry the CSRF token like any other write.
+$writes = method_exists($class, 'writes') ? (array) $class::writes() : [];
+
+if (in_array($action, $writes, true) && Request::isGet()) {
+    Response::error('That has to be sent as a POST request.', 'method_not_allowed', 405);
+}
+
 if (!Request::isGet()) {
     if (!Csrf::check()) {
         Response::error(

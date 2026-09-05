@@ -45,13 +45,14 @@ $unread    = $showBell ? Notifier::unreadCount((int) $me['id']) : 0;
  */
 $navigation = [
     'Overview' => [
-        ['label' => 'Dashboard', 'url' => 'index.php', 'icon' => 'dashboard', 'permission' => null],
+        ['label' => Acl::isStaff() ? 'Home' : 'Dashboard', 'url' => 'index.php', 'icon' => 'dashboard', 'permission' => null],
     ],
     'Maintenance' => [
         ['label' => 'Maintenance Logs', 'url' => 'logs.php',        'icon' => 'wrench',           'permission' => 'logs.view'],
         ['label' => 'Work Orders',      'url' => 'workorders.php',  'icon' => 'work-order',       'permission' => 'workorders.view'],
         ['label' => 'Scheduled Service','url' => 'schedules.php',   'icon' => 'calendar',         'permission' => 'schedules.view'],
-        ['label' => "Today's Checks",   'url' => 'checks.php',      'icon' => 'checklist',        'permission' => 'inspections.view'],
+        // Staff's home page is already the board, so they do not get it twice.
+        ['label' => "Today's Checks",   'url' => 'checks.php',      'icon' => 'checklist',        'permission' => 'inspections.view', 'notStaff' => true],
         ['label' => 'Inspections',      'url' => 'inspections.php', 'icon' => 'clipboard-check',  'permission' => 'inspections.view'],
     ],
     'Equipment' => [
@@ -63,7 +64,7 @@ $navigation = [
     ],
     'Administration' => [
         ['label' => 'Users',                  'url' => 'users.php',      'icon' => 'users',     'permission' => 'users.view'],
-        ['label' => 'Roles',                  'url' => 'roles.php',      'icon' => 'shield',    'permission' => 'users.manage'],
+        ['label' => 'Roles',                  'url' => 'roles.php',      'icon' => 'shield',    'permission' => 'users.manage', 'adminOnly' => true],
         ['label' => 'Checklists',             'url' => 'checklists.php', 'icon' => 'checklist', 'permission' => 'checklists.view'],
         ['label' => 'Categories & Locations', 'url' => 'categories.php', 'icon' => 'tag',       'permission' => 'assets.edit'],
         ['label' => 'Settings',               'url' => 'settings.php',   'icon' => 'settings',  'permission' => 'settings.manage'],
@@ -88,6 +89,10 @@ $navAliases = [
     'part-edit.php'       => 'parts.php',
     'user-edit.php'       => 'users.php',
 ];
+
+if (Acl::isStaff()) {
+    $navAliases['checks.php'] = 'index.php';
+}
 
 $currentNav = $navAliases[$activeNav] ?? $activeNav;
 ?>
@@ -153,6 +158,14 @@ $currentNav = $navAliases[$activeNav] ?? $activeNav;
                 $visible = [];
 
                 foreach ($items as $item) {
+                    if (!empty($item['notStaff']) && Acl::isStaff()) {
+                        continue;
+                    }
+
+                    if (!empty($item['adminOnly']) && !Acl::isAdmin()) {
+                        continue;
+                    }
+
                     if ($item['permission'] === null || can($item['permission'])) {
                         $visible[] = $item;
                     }

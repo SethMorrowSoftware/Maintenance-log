@@ -273,12 +273,16 @@ $inspector    = trim((string) $inspection['first_name'] . ' ' . (string) $inspec
                 <div class="card-header"><h3 class="card-title">What happened next</h3></div>
                 <div class="card-body">
                     <p class="text-sm text-muted mb-3">
-                        The failures on this inspection were raised as a work order so somebody owns them.
+                        The failures on this check were raised as a work order so somebody owns them.
                     </p>
-                    <a class="btn btn-secondary btn-block"
-                       href="<?= e(url('workorder-view.php', ['id' => (int) $inspection['work_order_id']])) ?>">
-                        <?= icon('clipboard', '', 17) ?> Open the work order
-                    </a>
+                    <?php if (can('workorders.view')): ?>
+                        <a class="btn btn-secondary btn-block"
+                           href="<?= e(url('workorder-view.php', ['id' => (int) $inspection['work_order_id']])) ?>">
+                            <?= icon('clipboard', '', 17) ?> Open the work order
+                        </a>
+                    <?php else: ?>
+                        <p class="text-sm" style="margin:0">The maintenance team has it from here.</p>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endif; ?>

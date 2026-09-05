@@ -40,6 +40,15 @@ if (is_post()) {
 
     $action = Request::string('action');
 
+    // Somebody who manages people without being an administrator cannot touch
+    // an administrator's account, or make anybody one.
+    $actorIsAdmin = Acl::isAdmin();
+
+    if ($editing && !$actorIsAdmin && (string) $target['role'] === Acl::ROLE_ADMIN) {
+        flash('error', 'Only an administrator can change another administrator\'s account.');
+        redirect(url('user-edit.php', ['id' => $id]));
+    }
+
     // ------------------------------------------------------- reset a password
     if ($action === 'reset_password' && $editing) {
         $newPassword = Str::password(12);
@@ -99,6 +108,20 @@ if (is_post()) {
         }
     }
 
+    // Where they work: the areas and checklists ticked, if any. An empty set
+    // means "everything", which is what most accounts want — except a Staff
+    // account, whose whole job is one area.
+    $areaIds      = is_array($_POST['areas'] ?? null) ? $_POST['areas'] : [];
+    $checklistIds = is_array($_POST['checklists'] ?? null) ? $_POST['checklists'] : [];
+
+    if (Request::string('role') === Acl::ROLE_STAFF && $areaIds === [] && $checklistIds === []) {
+        $validator->addError('areas', 'Tick at least one area or checklist for a Staff account — it is all they will see.');
+    }
+
+    if (!$actorIsAdmin && Request::string('role') === Acl::ROLE_ADMIN) {
+        $validator->addError('role', 'Only an administrator can make somebody an administrator.');
+    }
+
     if ($validator->fails()) {
         flash_errors($validator->errors(), $_POST);
         redirect(url('user-edit.php', $editing ? ['id' => $id] : []));
@@ -123,11 +146,6 @@ if (is_post()) {
     foreach (['phone', 'job_title', 'employee_number'] as $field) {
         $data[$field] = (string) ($data[$field] ?? '');
     }
-
-    // Where they work: the areas and checklists ticked, if any. An empty set
-    // means "everything", which is what most accounts want.
-    $areaIds      = is_array($_POST['areas'] ?? null) ? $_POST['areas'] : [];
-    $checklistIds = is_array($_POST['checklists'] ?? null) ? $_POST['checklists'] : [];
 
     try {
         if ($editing) {

@@ -92,7 +92,7 @@ VALUES
   ('checks_grace_minutes', '0', 'int', 'maintenance', 0,
    'Grace period for timed checks (minutes)', 'A check finished this long after its due time still counts as on time, and the alert waits this long too.', 52),
   ('checks_notify_managers', '1', 'bool', 'maintenance', 0,
-   'Tell whoever manages checklists when a check is missed', 'An in-app notification (and an email, if they have those on) the moment a timed check is not finished by its due time.', 54),
+   'Tell whoever manages checklists when a check is not finished on time', 'An in-app notification (and an email, if they have those on) the moment a timed check passes its due time unfinished.', 54),
   ('wo_number_prefix', 'WO-', 'string', 'maintenance', 0,
    'Work order prefix', 'Prefix for generated work order numbers.', 60),
   ('low_stock_alerts', '1', 'bool', 'maintenance', 0,

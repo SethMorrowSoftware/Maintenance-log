@@ -53,7 +53,8 @@ foreach ($sections as $sectionItems) {
         <?= icon('info', '', 18) ?>
         <div class="alert-body">
             Work down the list. Anything you mark <strong>Fail</strong> opens a note box —
-            say what is wrong. You can stop and come back: nothing is lost until you finish.
+            say what is wrong. You can stop and come back: <strong>Save for later</strong> keeps
+            everything until you do.
         </div>
     </div>
 

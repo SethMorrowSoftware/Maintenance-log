@@ -26,7 +26,7 @@ run_hourly_tasks();
 // Staff who only run checks get today's checks as their home page: nothing
 // about the fleet, just what needs doing and what has been done.
 if (\App\Acl::isStaff()) {
-    $today = App\Dates::today();
+    $today = \App\Checks::today();
     $board = feature_on('inspections') ? \App\Checks::board($today, Auth::user()) : [];
 
     $actions = can('inspections.perform')
@@ -56,6 +56,9 @@ if (\App\Acl::isStaff()) {
 $simple = !\App\Acl::atLeast('manager');
 
 if ($simple) {
+    // Everything still to check, so the count is honest; the chips show the first dozen.
+    $openChecks = can('inspections.view') ? Dashboard::inspectionsDueToday(500) : [];
+
     View::render('dashboard-technician', [
         'title'       => 'Home',
         'subtitle'    => greeting() . ', ' . first_name() . '.',
@@ -64,7 +67,8 @@ if ($simple) {
         'workOrders'  => can('workorders.view') ? Dashboard::openWorkOrders(6) : [],
         'myWork'      => Dashboard::myWork(6),
         'assetsDown'  => can('assets.view') ? Dashboard::assetsDown(6) : [],
-        'inspections' => can('inspections.view') ? Dashboard::inspectionsDueToday(12) : [],
+        'inspections' => array_slice($openChecks, 0, 12),
+        'checksOpen'  => count($openChecks),
         'recentLogs'  => can('logs.view') ? Dashboard::recentLogs(6) : [],
         'followUps'   => can('logs.view') ? Dashboard::followUps(4) : [],
     ]);

@@ -22,6 +22,12 @@ use App\View;
 Auth::requireLogin();
 Acl::requirePermission('users.manage');
 
+// Whoever can change what a role may do can hand out anything, so this page
+// is the administrator's alone, whatever the matrix says about users.manage.
+if (!Acl::isAdmin()) {
+    abort(403, 'Only an administrator can change what each role is allowed to do.');
+}
+
 if (is_post()) {
     Csrf::verify();
 

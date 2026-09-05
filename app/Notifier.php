@@ -132,7 +132,8 @@ final class Notifier
         string $message = '',
         string $link = '',
         string $entityType = '',
-        ?int $entityId = null
+        ?int $entityId = null,
+        bool $email = false
     ): int {
         try {
             $users = db()->all('SELECT id, role FROM {users} WHERE is_active = 1 AND deleted_at IS NULL');
@@ -148,7 +149,7 @@ final class Notifier
             }
         }
 
-        return self::pushMany($ids, $type, $title, $message, $link, $entityType, $entityId);
+        return self::pushMany($ids, $type, $title, $message, $link, $entityType, $entityId, $email);
     }
 
     /**
