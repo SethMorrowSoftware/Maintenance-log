@@ -42,7 +42,8 @@ If something here conflicts with your instincts, follow this file.
 ├─ reports.php
 ├─ users.php  user-edit.php
 ├─ settings.php
-├─ categories.php          Asset categories + locations admin (one page, two tabs)
+├─ categories.php          Asset categories + locations admin (one page, two tabs): add, rename,
+│                          reorder, icon/colour, switch off, merge-and-delete when in use
 ├─ audit.php
 ├─ notifications.php
 ├─ search.php
@@ -555,7 +556,15 @@ Everything respects permissions.
 
 ### Assets (shown as "Machines")
 List with search, filter (category/location/status/criticality), sort, pagination,
-card & table views, CSV export. Profile page with tabs: Overview · History (one searchable
+card & table views, CSV export. The table view has a tick column for anyone with
+`assets.edit`: ticking rows reveals a bar that moves them to another category and/or
+location in one POST (`bulk_move`, ids validated, capped at 500). Categories and
+locations themselves (`categories.php`, `assets.edit`) can be added, renamed (the slug is
+an internal handle and never changes), reordered with up/down arrows (the list is
+renumbered in tens), given an icon from a fixed set and a colour, switched off, deleted
+when empty, or merged: "Delete…" on a row that still has machines moves every machine
+(and, for a category, every checklist aimed at it) to a chosen row and then deletes the
+source. Nothing on that page can orphan a machine. Profile page with tabs: Overview · History (one searchable
 timeline of jobs, inspections, work orders raised and closed, status changes and manual
 meter readings — `Asset::timeline()`) · Jobs · Schedules · Inspections · Work Orders ·
 Files · Meter · Changes (audit). The same timeline, six events deep, renders beside the

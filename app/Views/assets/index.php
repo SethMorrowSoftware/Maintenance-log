@@ -14,6 +14,9 @@ $showMeters     = feature_on('meters');
 $showWorkOrders = feature_on('work_orders');
 $listFields     = \App\CustomFields::inList();
 
+// Tick several machines on the table and move them together.
+$canBulk = $view === 'table' && can('assets.edit') && $assets !== [];
+
 $statusTabs = [
     ''               => ['label' => 'Active',         'count' => array_sum(array_intersect_key($statusCounts, array_flip(['in_service','maintenance','out_of_service'])))],
     'in_service'     => ['label' => 'In service',     'count' => (int) ($statusCounts['in_service'] ?? 0)],
@@ -143,10 +146,50 @@ $statusTabs = [
 
     <?php else: ?>
 
+        <?php if ($canBulk): ?>
+            <?php // The bar lives outside the table; the row checkboxes belong to it by id. ?>
+            <form method="post" action="<?= e(url('assets.php', $_GET)) ?>" id="bulk-bar" class="bulk-bar no-print">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="bulk_move">
+                <span class="bulk-count"><strong data-bulk-count>0</strong> ticked. Move them to:</span>
+                <label class="bulk-field">
+                    <span class="sr-only">Category</span>
+                    <select class="form-select" name="category_id" aria-label="Category">
+                        <option value="">Same category</option>
+                        <option value="none">No category</option>
+                        <?php foreach ($categories as $catId => $catName): ?>
+                            <option value="<?= (int) $catId ?>"><?= e((string) $catName) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label class="bulk-field">
+                    <span class="sr-only">Location</span>
+                    <select class="form-select" name="location_id" aria-label="Location">
+                        <option value="">Same location</option>
+                        <option value="none">No location</option>
+                        <?php foreach ($locations as $locId => $locName): ?>
+                            <option value="<?= (int) $locId ?>"><?= e((string) $locName) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <button type="submit" class="btn btn-primary btn-sm"
+                        data-confirm="Move the ticked <?= attr(asset_word(true)) ?>? Their history comes with them."
+                        data-confirm-title="Move <?= attr(asset_word(true)) ?>"
+                        data-confirm-text="Move them">
+                    <?= icon('arrow-right', '', 15) ?> Move
+                </button>
+            </form>
+        <?php endif; ?>
+
         <div class="table-wrap">
             <table class="table is-stacked table-sortable">
                 <thead>
                     <tr>
+                        <?php if ($canBulk): ?>
+                            <th class="is-check no-print">
+                                <input type="checkbox" data-bulk-all data-bulk-bar="#bulk-bar" aria-label="Tick every <?= attr(asset_word()) ?> on this page">
+                            </th>
+                        <?php endif; ?>
                         <th data-sort><?= sort_link('name', asset_word(false, true), $sort, $direction) ?></th>
                         <th data-sort><?= sort_link('category', 'Category', $sort, $direction) ?></th>
                         <th data-sort><?= sort_link('location', 'Location', $sort, $direction) ?></th>
@@ -164,6 +207,12 @@ $statusTabs = [
                 <tbody>
                     <?php foreach ($assets as $asset): ?>
                         <tr data-row-href="<?= e(url('asset-view.php', ['id' => (int) $asset['id']])) ?>">
+                            <?php if ($canBulk): ?>
+                                <td class="is-check no-print">
+                                    <input type="checkbox" name="ids[]" value="<?= (int) $asset['id'] ?>" form="bulk-bar" data-bulk-item
+                                           aria-label="Tick <?= attr((string) $asset['name']) ?>">
+                                </td>
+                            <?php endif; ?>
                             <td data-label="<?= attr(asset_word(false, true)) ?>" class="is-row-title">
                                 <a href="<?= e(url('asset-view.php', ['id' => (int) $asset['id']])) ?>" class="cell-primary">
                                     <?= e((string) $asset['name']) ?>

@@ -74,6 +74,12 @@ and drafts each have a switch under Settings → Features. Off means gone from
 the menus and forms; nothing is deleted, and switching back on brings the
 records straight back.
 
+**Categories and locations are yours to shape.** Add, rename, reorder, recolour
+and switch off the groups the fleet is sorted into and the places it lives.
+Deleting one that still has machines in it moves them wherever you choose in
+one step, and the machine list has a tick-and-move bar for shuffling several at
+once. Nothing on that page can lose a machine or its history.
+
 **Fields you can add.** Settings → Fields puts whatever else the site needs on
 every machine — seat size, gas or electric, a supplier's part number — as text,
 a number, a date, yes or no, or a pick from a list. They show on the machine's

@@ -267,6 +267,34 @@ look after?") and every label follows. Categories are just labels too: add an
 
 ---
 
+## Categories and locations
+
+Categories are how the fleet is grouped (go-karts, bumper boats, bowling);
+locations are where things live (the track, the arcade, the shop). Both are
+yours to shape, from **Categories & Locations** in the menu. Managers and
+administrators can get at it.
+
+- **Add** one with the form on the right. A category gets an icon (tap one) and
+  a colour, which show on cards, charts and the machine list, and a default
+  meter type so new machines in it come ready to take hours or miles.
+- **Rename** anything by pressing *Edit*. Every machine that uses it follows;
+  nothing has to be re-entered.
+- **Reorder** with the up and down arrows on each row. The order is the order in
+  every drop-down and filter.
+- **Switch off** one you no longer add to. It disappears from the "add a
+  machine" form but stays on the machines that already have it.
+- **Delete** one that is empty with *Delete*. One that still has machines in it
+  shows *Delete…* instead: pick where its machines should go and everything in
+  it moves there in one go, then it is removed. A category's checklists move
+  with it. No machine, and no history, is ever lost this way.
+
+To move machines between categories or locations without deleting anything,
+tick them on the machine list and use the bar that appears: choose a new
+category, a new location or both, and press *Move*. Or edit one machine and
+pick a different one on its form.
+
+---
+
 ## Switching off what you do not use
 
 Every part of RideLog is optional. **Settings → Features** has a switch for

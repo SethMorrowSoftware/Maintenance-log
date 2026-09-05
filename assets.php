@@ -50,6 +50,42 @@ if (is_post()) {
         }
     }
 
+    // Several machines at once: tick them on the list, choose a category
+    // and/or location, apply. "Keep" leaves that side alone.
+    if ($action === 'bulk_move') {
+        Acl::requirePermission('assets.edit');
+
+        $ids     = array_slice(array_values(array_unique(array_filter(array_map('intval', (array) ($_POST['ids'] ?? []))))), 0, 500);
+        $changes = [];
+
+        foreach (['category_id' => 'asset_categories', 'location_id' => 'locations'] as $field => $table) {
+            $choice = trim((string) ($_POST[$field] ?? ''));
+
+            if ($choice === 'none') {
+                $changes[$field] = null;
+            } elseif ($choice !== '' && ctype_digit($choice) && db()->exists($table, ['id' => (int) $choice])) {
+                $changes[$field] = (int) $choice;
+            }
+        }
+
+        if ($ids === []) {
+            flash('error', 'Tick the ' . asset_word(true) . ' to move first.');
+        } elseif ($changes === []) {
+            flash('error', 'Choose a category or a location to move them to.');
+        } else {
+            $moved = 0;
+
+            foreach ($ids as $assetId) {
+                if (Asset::find($assetId) !== null) {
+                    Asset::update($assetId, $changes);
+                    $moved++;
+                }
+            }
+
+            flash('success', $moved . ' ' . ($moved === 1 ? asset_word() : asset_word(true)) . ' moved.');
+        }
+    }
+
     redirect(url('assets.php', $_GET));
 }
 
