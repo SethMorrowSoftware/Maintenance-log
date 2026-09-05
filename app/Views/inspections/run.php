@@ -18,8 +18,9 @@ use App\Status;
 use App\View;
 
 $inspectionId = (int) $inspection['id'];
-$meterUnit    = (string) $inspection['meter_type'];
-$hasMeter     = $meterUnit !== 'none';
+$isArea       = $inspection['asset_id'] === null;
+$meterUnit    = (string) ($inspection['meter_type'] ?? '');
+$hasMeter     = !$isArea && $meterUnit !== '' && $meterUnit !== 'none';
 
 // What this particular checklist asks for. A checklist whose template has since
 // been deleted falls back to the site-wide defaults.
@@ -216,16 +217,18 @@ foreach ($sections as $sectionItems) {
                 'attrs'    => ['maxlength' => 120],
             ]); ?>
 
-            <label class="form-check" for="f_oos">
-                <input type="checkbox" id="f_oos" name="take_out_of_service" value="1">
-                <span class="form-check-label">
-                    Take this <?= e(asset_word()) ?> out of service
-                    <small>
-                        Tick if it is not safe to run. Anything that fails a safety-critical
-                        item should almost certainly be ticked.
-                    </small>
-                </span>
-            </label>
+            <?php if (!$isArea): ?>
+                <label class="form-check" for="f_oos">
+                    <input type="checkbox" id="f_oos" name="take_out_of_service" value="1">
+                    <span class="form-check-label">
+                        Take this <?= e(asset_word()) ?> out of service
+                        <small>
+                            Tick if it is not safe to run. Anything that fails a safety-critical
+                            item should almost certainly be ticked.
+                        </small>
+                    </span>
+                </label>
+            <?php endif; ?>
         </div>
     </div>
 

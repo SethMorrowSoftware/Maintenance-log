@@ -231,11 +231,24 @@ $canDelete = $editing && can('checklists.manage');
                         'options' => [
                             'category' => 'A kind of ' . asset_word() . ' (all go-karts, all rides…)',
                             'asset'    => 'One particular ' . asset_word(),
-                            'all'      => 'Everything',
+                            'all'      => 'Every ' . asset_word(),
+                            'location' => 'An area — a place, not a ' . asset_word() . ' (the bowling desk, the arcade…)',
                         ],
-                        'hint'    => 'Decides when this list is offered during an inspection.',
+                        'hint'    => 'Decides when this list is offered. An area checklist is run once for the area, with no ' . asset_word() . ' picked.',
                         'attrs'   => ['data-reveal' => 'scope'],
                     ]); ?>
+
+                    <div data-reveal-for="scope" data-reveal-when="location">
+                        <?php View::partial('form-field', [
+                            'name'    => 'location_id',
+                            'label'   => 'Which area',
+                            'type'    => 'select',
+                            'value'   => $values['location_id'],
+                            'options' => $locations,
+                            'empty'   => 'Choose…',
+                            'hint'    => 'Areas are the locations under Categories & Locations.',
+                        ]); ?>
+                    </div>
 
                     <div data-reveal-for="scope" data-reveal-when="category">
                         <?php View::partial('form-field', [
@@ -283,6 +296,102 @@ $canDelete = $editing && can('checklists.manage');
                         'value'       => $values['description'],
                         'rows'        => 3,
                         'attrs'       => ['maxlength' => 2000, 'data-autogrow' => true],
+                    ]); ?>
+                </div>
+            </div>
+
+            <?php // ==================== When it should be done ==================== ?>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title"><?= icon('clock', '', 17) ?> When it should be done</h3>
+                        <p class="card-subtitle">Give it a time and it becomes a timed check: counted as done, late or missed on Today's checks.</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <?php View::partial('form-field', [
+                        'name'  => 'due_time',
+                        'label' => 'Due by',
+                        'type'  => 'time',
+                        'value' => $values['due_time'],
+                        'hint'  => 'Leave blank for a list that is only recorded when it is run, and never chased.',
+                        'attrs' => ['step' => 300],
+                    ]); ?>
+
+                    <div class="form-group">
+                        <label class="form-label">On these days</label>
+                        <?php
+                        $tickedDays = old('due_days', str_split((string) ($values['due_days'] ?: '1234567')));
+                        $tickedDays = array_map('intval', is_array($tickedDays) ? $tickedDays : []);
+                        ?>
+                        <div class="day-picker" role="group" aria-label="Days of the week">
+                            <?php foreach ([1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun'] as $dayNumber => $dayName): ?>
+                                <label class="day-choice">
+                                    <input type="checkbox" name="due_days[]" value="<?= $dayNumber ?>"
+                                        <?= in_array($dayNumber, $tickedDays, true) ? 'checked' : '' ?>>
+                                    <span><?= $dayName ?></span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php if (has_error('due_days')): ?>
+                            <p class="form-error"><?= e(error_for('due_days')) ?></p>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php View::partial('form-field', [
+                        'name'   => 'remind_minutes',
+                        'label'  => 'Remind on Slack beforehand',
+                        'type'   => 'number',
+                        'value'  => $values['remind_minutes'],
+                        'suffix' => 'minutes before',
+                        'hint'   => 'Optional. A nudge listing what is still to do. Blank for none.',
+                        'attrs'  => ['min' => 0, 'max' => 1440, 'step' => 5, 'placeholder' => '30'],
+                    ]); ?>
+
+                    <label class="form-check" for="f_alert_missed">
+                        <input type="checkbox" id="f_alert_missed" name="alert_missed" value="1"
+                            <?= checked((int) old('alert_missed', (int) $values['alert_missed']), 1) ?>>
+                        <span class="form-check-label">
+                            Post to Slack if it is not finished by then
+                            <small>
+                                <?php if ($slackOn): ?>
+                                    Slack is connected. The message says what is still to do and who was due to do it.
+                                <?php else: ?>
+                                    Slack is not posting at the moment — turn it on, and "Checks not finished on time",
+                                    under Settings → Slack. The people who manage checklists are told in the app either way.
+                                <?php endif; ?>
+                            </small>
+                        </span>
+                    </label>
+
+                    <div class="form-row cols-2 mt-2">
+                        <?php View::partial('form-field', [
+                            'name'        => 'alert_channel',
+                            'label'       => 'Slack channel',
+                            'value'       => $values['alert_channel'],
+                            'placeholder' => 'Same as Settings',
+                            'hint'        => 'Blank uses the channel in Settings → Slack.',
+                            'attrs'       => ['maxlength' => 80],
+                        ]); ?>
+
+                        <?php View::partial('form-field', [
+                            'name'        => 'alert_mention',
+                            'label'       => 'Who to alert',
+                            'value'       => $values['alert_mention'],
+                            'placeholder' => '@here or U0123ABCD',
+                            'hint'        => 'Added to the not-finished message. Blank for nobody.',
+                            'attrs'       => ['maxlength' => 80],
+                        ]); ?>
+                    </div>
+
+                    <?php View::partial('form-field', [
+                        'name'   => 'escalate_minutes',
+                        'label'  => 'Post again if still not finished after',
+                        'type'   => 'number',
+                        'value'  => $values['escalate_minutes'],
+                        'suffix' => 'minutes',
+                        'hint'   => 'Optional. The second message mentions whoever is set above, or the alert mention in Settings → Slack.',
+                        'attrs'  => ['min' => 0, 'max' => 1440, 'step' => 5, 'placeholder' => '30'],
                     ]); ?>
                 </div>
             </div>

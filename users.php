@@ -157,7 +157,11 @@ $users = db()->all(
               WHERE l.user_id = u.id AND l.deleted_at IS NULL) AS log_count,
             (SELECT COUNT(*) FROM {work_orders} w
               WHERE w.assigned_to = u.id AND w.deleted_at IS NULL
-                AND w.status NOT IN ('completed','cancelled')) AS open_work
+                AND w.status NOT IN ('completed','cancelled')) AS open_work,
+            (SELECT GROUP_CONCAT(l.name ORDER BY l.sort_order, l.name SEPARATOR ', ')
+               FROM {user_areas} ua INNER JOIN {locations} l ON l.id = ua.location_id
+              WHERE ua.user_id = u.id) AS areas,
+            (SELECT COUNT(*) FROM {user_checklists} uc WHERE uc.user_id = u.id) AS checklist_count
      FROM {users} u
      WHERE {$whereSql}
      ORDER BY u.is_active DESC, u.last_name ASC, u.first_name ASC

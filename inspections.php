@@ -44,6 +44,7 @@ if (is_post()) {
 
 $filters = [
     'asset_id'     => Request::int('asset_id'),
+    'location_id'  => Request::int('location_id'),
     'user_id'      => Request::int('user_id'),
     'checklist_id' => Request::int('checklist_id'),
     'status'       => Request::string('status'),
@@ -59,7 +60,7 @@ if (Request::string('export') === 'csv') {
 
     Csv::stream(
         Csv::filename('inspections'),
-        ['Started', 'Completed', asset_word(false, true) . ' tag', asset_word(false, true), 'Checklist', 'Result',
+        ['Started', 'Completed', 'Due by', 'On time', asset_word(false, true) . ' tag', asset_word(false, true), 'Area', 'Checklist', 'Result',
          'Passed', 'Failed', 'N/A', 'Critical failure', 'Meter', 'Minutes',
          'Signed by', 'Inspector', 'Notes'],
         $rows,
@@ -67,7 +68,9 @@ if (Request::string('export') === 'csv') {
             return [
                 Dates::datetime((string) $row['started_at'], ''),
                 Dates::datetime((string) ($row['completed_at'] ?? ''), ''),
-                $row['asset_tag'], $row['asset_name'], $row['checklist_name'],
+                Dates::datetime((string) ($row['due_at'] ?? ''), ''),
+                $row['due_at'] === null ? '' : ((int) $row['was_late'] === 1 ? 'No' : 'Yes'),
+                $row['asset_tag'], $row['asset_name'], $row['location_name'], $row['checklist_name'],
                 Status::label((string) $row['status'], 'inspection'),
                 $row['passed_count'], $row['failed_count'], $row['na_count'],
                 (int) $row['critical_failed'] === 1 ? 'Yes' : 'No',
@@ -95,10 +98,25 @@ if (can('reports.export')) {
         . icon('download', '', 17) . ' Export</a>';
 }
 
+// The pick-lists, narrowed to the user's area when they have one.
+[$scopeSql, $scopeParams] = \App\Scope::assetFilter('a');
+
 $assetOptions = [];
 
-foreach (Asset::options(true) as $asset) {
+foreach (db()->all(
+    "SELECT a.id, a.name, a.asset_tag FROM {assets} a WHERE a.deleted_at IS NULL"
+    . ($scopeSql !== null ? ' AND ' . $scopeSql : '')
+    . ' ORDER BY a.sort_order ASC, a.name ASC',
+    $scopeParams
+) as $asset) {
     $assetOptions[(int) $asset['id']] = (string) $asset['name'] . ' — ' . (string) $asset['asset_tag'];
+}
+
+$locationOptions = Asset::locationOptions(false);
+$areas           = \App\Scope::areas();
+
+if ($areas !== [] && \App\Scope::limited()) {
+    $locationOptions = array_intersect_key($locationOptions, array_flip($areas));
 }
 
 View::render('inspections/index', [
@@ -110,5 +128,6 @@ View::render('inspections/index', [
     'paginator'   => $paginator,
     'filters'     => $filters,
     'assets'      => $assetOptions,
+    'locations'   => $locationOptions,
     'checklists'  => db()->pairs('SELECT id, name FROM {checklists} ORDER BY name'),
 ]);

@@ -59,6 +59,32 @@ if (!$viaCli) {
 $started = microtime(true);
 $lines   = [];
 
+// -----------------------------------------------------------------------------
+// The frequent job: ?job=checks (or "php cron.php checks")
+//
+// Timed checklists need looking at every few minutes, not once a night, so a
+// second cron entry runs just this. It only reads today's checks and posts
+// about the ones not finished on time; everything it sends is recorded, so
+// running it every minute would be harmless, just pointless.
+// -----------------------------------------------------------------------------
+
+$job = $viaCli ? (string) ($argv[1] ?? '') : Request::string('job');
+
+if ($job === 'checks') {
+    try {
+        $result = \App\Checks::runAlerts();
+    } catch (Throwable $e) {
+        log_error('Checks job failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        $result = 'FAILED (recorded in the error log)';
+    }
+
+    Settings::set('last_checks_run', Dates::nowUtc());
+
+    echo 'RideLog checks job — ' . Dates::datetime(Dates::nowUtc()) . "\n";
+    echo sprintf('  %-28s %s', 'Unfinished checks', $result) . "\n";
+    exit;
+}
+
 /**
  * Run one step, and never let a failure in one stop the rest.
  */
@@ -105,6 +131,15 @@ $step('Due and overdue notices', static function (): string {
 
 $step('Slack: service due', static function (): string {
     return \App\Slack::dueDigest();
+});
+
+// -----------------------------------------------------------------------------
+// Checks not finished on time (the ?job=checks run does this every few
+// minutes; doing it here too costs nothing and covers a site with one cron)
+// -----------------------------------------------------------------------------
+
+$step('Unfinished checks', static function (): string {
+    return \App\Checks::runAlerts();
 });
 
 // -----------------------------------------------------------------------------

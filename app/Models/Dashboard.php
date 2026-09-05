@@ -278,74 +278,47 @@ final class Dashboard
     }
 
     /**
-     * Machines whose daily inspection has not been run today.
-     *
-     * Compares against checklists marked "daily" that apply to the machine,
-     * either globally or through its category.
+     * Today's checks that are still to do, for the person looking: one row
+     * per machine (or per area, for an area checklist) that has a check
+     * expected today and no finished run yet. Somebody limited to an area
+     * sees only theirs.
      *
      * @return list<array<string, mixed>>
      */
     public static function inspectionsDueToday(int $limit = 12): array
     {
-        $todayLocal = Dates::today();
-        [$startUtc, $endUtc] = Dates::rangeToUtc($todayLocal, $todayLocal);
-
-        if ($startUtc === null || $endUtc === null) {
-            return [];
-        }
-
         try {
-            $rows = db()->all(
-                "SELECT a.id, a.name, a.asset_tag, a.status,
-                        c.name AS category_name,
-                        cl.id AS checklist_id, cl.name AS checklist_name, cl.applies_to,
-                        (SELECT COUNT(*) FROM {inspections} i
-                          WHERE i.asset_id = a.id
-                            AND i.checklist_id = cl.id
-                            AND i.started_at >= ?
-                            AND i.started_at < ?
-                            AND i.status <> 'in_progress') AS done_today
-                 FROM {assets} a
-                 LEFT JOIN {asset_categories} c ON c.id = a.category_id
-                 INNER JOIN {checklists} cl
-                         ON cl.is_active = 1
-                        AND cl.frequency = 'daily'
-                        AND (
-                              cl.applies_to = 'all'
-                           OR (cl.applies_to = 'category' AND cl.category_id = a.category_id)
-                           OR (cl.applies_to = 'asset' AND cl.asset_id = a.id)
-                        )
-                 WHERE a.deleted_at IS NULL
-                   AND a.status = 'in_service'
-                 HAVING done_today = 0
-                 ORDER BY a.sort_order ASC, a.name ASC",
-                [$startUtc, $endUtc]
-            );
+            $rows = \App\Checks::occurrences(Dates::today(), Auth::user());
         } catch (Throwable $e) {
             log_error('Dashboard inspection query failed: ' . $e->getMessage());
 
             return [];
         }
 
-        // A machine can match several daily checklists at once: one aimed at its
-        // category and a catch-all aimed at everything. Listing both would tell
-        // a technician to inspect the same kart twice, so keep only the most
-        // specific one. A checklist written for this machine beats one written
-        // for its category, which beats the catch-all.
-        $rank = ['asset' => 3, 'category' => 2, 'all' => 1];
-        $best = [];
+        $out = [];
 
         foreach ($rows as $row) {
-            $assetId = (int) $row['id'];
-            $score   = $rank[(string) ($row['applies_to'] ?? 'all')] ?? 0;
-
-            if (!isset($best[$assetId]) || $score > $best[$assetId]['_score']) {
-                $row['_score']  = $score;
-                $best[$assetId] = $row;
+            if (in_array((string) $row['status'], ['done', 'late'], true)) {
+                continue;
             }
+
+            $checklist = $row['checklist'];
+            $asset     = $row['asset'];
+
+            $out[] = [
+                'id'             => $asset === null ? null : (int) $asset['id'],
+                'name'           => $asset === null ? (string) ($checklist['location_name'] ?? 'Area') : (string) $asset['name'],
+                'asset_tag'      => $asset === null ? '' : (string) $asset['asset_tag'],
+                'checklist_id'   => (int) $checklist['id'],
+                'checklist_name' => (string) $checklist['name'],
+                'location_id'    => $asset === null ? (int) ($checklist['location_id'] ?? 0) : null,
+                'due_time'       => $checklist['due_time'] ?? null,
+                'status'         => (string) $row['status'],
+                'inspection_id'  => $row['inspection'] === null ? null : (int) $row['inspection']['id'],
+            ];
         }
 
-        return array_slice(array_values($best), 0, max(1, min(50, $limit)));
+        return array_slice($out, 0, max(1, min(50, $limit)));
     }
 
     /**

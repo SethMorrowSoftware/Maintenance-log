@@ -11,6 +11,7 @@ use App\Csrf;
 use App\Dates;
 use App\Models\Inspection;
 use App\Request;
+use App\Scope;
 use App\Uploader;
 use App\View;
 
@@ -24,10 +25,18 @@ if ($inspection === null) {
     abort(404, 'That inspection does not exist. It may have been deleted.');
 }
 
+// Somebody limited to an area only sees its checks.
+if (!Scope::allowsInspection($inspection)) {
+    abort(403, 'This check is outside your area.');
+}
+
 // An unfinished one belongs on the runner, not here.
 if ((string) $inspection['status'] === 'in_progress' && !Request::bool('print')) {
     redirect(url('inspection-run.php', ['id' => $id]));
 }
+
+$subject = Inspection::subject($inspection);
+$isArea  = $inspection['asset_id'] === null;
 
 if (is_post()) {
     Csrf::verify();
@@ -36,7 +45,7 @@ if (is_post()) {
     if (Request::string('action') === 'delete') {
         db()->delete('inspections', ['id' => $id]);
         audit('delete', 'inspection', $id, 'Deleted the '
-            . (string) $inspection['checklist_name'] . ' of ' . (string) $inspection['asset_name']);
+            . (string) $inspection['checklist_name'] . ' of ' . $subject);
         flash('success', 'Inspection deleted.');
         redirect(url('inspections.php'));
     }
@@ -55,7 +64,7 @@ $printing = Request::bool('print');
 
 $data = [
     'title'       => (string) $inspection['checklist_name'],
-    'subtitle'    => (string) $inspection['asset_name'] . ' · ' . (string) $inspection['asset_tag'],
+    'subtitle'    => $subject . ($isArea || (string) $inspection['asset_tag'] === '' ? '' : ' · ' . (string) $inspection['asset_tag']),
     'activeNav'   => 'inspections.php',
     'breadcrumbs' => [
         ['label' => 'Inspections', 'url' => url('inspections.php')],
@@ -72,7 +81,7 @@ $data = [
 if ($printing) {
     $data['docTitle']  = 'Inspection report';
     $data['printMeta'] = [
-        asset_word(false, true)     => (string) $inspection['asset_name'] . ' (' . (string) $inspection['asset_tag'] . ')',
+        ($isArea ? 'Area' : asset_word(false, true)) => $subject . ($isArea ? '' : ' (' . (string) $inspection['asset_tag'] . ')'),
         'Checklist' => (string) $inspection['checklist_name'],
         'Carried out' => Dates::datetime((string) ($inspection['completed_at'] ?: $inspection['started_at'])),
         'Report'    => '#' . $id,
@@ -87,9 +96,15 @@ $actions = '<a class="btn btn-secondary" href="'
     . icon('printer', '', 17) . ' Print</a>';
 
 if (can('inspections.perform')) {
-    $actions .= '<a class="btn btn-primary" href="'
-        . e(url('inspection-run.php', ['asset_id' => (int) $inspection['asset_id']])) . '">'
-        . icon('clipboard-check', '', 17) . ' Check it again</a>';
+    $again = $isArea
+        ? ['checklist_id' => (int) $inspection['checklist_id']]
+        : ['asset_id' => (int) $inspection['asset_id']];
+
+    if (!$isArea || !empty($inspection['checklist_id'])) {
+        $actions .= '<a class="btn btn-primary" href="'
+            . e(url('inspection-run.php', $again)) . '">'
+            . icon('clipboard-check', '', 17) . ' Check it again</a>';
+    }
 }
 
 $data['pageActions'] = $actions;

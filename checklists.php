@@ -91,6 +91,7 @@ $rows = db()->all(
     "SELECT c.*,
             cat.name AS category_name,
             a.name   AS asset_name,
+            loc.name AS location_name,
             (SELECT COUNT(*) FROM {checklist_items} ci WHERE ci.checklist_id = c.id) AS item_count,
             (SELECT COUNT(*) FROM {checklist_items} ci WHERE ci.checklist_id = c.id AND ci.is_critical = 1)
                 AS critical_count,
@@ -99,7 +100,8 @@ $rows = db()->all(
      FROM {checklists} c
      LEFT JOIN {asset_categories} cat ON cat.id = c.category_id
      LEFT JOIN {assets} a ON a.id = c.asset_id
-     ORDER BY c.is_active DESC, c.name ASC"
+     LEFT JOIN {locations} loc ON loc.id = c.location_id
+     ORDER BY c.is_active DESC, c.due_time IS NULL, c.due_time ASC, c.name ASC"
 );
 
 $actions = '';

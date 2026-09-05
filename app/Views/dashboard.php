@@ -256,17 +256,24 @@ $currency = Settings::currency();
                 <div class="card-body is-tight">
                     <div class="flex gap-2 flex-wrap">
                         <?php foreach ($inspections as $item): ?>
-                            <a class="chip" style="padding:6px 12px"
+                            <?php
+                            $target = $item['id'] === null
+                                ? ['checklist_id' => (int) $item['checklist_id']]
+                                : ['asset_id' => (int) $item['id'], 'checklist_id' => (int) $item['checklist_id']];
+                            ?>
+                            <a class="chip<?= (string) ($item['status'] ?? '') === 'overdue' ? ' chip-danger' : '' ?>" style="padding:6px 12px"
                                title="<?= attr((string) $item['checklist_name']) ?>"
-                               href="<?= e(url('inspection-run.php', [
-                                   'asset_id'     => (int) $item['id'],
-                                   'checklist_id' => (int) $item['checklist_id'],
-                               ])) ?>">
-                                <?= icon('clipboard', '', 14) ?>
+                               href="<?= e(url('inspection-run.php', $target)) ?>">
+                                <?= icon($item['id'] === null ? 'map-pin' : 'clipboard', '', 14) ?>
                                 <?= e((string) $item['name']) ?>
                             </a>
                         <?php endforeach; ?>
                     </div>
+                </div>
+                <div class="card-footer">
+                    <a class="btn btn-ghost btn-sm" href="<?= e(url('checks.php')) ?>">
+                        <?= icon('checklist', '', 15) ?> Today's checks <?= icon('chevron-right', '', 14) ?>
+                    </a>
                 </div>
             </div>
         <?php endif; ?>

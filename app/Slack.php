@@ -63,7 +63,13 @@ final class Slack
     /** "@here" and friends in the form Slack understands, or nothing. */
     private static function mention(): string
     {
-        $raw = trim((string) Settings::get('slack_mention', ''));
+        return self::mentionFrom((string) Settings::get('slack_mention', ''));
+    }
+
+    /** The same, for a mention typed on a checklist rather than the settings. */
+    private static function mentionFrom(string $raw): string
+    {
+        $raw = trim($raw);
 
         if ($raw === '') {
             return '';
@@ -495,7 +501,11 @@ final class Slack
                 return;
             }
 
-            $asset = Asset::find((int) $inspection['asset_id']);
+            // An area check has no machine; the area stands in for it.
+            $asset   = !empty($inspection['asset_id']) ? Asset::find((int) $inspection['asset_id']) : null;
+            $subject = $asset !== null || empty($inspection['location_name'])
+                ? self::machine($asset)
+                : (string) $inspection['location_name'];
 
             if (!$critical && !self::importantEnough($asset)) {
                 return;
@@ -513,7 +523,7 @@ final class Slack
 
             $lines   = [];
             $lines[] = ($critical ? ':no_entry: *Failed safety check*' : ':x: *Failed inspection*')
-                     . ' — ' . self::machine($asset) . ' · ' . (string) $inspection['checklist_name'];
+                     . ' — ' . $subject . ' · ' . (string) $inspection['checklist_name'];
             $lines[] = $failed . ' of ' . $total . ' failed' . ($takenOutOfService ? ', taken out of service' : '');
 
             foreach ($items as $item) {
@@ -685,6 +695,94 @@ final class Slack
             self::send('stock', $text);
         } catch (Throwable $e) {
             log_error('Slack stock alert failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * A timed checklist is running late: the reminder before it is due, the
+     * "not finished" post afterwards, or the louder escalation later still.
+     *
+     * The checklist's own channel and mention win over the settings. The
+     * reminder never mentions anybody; the escalation always tries to.
+     *
+     * @param  array<string, mixed>       $group   one entry from Checks::board()
+     * @param  list<array<string, mixed>> $missing the checks in it still to do
+     * @return array{ok: bool, error: string, channel: string}
+     */
+    public static function checkAlert(string $kind, array $group, array $missing): array
+    {
+        try {
+            $checklist = $group['checklist'];
+            $name      = (string) $checklist['name'];
+            $due       = Checks::timeLabel((string) ($checklist['due_time'] ?? ''));
+            $channel   = trim((string) ($checklist['alert_channel'] ?? ''));
+
+            if ($channel === '') {
+                $channel = self::channelFor('unfinished');
+            }
+
+            $isArea = (string) ($checklist['applies_to'] ?? '') === 'location';
+            $where  = $isArea ? (string) ($checklist['location_name'] ?? '') : '';
+            $count  = count($missing);
+            $total  = (int) ($group['total'] ?? $count);
+
+            switch ($kind) {
+                case 'reminder':
+                    $head = ':alarm_clock: *Reminder: ' . $name . ' is due by ' . $due . '*';
+                    break;
+                case 'escalation':
+                    $head = ':rotating_light: *Still not finished: ' . $name . '*';
+                    break;
+                default:
+                    $head = ':x: *Not finished on time: ' . $name . '*';
+            }
+
+            $lines   = [];
+            $lines[] = $head . ($where !== '' ? ' — ' . $where : '');
+
+            $detail = $kind === 'reminder' ? '' : 'Was due by ' . $due . ' · ';
+
+            if ($total > 1) {
+                $detail .= $count . ' of ' . $total . ' still to do';
+
+                $names = [];
+
+                foreach (array_slice($missing, 0, 6) as $row) {
+                    $names[] = $row['asset'] !== null ? (string) $row['asset']['name'] : $where;
+                }
+
+                if ($names !== []) {
+                    $detail .= ': ' . implode(', ', $names)
+                        . ($count > count($names) ? ' and ' . ($count - count($names)) . ' more' : '');
+                }
+            } else {
+                $detail .= $isArea ? 'Not done yet' : 'Still to do';
+            }
+
+            $lines[] = rtrim($detail, ' ·');
+            $lines[] = self::link('checks.php', ['date' => Dates::today()], "Open today's checks");
+
+            $own     = (string) ($checklist['alert_mention'] ?? '');
+            $mention = '';
+
+            if ($kind !== 'reminder' && trim($own) !== '') {
+                $mention = self::mentionFrom($own);
+            } elseif ($kind === 'escalation') {
+                $mention = self::mention();
+            }
+
+            if ($mention !== '') {
+                $lines[0] = $mention . ' ' . $lines[0];
+            }
+
+            $result            = self::post($channel, implode("\n", $lines), 'unfinished');
+            $result['channel'] = $channel;
+
+            return $result;
+        } catch (Throwable $e) {
+            log_error('Slack check alert failed: ' . $e->getMessage());
+
+            return ['ok' => false, 'error' => $e->getMessage(), 'channel' => ''];
         }
     }
 

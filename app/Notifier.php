@@ -330,7 +330,7 @@ final class Notifier
         self::pushToRole(
             Features::on('work_orders') ? 'workorders.assign' : 'checklists.manage',
             'inspection_failed',
-            'Inspection failed: ' . (string) ($inspection['asset_name'] ?? an_asset()),
+            'Inspection failed: ' . (string) ($inspection['asset_name'] ?? $inspection['location_name'] ?? an_asset()),
             $failed . ' item' . ($failed === 1 ? '' : 's') . ' failed'
             . ((int) $inspection['critical_failed'] ? ', including a safety-critical one.' : '.'),
             'inspection-view.php?id=' . (int) $inspection['id'],

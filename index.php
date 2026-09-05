@@ -23,6 +23,33 @@ Auth::requireLogin();
  */
 run_hourly_tasks();
 
+// Staff who only run checks get today's checks as their home page: nothing
+// about the fleet, just what needs doing and what has been done.
+if (\App\Acl::isStaff()) {
+    $today = App\Dates::today();
+    $board = feature_on('inspections') ? \App\Checks::board($today, Auth::user()) : [];
+
+    $actions = can('inspections.perform')
+        ? '<a class="btn btn-primary" href="' . e(url('inspection-run.php')) . '">'
+          . icon('clipboard-check', '', 17) . ' Run a check</a>'
+        : '';
+
+    View::render('checks/index', [
+        'title'       => greeting() . ', ' . first_name() . '.',
+        'subtitle'    => 'Here is what needs checking today.',
+        'activeNav'   => 'index.php',
+        'pageActions' => $actions,
+        'tab'         => 'today',
+        'date'        => $today,
+        'today'       => $today,
+        'board'       => $board,
+        'totals'      => \App\Checks::totals($board),
+        'limited'     => \App\Scope::limited(),
+        'home'        => true,
+    ]);
+    exit;
+}
+
 // A technician's morning and a manager's morning are different pages, not one
 // page with things switched off: the technician gets three big buttons and
 // what is broken or due, the manager gets the figures as well.

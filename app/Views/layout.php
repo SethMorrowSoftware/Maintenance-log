@@ -51,6 +51,7 @@ $navigation = [
         ['label' => 'Maintenance Logs', 'url' => 'logs.php',        'icon' => 'wrench',           'permission' => 'logs.view'],
         ['label' => 'Work Orders',      'url' => 'workorders.php',  'icon' => 'work-order',       'permission' => 'workorders.view'],
         ['label' => 'Scheduled Service','url' => 'schedules.php',   'icon' => 'calendar',         'permission' => 'schedules.view'],
+        ['label' => "Today's Checks",   'url' => 'checks.php',      'icon' => 'checklist',        'permission' => 'inspections.view'],
         ['label' => 'Inspections',      'url' => 'inspections.php', 'icon' => 'clipboard-check',  'permission' => 'inspections.view'],
     ],
     'Equipment' => [

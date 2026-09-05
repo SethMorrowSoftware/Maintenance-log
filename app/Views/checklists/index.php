@@ -6,6 +6,7 @@
  * what it covers, and how often — no jargon.
  */
 
+use App\Checks;
 use App\Dates;
 use App\Status;
 use App\View;
@@ -64,13 +65,25 @@ $canManage = can('checklists.manage');
                                     Every <?= e(asset_word()) ?>
                                 <?php elseif ((string) $row['applies_to'] === 'category'): ?>
                                     <?= e((string) ($row['category_name'] ?? 'a category')) ?>
+                                <?php elseif ((string) $row['applies_to'] === 'location'): ?>
+                                    <?= icon('map-pin', '', 14) ?> <?= e((string) ($row['location_name'] ?? 'an area')) ?>
+                                    <span class="cell-secondary">Area check</span>
                                 <?php else: ?>
                                     <?= e((string) ($row['asset_name'] ?? 'one ' . asset_word())) ?>
                                 <?php endif; ?>
                             </td>
                             <td data-label="How often">
                                 <?= e(Status::label((string) $row['frequency'], 'frequency')) ?>
-                                <?php if (!empty($row['estimated_minutes'])): ?>
+                                <?php if (!empty($row['due_time'])): ?>
+                                    <span class="cell-secondary">
+                                        <?= icon('clock', '', 12) ?>
+                                        by <?= e(Checks::timeLabel((string) $row['due_time'])) ?>
+                                        &middot; <?= e(Checks::daysLabel((string) $row['due_days'])) ?>
+                                        <?php if ((int) $row['alert_missed'] === 1): ?>
+                                            &middot; <span title="Posts to Slack if not finished on time"><?= icon('bell', '', 12) ?> Slack</span>
+                                        <?php endif; ?>
+                                    </span>
+                                <?php elseif (!empty($row['estimated_minutes'])): ?>
                                     <span class="cell-secondary">
                                         about <?= e(Dates::humanDuration((int) $row['estimated_minutes'])) ?>
                                     </span>
@@ -142,6 +155,8 @@ $canManage = can('checklists.manage');
     <p class="text-sm text-muted mt-4">
         A checklist shows up on an inspection when it matches the <?= e(asset_word()) ?> being checked.
         The most specific one wins: a checklist for one particular kart beats one for
-        all go-karts, which beats one for everything.
+        all go-karts, which beats one for everything. An area checklist is run for a place
+        instead, with no <?= e(asset_word()) ?> picked. Give a list a due time and
+        <a href="<?= e(url('checks.php')) ?>">Today's checks</a> counts it as done, late or missed.
     </p>
 <?php endif; ?>

@@ -35,7 +35,7 @@ if (is_post()) {
     $submitted = $_POST['perm'] ?? [];
     $matrix    = [];
 
-    foreach ([Acl::ROLE_VIEWER, Acl::ROLE_TECHNICIAN, Acl::ROLE_MANAGER] as $role) {
+    foreach (Acl::editableRoles() as $role) {
         $list = is_array($submitted) ? ($submitted[$role] ?? []) : [];
 
         $matrix[$role] = is_array($list) ? array_map('strval', $list) : [];
@@ -48,13 +48,13 @@ if (is_post()) {
     redirect(url('roles.php'));
 }
 
-// Columns least to most privileged, the way people think about them.
-$roles = [
-    Acl::ROLE_VIEWER     => Acl::roleLabel(Acl::ROLE_VIEWER),
-    Acl::ROLE_TECHNICIAN => Acl::roleLabel(Acl::ROLE_TECHNICIAN),
-    Acl::ROLE_MANAGER    => Acl::roleLabel(Acl::ROLE_MANAGER),
-    Acl::ROLE_ADMIN      => Acl::roleLabel(Acl::ROLE_ADMIN),
-];
+// Columns least to most privileged, the way people think about them, with
+// the fixed administrator column last.
+$roles = [];
+
+foreach (array_merge(Acl::editableRoles(), [Acl::ROLE_ADMIN]) as $role) {
+    $roles[$role] = Acl::roleLabel($role);
+}
 
 $matrix   = [];
 $defaults = Acl::defaults();

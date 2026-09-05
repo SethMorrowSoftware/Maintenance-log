@@ -306,7 +306,11 @@ min 8 chars).
 
 ## 5. Roles & permissions (`App\Acl`)
 
-Four roles: `admin`, `manager`, `technician`, `viewer`.
+Five roles: `admin`, `manager`, `technician`, `viewer` stack (each holds everything
+the one below does); `staff` stands apart with `inspections.view` + `inspections.perform`
+only — the checks for their area and nothing else. `Acl::editableRoles()` lists the
+four the Roles page may change, least to most privileged; `Acl::isStaff()` picks the
+checks-only home page.
 
 ```
 assets.view assets.create assets.edit assets.delete assets.meter
@@ -329,6 +333,16 @@ costs.view
 | `technician` | viewer + `logs.create`, `logs.edit_own`, `assets.meter`, `inspections.perform`, `workorders.create`, `workorders.edit`, `parts.adjust` |
 | `manager` | technician + `assets.*`, `logs.edit_any`, `logs.delete`, `schedules.manage`, `checklists.manage`, `inspections.delete`, `workorders.*`, `parts.manage`, `reports.export`, `audit.view` |
 | `admin` | everything, including `users.manage`, `settings.manage` and `costs.view` |
+| `staff` | `inspections.view`, `inspections.perform` — not part of the stack |
+
+**Areas (`App\Scope`).** `user_areas` and `user_checklists` narrow a person to the
+checks of some locations and/or some checklists. Anybody with a row in either table
+(administrators excepted) is *limited*: `Scope::inspectionFilter()` / `assetFilter()`
+give the WHERE fragments the inspections list, the board, the dashboard chips and the
+start-a-check page apply; `Scope::allowsChecklist()` / `allowsInspection()` guard a
+single record. A check belongs to an area when its machine lives there or when it is
+an area checklist for it. Nothing ticked means everything, which keeps a one-mechanic
+site exactly as it was.
 
 **Those are the defaults, not the law.** `Acl::defaults()` is the table above;
 `Acl::matrix()` lays the `role_permissions` setting (JSON `{role: [permissions]}`,
@@ -404,13 +418,22 @@ Full DDL lives in `install/schema.sql`. Common conventions:
   `install/migrations/001_asset_custom_data.sql` for databases that predate it; the
   installer records every migration file as applied on a fresh install.
 
-### Tables (24)
+### Tables (27)
 
 `users, remember_tokens, password_resets, login_attempts, locations, asset_categories,
 assets, meter_readings, maintenance_logs, maintenance_log_parts, parts, part_transactions,
-maintenance_schedules, checklists, checklist_items, inspections, inspection_items,
-work_orders, work_order_comments, attachments, audit_log, settings, notifications,
-saved_reports`
+maintenance_schedules, checklists, checklist_items, checklist_alerts, user_areas,
+user_checklists, inspections, inspection_items, work_orders, work_order_comments,
+attachments, audit_log, settings, notifications, saved_reports`
+
+`checklists` carries the "when": `location_id` (for `applies_to = 'location'`),
+`due_time` (local wall clock), `due_days` (ISO weekday digits, `1234567`),
+`remind_minutes`, `alert_missed`, `alert_channel`, `alert_mention`, `escalate_minutes`.
+`inspections.asset_id` is nullable (an area check), with `location_id`, `due_at` (the
+UTC deadline snapshotted when the run started) and `was_late`. `checklist_alerts` has
+one row per checklist × day × kind (`reminder`, `missed`, `escalation`) and is the
+de-duplication for a job that runs every few minutes. Migration `002_checks.sql`
+brings a 1.0 database up to date; the three new tables come from re-running schema.sql.
 
 ### Controlled vocabularies (use these exact string values everywhere)
 
@@ -430,10 +453,13 @@ workorder.status     : open | assigned | in_progress | on_hold | completed | can
 workorder.priority   : low | normal | high | urgent
 workorder.source     : operator_report | inspection | preventive | breakdown | other
 part_transaction.type: in | out | adjust
-user.role            : admin | manager | technician | viewer
+user.role            : admin | manager | technician | viewer | staff
+checklist.applies_to : all | category | asset | location
+checklist_alert.kind : reminder | missed | escalation
+check (derived)      : done | late | in_progress | due | overdue | missed | anytime
 attachment.entity_type : asset | maintenance_log | work_order | inspection | part | user | setting
 notification.type    : pm_due | pm_overdue | wo_assigned | wo_updated | inspection_failed |
-                       low_stock | system
+                       checklist_missed | low_stock | system
 ```
 
 ### Settings keys seeded by the installer
@@ -443,13 +469,15 @@ items_per_page, session_timeout_minutes, max_upload_mb, allow_registration,
 theme_default, primary_color, logo_path, mail_enabled, mail_from_name, mail_from_email,
 mail_transport, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure,
 notify_pm_due_days, cron_token, schema_version, low_stock_alerts, require_meter_on_log,
-inspection_signature_required, week_start, app_installed_at,
+inspection_signature_required, inspection_fail_opens_wo, checks_grace_minutes,
+checks_notify_managers, week_start, app_installed_at, last_cron_run, last_checks_run,
 asset_noun_singular, asset_noun_plural,
 feature_work_orders, feature_schedules, feature_inspections, feature_parts, feature_meters,
 feature_downtime, feature_costs, feature_photos, feature_labels, feature_reports,
 feature_notifications, feature_audit, feature_drafts,
 asset_custom_fields (hidden, JSON), role_permissions (hidden, JSON),
-applied_migrations (hidden, JSON), slack_* (see App\Slack)
+applied_migrations (hidden, JSON), slack_* (see App\Slack; slack_on_unfinished and
+slack_unfinished_channel are the timed-check alerts)
 ```
 
 ---
@@ -601,6 +629,30 @@ responses, per-item notes and photos, meter capture, running fail count, signatu
 save-as-draft and complete. A failed **critical** item automatically opens a high-priority
 work order and can set the asset out of service. Inspection reports are printable.
 
+A checklist can also be for an **area** (`applies_to = 'location'`): it runs once for
+the location with no asset (`inspections.asset_id` NULL, `location_id` set); the meter
+and out-of-service steps are skipped, a failure still raises a work order (without an
+asset), and Slack names the area.
+
+### Today's checks (`checks.php`, `App\Checks`)
+A checklist with `due_time` is *expected* on each day in `due_days`: once for an area
+list, once per in-service machine it covers otherwise. An untimed daily list is
+expected "any time today" (one per machine, most specific wins — the old dashboard
+rule). `Checks::occurrences(date, user)` pairs every expected check with the best
+inspection that day (finished beats unfinished, later beats earlier) and gives it a
+status: `done`, `late` (finished after `due_at` + `checks_grace_minutes`), `in_progress`,
+`due`, `overdue` (today, past time), `missed` (past day), `anytime`. `board()` groups by
+checklist with counts, a group status and the day's `checklist_alerts`; `history(from,
+to)` (≤ 92 days) gives expected/done/on-time/late/missed per checklist, area and person
+with rates, computed in PHP from one inspections query. `runAlerts()` — from
+`cron.php?job=checks`, from the nightly run, and opportunistically from
+`Checks::tick()` (a 5-minute marker file, run at shutdown after the page is sent) —
+posts the reminder (`remind_minutes` before), the "not finished" message at due +
+grace (Slack via `Slack::checkAlert()` when `slack_on_unfinished` and the list's
+`alert_missed`; the bell to `checklists.manage` holders when `checks_notify_managers`),
+and the escalation `escalate_minutes` later with a mention; each is recorded once in
+`checklist_alerts`. The staff role's `index.php` is the board for their scope.
+
 ### Work orders
 Auto-numbered (`WO-000123`). Report an issue → triage → assign → work → complete.
 Comments thread, priority, due date, downtime tracking, source, linked asset/inspection,
@@ -690,7 +742,9 @@ what it has, and a second load adds nothing.
 
 ### Cron (`cron.php?token=…`)
 Recompute PM due dates, raise due/overdue notifications, expire old sessions & reset tokens,
-prune audit rows past `audit_retention_days`, low-stock alerts, optional digest email.
+prune audit rows past `audit_retention_days`, low-stock alerts, unfinished-check alerts,
+optional digest email. `cron.php?token=…&job=checks` (or `php cron.php checks`) runs only
+the unfinished-check alerts and is meant for a second cron entry every five minutes.
 Also invoked opportunistically (max once/hour, tracked in `storage/cache/`) on dashboard load
 so the app still works with no cron configured.
 

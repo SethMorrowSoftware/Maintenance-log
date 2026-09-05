@@ -7,6 +7,7 @@ require __DIR__ . '/app/bootstrap.php';
 use App\Acl;
 use App\Auth;
 use App\Csrf;
+use App\Checks;
 use App\Models\Asset;
 use App\Models\Inspection;
 use App\Request;
@@ -40,15 +41,26 @@ if (is_post()) {
     $validator = Validator::make($_POST, [
         'name'              => 'required|string|max:191',
         'description'       => 'nullable|text|max:2000',
-        'applies_to'        => 'required|in:all,category,asset',
+        'applies_to'        => 'required|in:all,category,asset,location',
         'category_id'       => 'nullable|int',
         'asset_id'          => 'nullable|int',
+        'location_id'       => 'nullable|int',
         'frequency'         => 'required|in:daily,weekly,monthly,quarterly,annual,preseason,adhoc',
         'estimated_minutes' => 'nullable|int|min:0|max:1440',
+        'due_time'          => 'nullable|string|max:8',
+        'remind_minutes'    => 'nullable|int|min:0|max:1440',
+        'escalate_minutes'  => 'nullable|int|min:0|max:1440',
+        'alert_channel'     => 'nullable|string|max:80',
+        'alert_mention'     => 'nullable|string|max:80',
     ], [
         'name.required' => 'Give the checklist a name, such as “Daily go-kart check”.',
     ], [
         'estimated_minutes' => 'How long it takes',
+        'due_time'          => 'Due by',
+        'remind_minutes'    => 'Remind beforehand',
+        'escalate_minutes'  => 'Escalate after',
+        'alert_channel'     => 'Slack channel',
+        'alert_mention'     => 'Who to alert',
     ]);
 
     $items = [];
@@ -118,9 +130,49 @@ if (is_post()) {
         redirect(url('checklist-edit.php', $editing ? ['id' => $id] : []));
     }
 
+    // An area checklist is for a place, not a machine.
+    $data['location_id'] = (string) $data['applies_to'] === 'location' && !empty($data['location_id'])
+        ? (int) $data['location_id']
+        : null;
+
+    if ((string) $data['applies_to'] === 'location') {
+        if ($data['location_id'] === null || !db()->exists('locations', ['id' => $data['location_id']])) {
+            flash_errors(['location_id' => 'Choose which area this checklist is for.'], $_POST);
+            redirect(url('checklist-edit.php', $editing ? ['id' => $id] : []));
+        }
+    }
+
     if (($data['estimated_minutes'] ?? '') === '') {
         $data['estimated_minutes'] = null;
     }
+
+    // When it should be done. A blank time means "whenever": the list is
+    // recorded when it is run and never chased.
+    $dueTime = trim((string) ($data['due_time'] ?? ''));
+
+    if ($dueTime !== '') {
+        if (preg_match('/^([01]\d|2[0-3]):([0-5]\d)/', $dueTime, $m) !== 1) {
+            flash_errors(['due_time' => 'Type the time as hours and minutes, like 10:30.'], $_POST);
+            redirect(url('checklist-edit.php', $editing ? ['id' => $id] : []));
+        }
+
+        $dueTime = $m[1] . ':' . $m[2] . ':00';
+    }
+
+    $days = is_array($_POST['due_days'] ?? null) ? $_POST['due_days'] : [];
+
+    if ($dueTime !== '' && $days === []) {
+        flash_errors(['due_days' => 'Tick at least one day it is due on.'], $_POST);
+        redirect(url('checklist-edit.php', $editing ? ['id' => $id] : []));
+    }
+
+    $data['due_time']         = $dueTime === '' ? null : $dueTime;
+    $data['due_days']         = Checks::cleanDays($days);
+    $data['remind_minutes']   = (int) ($data['remind_minutes'] ?? 0) > 0 ? (int) $data['remind_minutes'] : null;
+    $data['escalate_minutes'] = (int) ($data['escalate_minutes'] ?? 0) > 0 ? (int) $data['escalate_minutes'] : null;
+    $data['alert_missed']     = Request::bool('alert_missed') ? 1 : 0;
+    $data['alert_channel']    = trim((string) ($data['alert_channel'] ?? ''));
+    $data['alert_mention']    = trim((string) ($data['alert_mention'] ?? ''));
 
     $data['require_signature'] = Request::bool('require_signature') ? 1 : 0;
     $data['require_meter']     = Request::bool('require_meter') ? 1 : 0;
@@ -198,8 +250,16 @@ $defaults = [
     'applies_to'        => 'category',
     'category_id'       => '',
     'asset_id'          => '',
+    'location_id'       => '',
     'frequency'         => 'daily',
     'estimated_minutes' => '',
+    'due_time'          => '',
+    'due_days'          => '1234567',
+    'remind_minutes'    => '',
+    'alert_missed'      => 1,
+    'alert_channel'     => '',
+    'alert_mention'     => '',
+    'escalate_minutes'  => '',
     // A new checklist starts from whatever the site-wide default says; from
     // then on the checklist itself is the authority.
     'require_signature' => Settings::bool('inspection_signature_required', true) ? 1 : 0,
@@ -209,6 +269,9 @@ $defaults = [
 
 $values = $editing ? array_merge($defaults, $checklist) : $defaults;
 $items  = $editing ? Inspection::checklistItems($id) : [];
+
+// The time input wants HH:MM.
+$values['due_time'] = substr((string) ($values['due_time'] ?? ''), 0, 5);
 
 $assetOptions = [];
 
@@ -235,6 +298,8 @@ View::render('checklists/edit', [
     'items'      => $items,
     'categories' => db()->pairs('SELECT id, name FROM {asset_categories} ORDER BY sort_order, name'),
     'assets'     => $assetOptions,
+    'locations'  => Asset::locationOptions(false),
+    'slackOn'    => \App\Slack::enabled() && Settings::bool('slack_on_unfinished', true),
     // Only the frequencies the checklists table actually accepts, not the
     // wider set the PM schedules use.
     'frequencies' => array_intersect_key(

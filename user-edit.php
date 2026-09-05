@@ -10,6 +10,7 @@ use App\Csrf;
 use App\Dates;
 use App\Mailer;
 use App\Request;
+use App\Scope;
 use App\Settings;
 use App\Str;
 use App\Validator;
@@ -123,9 +124,15 @@ if (is_post()) {
         $data[$field] = (string) ($data[$field] ?? '');
     }
 
+    // Where they work: the areas and checklists ticked, if any. An empty set
+    // means "everything", which is what most accounts want.
+    $areaIds      = is_array($_POST['areas'] ?? null) ? $_POST['areas'] : [];
+    $checklistIds = is_array($_POST['checklists'] ?? null) ? $_POST['checklists'] : [];
+
     try {
         if ($editing) {
             db()->update('users', $data, ['id' => $id]);
+            Scope::save($id, $areaIds, $checklistIds);
 
             if ($password !== '') {
                 Auth::changePassword($id, $password);
@@ -146,6 +153,7 @@ if (is_post()) {
             $data['created_at']          = Dates::nowUtc();
 
             $savedId = db()->insert('users', $data);
+            Scope::save($savedId, $areaIds, $checklistIds);
 
             audit('create', 'user', $savedId, 'Added ' . (string) $data['username']
                 . ' as ' . Acl::roleLabel((string) $data['role']));
@@ -222,4 +230,9 @@ View::render('users/edit', [
     'roles'            => Acl::roles(),
     'roleDescriptions' => Acl::roleDescriptions(),
     'isSelf'           => $editing && $id === Auth::id(),
+    // Where they work. After a rejected save the ticks come back from the form.
+    'areaOptions'      => \App\Models\Asset::locationOptions(),
+    'checklistOptions' => db()->pairs('SELECT id, name FROM {checklists} WHERE is_active = 1 ORDER BY name'),
+    'areas'            => array_map('intval', (array) old('areas', $editing ? Scope::forUser($id)['areas'] : [])),
+    'checklists'       => array_map('intval', (array) old('checklists', $editing ? Scope::forUser($id)['checklists'] : [])),
 ]);

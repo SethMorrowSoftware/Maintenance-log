@@ -127,6 +127,58 @@ $targetId = $editing ? (int) $target['id'] : 0;
                 </div>
             </div>
 
+            <?php // ==================== Where they work ==================== ?>
+            <div class="card" id="where-they-work">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title"><?= icon('map-pin', '', 18) ?> Where they work</h2>
+                        <p class="card-subtitle">
+                            Tick an area and they only see the checks for it: on their home page,
+                            on the inspections list, when starting a check. Nothing ticked means
+                            they see every check. Staff should always have something ticked.
+                        </p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <?php if ($areaOptions === []): ?>
+                        <p class="text-muted" style="margin:0">
+                            No locations yet. Add some under
+                            <a href="<?= e(url('categories.php', ['tab' => 'locations'])) ?>">Categories &amp; Locations</a>
+                            and they appear here.
+                        </p>
+                    <?php else: ?>
+                        <div class="form-label">Areas</div>
+                        <div class="tick-grid">
+                            <?php foreach ($areaOptions as $areaId => $areaName): ?>
+                                <label class="form-check">
+                                    <input type="checkbox" name="areas[]" value="<?= (int) $areaId ?>"
+                                        <?= in_array((int) $areaId, $areas, true) ? 'checked' : '' ?>>
+                                    <span class="form-check-label"><?= e((string) $areaName) ?></span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($checklistOptions !== []): ?>
+                        <details class="mt-3" <?= $checklists !== [] ? 'open' : '' ?>>
+                            <summary class="form-label" style="cursor:pointer">
+                                Particular checklists, wherever they are
+                                <span class="text-muted text-sm">(optional)</span>
+                            </summary>
+                            <div class="tick-grid mt-2">
+                                <?php foreach ($checklistOptions as $checklistId => $checklistName): ?>
+                                    <label class="form-check">
+                                        <input type="checkbox" name="checklists[]" value="<?= (int) $checklistId ?>"
+                                            <?= in_array((int) $checklistId, $checklists, true) ? 'checked' : '' ?>>
+                                        <span class="form-check-label"><?= e((string) $checklistName) ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </details>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <?php // ==================== Password ==================== ?>
             <div class="card">
                 <div class="card-header">

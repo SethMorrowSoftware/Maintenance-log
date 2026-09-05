@@ -6,14 +6,17 @@ namespace App\Models;
 
 use App\Audit;
 use App\Auth;
+use App\Checks;
 use App\Dates;
 use App\Database;
 use App\Notifier;
+use App\Scope;
 use App\Settings;
 use Throwable;
 
 /**
- * Inspections: a run of a checklist against one machine.
+ * Inspections: a run of a checklist against one machine — or against an area,
+ * for a checklist written for the bowling desk rather than a bowling lane.
  *
  * Item text is copied onto the inspection when it is answered, not referenced.
  * Editing a checklist template months later must not silently rewrite what a
@@ -30,22 +33,59 @@ final class Inspection
      */
     public static function find(int $id): ?array
     {
+        // An area check has no machine: asset columns come back null and the
+        // area's name stands in for the location.
         return db()->one(
             'SELECT i.*, a.name AS asset_name, a.asset_tag, a.meter_type, a.status AS asset_status,
                     a.meter_reading AS asset_meter,
-                    c.name AS category_name, loc.name AS location_name,
+                    c.name AS category_name,
+                    COALESCE(loc.name, iloc.name) AS location_name,
+                    COALESCE(a.location_id, i.location_id) AS scope_location_id,
                     u.first_name, u.last_name, u.username, u.avatar_path, u.id AS user_id,
                     cl.name AS current_checklist_name,
-                    cl.require_signature, cl.require_meter
+                    cl.require_signature, cl.require_meter, cl.applies_to AS checklist_applies_to
              FROM {inspections} i
-             INNER JOIN {assets} a ON a.id = i.asset_id
+             LEFT JOIN {assets} a ON a.id = i.asset_id
              LEFT JOIN {asset_categories} c ON c.id = a.category_id
              LEFT JOIN {locations} loc ON loc.id = a.location_id
+             LEFT JOIN {locations} iloc ON iloc.id = i.location_id
              LEFT JOIN {users} u ON u.id = i.user_id
              LEFT JOIN {checklists} cl ON cl.id = i.checklist_id
              WHERE i.id = ? LIMIT 1',
             [$id]
         );
+    }
+
+    /** What was checked: the machine's name, or the area's. */
+    public static function subject(array $inspection): string
+    {
+        if (!empty($inspection['asset_name'])) {
+            return (string) $inspection['asset_name'];
+        }
+
+        return (string) ($inspection['location_name'] ?? '') !== ''
+            ? (string) $inspection['location_name']
+            : 'an area';
+    }
+
+    /**
+     * Area checklists — written for a place, not a machine — that the user may
+     * run, most urgent first.
+     *
+     * @param  array<string, mixed>|null $user
+     * @return list<array<string, mixed>>
+     */
+    public static function areaChecklists(?array $user = null): array
+    {
+        $rows = db()->all(
+            "SELECT c.*, loc.name AS location_name
+             FROM {checklists} c
+             INNER JOIN {locations} loc ON loc.id = c.location_id
+             WHERE c.is_active = 1 AND c.applies_to = 'location'
+             ORDER BY c.due_time IS NULL, c.due_time ASC, loc.sort_order ASC, c.name ASC"
+        );
+
+        return array_values(array_filter($rows, static fn (array $row): bool => Scope::allowsChecklist($row, null, $user)));
     }
 
     /**
@@ -111,44 +151,80 @@ final class Inspection
      * person rather than starting a second one — a technician who loses signal
      * mid-inspection and comes back should not start over.
      */
-    public static function start(int $assetId, int $checklistId): int
+    public static function start(?int $assetId, int $checklistId): int
     {
-        $userId = Auth::id();
+        $userId    = Auth::id();
+        $checklist = db()->find('checklists', $checklistId);
+
+        if ($checklist === null || (int) $checklist['is_active'] !== 1) {
+            return 0;
+        }
+
+        $isArea = (string) $checklist['applies_to'] === 'location';
+        $asset  = null;
+
+        if ($isArea) {
+            // An area check: no machine, and the area has to still exist.
+            $assetId = null;
+
+            if (empty($checklist['location_id'])) {
+                return 0;
+            }
+        } else {
+            if ($assetId === null || $assetId <= 0) {
+                return 0;
+            }
+
+            $asset = Asset::find($assetId);
+
+            if ($asset === null) {
+                return 0;
+            }
+
+            // Only a checklist meant for this machine: the go-kart list run
+            // against a compressor is not a record of anything.
+            $applies = false;
+
+            foreach (self::checklistsFor($assetId) as $candidate) {
+                if ((int) $candidate['id'] === $checklistId) {
+                    $applies = true;
+                    break;
+                }
+            }
+
+            if (!$applies) {
+                return 0;
+            }
+        }
+
+        // Somebody limited to an area may only start checks in it.
+        if (!Scope::allowsChecklist($checklist, $asset)) {
+            return 0;
+        }
 
         $existing = db()->value(
             "SELECT id FROM {inspections}
-             WHERE asset_id = ? AND checklist_id = ? AND user_id = ? AND status = 'in_progress'
-             ORDER BY id DESC LIMIT 1",
-            [$assetId, $checklistId, $userId]
+             WHERE checklist_id = ? AND user_id = ? AND status = 'in_progress'
+               AND " . ($isArea ? 'asset_id IS NULL' : 'asset_id = ?') . '
+             ORDER BY id DESC LIMIT 1',
+            $isArea ? [$checklistId, $userId] : [$checklistId, $userId, $assetId]
         );
 
         if ($existing !== null) {
             return (int) $existing;
         }
 
-        // Only a checklist that is live and meant for this machine: the
-        // go-kart list run against a compressor is not a record of anything.
-        $checklist = null;
-
-        foreach (self::checklistsFor($assetId) as $candidate) {
-            if ((int) $candidate['id'] === $checklistId) {
-                $checklist = $candidate;
-                break;
-            }
-        }
-
-        if ($checklist === null) {
-            return 0;
-        }
-
-        return db()->transaction(static function (Database $db) use ($assetId, $checklistId, $checklist, $userId): int {
+        return db()->transaction(static function (Database $db) use ($assetId, $checklistId, $checklist, $userId, $isArea): int {
             $inspectionId = $db->insert('inspections', [
                 'checklist_id'   => $checklistId,
                 'asset_id'       => $assetId,
+                'location_id'    => $isArea ? (int) $checklist['location_id'] : null,
                 'user_id'        => $userId,
                 'checklist_name' => (string) $checklist['name'],
                 'status'         => 'in_progress',
                 'started_at'     => Dates::nowUtc(),
+                // The deadline as it stood today, kept on the record.
+                'due_at'         => Checks::dueAtFor($checklist, Dates::today()),
                 'created_at'     => Dates::nowUtc(),
             ]);
 
@@ -307,11 +383,25 @@ final class Inspection
         // Close the run. Until this point it was still in progress, whatever
         // the technician pressed.
         if ((string) $inspection['status'] === 'in_progress') {
+            $now  = Dates::nowUtc();
+            $late = false;
+
+            // Late means finished after the deadline it had when it started,
+            // plus the site's grace period.
+            if (!empty($inspection['due_at'])) {
+                $limit = Dates::parseUtc((string) $inspection['due_at']);
+
+                if ($limit !== null) {
+                    $late = $now > $limit->modify('+' . Checks::grace() . ' minutes')->format(Dates::DB_FORMAT);
+                }
+            }
+
             db()->update('inspections', [
                 'status'              => (int) $inspection['failed_count'] > 0 ? 'failed' : 'passed',
-                'completed_at'        => Dates::nowUtc(),
-                'duration_minutes'    => Dates::diffMinutes((string) $inspection['started_at'], Dates::nowUtc()),
+                'completed_at'        => $now,
+                'duration_minutes'    => Dates::diffMinutes((string) $inspection['started_at'], $now),
                 'took_out_of_service' => $takeOutOfService ? 1 : 0,
+                'was_late'            => $late ? 1 : 0,
             ], ['id' => $inspectionId]);
 
             $inspection = self::find($inspectionId);
@@ -321,12 +411,14 @@ final class Inspection
             }
         }
 
-        $assetId      = (int) $inspection['asset_id'];
+        // An area check has no machine, so nothing below that needs one runs.
+        $assetId      = $inspection['asset_id'] === null ? null : (int) $inspection['asset_id'];
+        $subject      = self::subject($inspection);
         $workOrderId  = null;
         $criticalFail = (int) $inspection['critical_failed'] === 1;
 
         // A meter reading captured on the inspection is still a meter reading.
-        if ($inspection['meter_reading'] !== null && (string) $inspection['meter_type'] !== 'none') {
+        if ($assetId !== null && $inspection['meter_reading'] !== null && (string) $inspection['meter_type'] !== 'none') {
             try {
                 $meterResult = Asset::updateMeter(
                     $assetId,
@@ -346,7 +438,7 @@ final class Inspection
         }
 
         // A failed critical item means the machine should not carry guests.
-        if ($takeOutOfService) {
+        if ($takeOutOfService && $assetId !== null) {
             try {
                 Asset::changeStatus(
                     $assetId,
@@ -380,8 +472,7 @@ final class Inspection
 
                 $workOrderId = WorkOrder::create([
                     'asset_id'            => $assetId,
-                    'title'               => ($criticalFail ? 'Failed safety check: ' : 'Failed inspection: ')
-                                             . (string) $inspection['asset_name'],
+                    'title'               => ($criticalFail ? 'Failed safety check: ' : 'Failed inspection: ') . $subject,
                     'description'         => "The following items failed the "
                                              . (string) $inspection['checklist_name'] . ":\n\n"
                                              . implode("\n", $lines),
@@ -415,10 +506,11 @@ final class Inspection
             'inspection.complete',
             'inspection',
             $inspectionId,
-            (string) $inspection['checklist_name'] . ' on ' . (string) $inspection['asset_name']
+            (string) $inspection['checklist_name'] . ' on ' . $subject
             . ': ' . (int) $inspection['passed_count'] . ' passed, '
             . (int) $inspection['failed_count'] . ' failed'
             . ($criticalFail ? ' (including a safety-critical item)' : '')
+            . ((int) ($inspection['was_late'] ?? 0) === 1 ? ' — finished after its due time' : '')
         );
 
         return ['work_order_id' => $workOrderId];
@@ -430,12 +522,27 @@ final class Inspection
      */
     private static function buildFilter(array $filters): array
     {
-        $where  = ['a.deleted_at IS NULL'];
+        // A deleted machine takes its inspections off the list; an area check
+        // has no machine and stays.
+        $where  = ['(a.id IS NULL OR a.deleted_at IS NULL)'];
         $params = [];
+
+        // Somebody limited to an area sees only its checks.
+        [$scopeSql, $scopeParams] = Scope::inspectionFilter('i', 'a');
+
+        if ($scopeSql !== null) {
+            $where[] = $scopeSql;
+            $params  = array_merge($params, $scopeParams);
+        }
 
         if (!empty($filters['asset_id'])) {
             $where[]  = 'i.asset_id = ?';
             $params[] = (int) $filters['asset_id'];
+        }
+
+        if (!empty($filters['location_id'])) {
+            $where[]  = 'COALESCE(a.location_id, i.location_id) = ?';
+            $params[] = (int) $filters['location_id'];
         }
 
         if (!empty($filters['user_id'])) {
@@ -484,7 +591,7 @@ final class Inspection
         [$where, $params] = self::buildFilter($filters);
 
         return db()->count(
-            'SELECT COUNT(*) FROM {inspections} i INNER JOIN {assets} a ON a.id = i.asset_id WHERE ' . $where,
+            'SELECT COUNT(*) FROM {inspections} i LEFT JOIN {assets} a ON a.id = i.asset_id WHERE ' . $where,
             $params
         );
     }
@@ -499,9 +606,12 @@ final class Inspection
 
         return db()->all(
             "SELECT i.*, a.name AS asset_name, a.asset_tag,
+                    COALESCE(loc.name, iloc.name) AS location_name,
                     u.first_name, u.last_name, u.username, u.avatar_path, u.id AS user_id
              FROM {inspections} i
-             INNER JOIN {assets} a ON a.id = i.asset_id
+             LEFT JOIN {assets} a ON a.id = i.asset_id
+             LEFT JOIN {locations} loc ON loc.id = a.location_id
+             LEFT JOIN {locations} iloc ON iloc.id = i.location_id
              LEFT JOIN {users} u ON u.id = i.user_id
              WHERE {$where}
              ORDER BY i.started_at DESC, i.id DESC
@@ -519,12 +629,16 @@ final class Inspection
         [$where, $params] = self::buildFilter($filters);
 
         return db()->all(
-            "SELECT i.started_at, i.completed_at, a.asset_tag, a.name AS asset_name,
+            "SELECT i.started_at, i.completed_at, i.due_at, i.was_late,
+                    a.asset_tag, a.name AS asset_name,
+                    COALESCE(loc.name, iloc.name) AS location_name,
                     i.checklist_name, i.status, i.passed_count, i.failed_count, i.na_count,
                     i.critical_failed, i.meter_reading, i.duration_minutes, i.signature_name, i.notes,
                     CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,'')) AS inspector
              FROM {inspections} i
-             INNER JOIN {assets} a ON a.id = i.asset_id
+             LEFT JOIN {assets} a ON a.id = i.asset_id
+             LEFT JOIN {locations} loc ON loc.id = a.location_id
+             LEFT JOIN {locations} iloc ON iloc.id = i.location_id
              LEFT JOIN {users} u ON u.id = i.user_id
              WHERE {$where}
              ORDER BY i.started_at DESC",

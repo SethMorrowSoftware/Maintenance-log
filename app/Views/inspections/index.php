@@ -19,6 +19,7 @@ use App\View;
         'action'  => 'inspections.php',
         'filters' => [
             'asset_id'     => ['label' => asset_word(false, true), 'type' => 'select', 'value' => $filters['asset_id'], 'options' => $assets, 'empty' => 'All ' . asset_word(true)],
+            'location_id'  => ['label' => 'Area', 'type' => 'select', 'value' => $filters['location_id'], 'options' => $locations, 'empty' => 'All areas'],
             'checklist_id' => ['label' => 'Checklist', 'type' => 'select', 'value' => $filters['checklist_id'], 'options' => $checklists, 'empty' => 'All checklists'],
             'from'         => ['label' => 'From', 'type' => 'date', 'value' => $filters['from']],
             'to'           => ['label' => 'To', 'type' => 'date', 'value' => $filters['to']],
@@ -64,12 +65,30 @@ use App\View;
                                 <span class="cell-secondary"><?= e(Dates::time((string) $row['started_at'])) ?></span>
                             </td>
                             <td data-label="<?= attr(asset_word(false, true)) ?>">
-                                <a href="<?= e(url('asset-view.php', ['id' => (int) $row['asset_id']])) ?>">
+                                <?php if ($row['asset_id'] === null): ?>
+                                    <?= icon('map-pin', '', 14) ?> <?= e((string) ($row['location_name'] ?? 'Area')) ?>
+                                    <span class="cell-secondary">Area check</span>
+                                <?php elseif (can('assets.view')): ?>
+                                    <a href="<?= e(url('asset-view.php', ['id' => (int) $row['asset_id']])) ?>">
+                                        <?= e((string) $row['asset_name']) ?>
+                                    </a>
+                                    <span class="cell-secondary"><?= e((string) $row['asset_tag']) ?></span>
+                                <?php else: ?>
                                     <?= e((string) $row['asset_name']) ?>
-                                </a>
-                                <span class="cell-secondary"><?= e((string) $row['asset_tag']) ?></span>
+                                    <span class="cell-secondary"><?= e((string) $row['asset_tag']) ?></span>
+                                <?php endif; ?>
                             </td>
-                            <td data-label="Checklist"><?= e((string) $row['checklist_name']) ?></td>
+                            <td data-label="Checklist">
+                                <?= e((string) $row['checklist_name']) ?>
+                                <?php if (!empty($row['due_at'])): ?>
+                                    <span class="cell-secondary">
+                                        due by <?= e(Dates::time((string) $row['due_at'])) ?>
+                                        <?php if ((int) ($row['was_late'] ?? 0) === 1): ?>
+                                            &middot; <span class="text-warn">late</span>
+                                        <?php endif; ?>
+                                    </span>
+                                <?php endif; ?>
+                            </td>
                             <td data-label="Result">
                                 <?php View::partial('status-badge', ['value' => (string) $row['status'], 'vocabulary' => 'inspection']); ?>
                                 <span class="cell-secondary">

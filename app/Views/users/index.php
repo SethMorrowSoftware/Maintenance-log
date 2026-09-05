@@ -85,6 +85,23 @@ $myId      = user_id();
                                 <?php if ((string) $person['job_title'] !== ''): ?>
                                     <span class="cell-secondary"><?= e((string) $person['job_title']) ?></span>
                                 <?php endif; ?>
+                                <?php
+                                // Where they work, when it has been narrowed down.
+                                $where = [];
+
+                                if ((string) ($person['areas'] ?? '') !== '') {
+                                    $where[] = (string) $person['areas'];
+                                }
+
+                                if ((int) ($person['checklist_count'] ?? 0) > 0) {
+                                    $where[] = (int) $person['checklist_count'] . ' checklist' . ((int) $person['checklist_count'] === 1 ? '' : 's');
+                                }
+                                ?>
+                                <?php if ($where !== []): ?>
+                                    <span class="cell-secondary"><?= icon('map-pin', '', 12) ?> <?= e(implode(' · ', $where)) ?></span>
+                                <?php elseif ((string) $person['role'] === Acl::ROLE_STAFF): ?>
+                                    <span class="cell-secondary text-warn"><?= icon('alert-circle', '', 12) ?> No area yet — sees every check</span>
+                                <?php endif; ?>
                             </td>
                             <td data-label="Contact">
                                 <a href="mailto:<?= attr((string) $person['email']) ?>">

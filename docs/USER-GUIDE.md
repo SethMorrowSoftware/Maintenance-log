@@ -86,6 +86,59 @@ asks who checked what and when, it is all there under **Inspections**.
 
 ---
 
+## Today's checks
+
+**Today's Checks** in the menu is the board for the day: every check that is
+expected, who did it and when, and what is still to do. A manager glances at it
+before opening; the people doing the checking work from it. Each checklist is a
+card, in the order they fall due, with a line per machine (or one line, for an
+area) and a **Start** button on anything not done yet. Step back a day with the
+arrows to see how yesterday went.
+
+**Giving a checklist a time.** Open a checklist and fill in **When it should be
+done**: a due time, which days of the week, and what to do if it is not finished
+by then. From that moment the check is *done*, *done late* or *not finished* on
+the board, and counted in **History**. A daily checklist with no time still
+shows up as "any time today" and is still counted; it just never chases anybody.
+
+**Checks that are for a place, not a machine.** Set **Use it for** to *An area*
+and pick one — the bowling desk, the arcade, the kitchen. It runs once for the
+area, with no machine to choose, and works exactly like any other checklist:
+lines to tick, a note box on anything that fails, a name at the end. A failed
+line still raises a work order.
+
+**When something is not finished on time**, RideLog can:
+
+- post to Slack — the message says what is due, how many are still to do and
+  which ones, with a link to the board. Each checklist can name its own channel
+  and who to mention, or opt out;
+- remind people on Slack a set number of minutes beforehand;
+- post again, louder, a set number of minutes later if it is still not done;
+- tell whoever manages checklists in the app (the bell), and by email if they
+  have that on.
+
+The Slack side is switched on under **Settings → Slack → Checks not finished on
+time**. A grace period under **Settings → Maintenance** lets a check finished a
+few minutes after its time still count as on time. For the alerts to go out on
+time, the site needs a second cron job that runs every five minutes — the
+command is under **Settings → Security**. Without it, RideLog looks whenever
+somebody opens a page, which is fine on a busy day and not on a quiet one.
+
+**History** shows, for the last week, fortnight, month or three months, how
+many checks each list, each area and each person was expected to do, how many
+got done, how many on time, how many late, how many missed. It exports to CSV.
+
+**Staff who only do checks.** The fifth role, **Staff (checks only)**, sees none
+of the maintenance side: no machines, logs, parts or reports. Their home page is
+today's checks for their area, they can run those checks, and they can look at
+their own past inspections. Give them their area on their page under **Where
+they work**: tick one or more areas (locations), or particular checklists. Any
+account can be narrowed the same way — a technician with an area ticked sees
+only that area's checks on the board and the inspections list, while the rest of
+their permissions carry on as before.
+
+---
+
 ## Scanning the sticker
 
 Every machine can have a QR sticker on it. Point your phone's camera at it and
@@ -234,6 +287,11 @@ which machines still need today's check, and three big buttons — log
 maintenance, run today's check, report a problem. Managers and administrators
 see the full dashboard with the charts.
 
+There is a fifth role that is not in the table: **Staff (checks only)**. It sees
+nothing above except running inspections, and only for its own area — the ride
+operator or the bowling-desk attendant who does the opening checks and nothing
+else. It is described under *Today's checks*.
+
 That table is how RideLog comes out of the box. An administrator can change it
 on the **Roles** page: one grid, a row per permission, a column per role, tick
 what each role may do. Want technicians to add machines, or managers to see
@@ -248,12 +306,13 @@ Ask an administrator.
 ## Slack
 
 If the administrator has set it up (Settings → Slack), the channel gets a
-message when a problem is reported, a daily check fails, a machine goes out of
-or back into service, a job is logged that needs follow-up, a part runs low,
-and each morning with what service is due. Every one of those is a separate
-switch and can go to its own channel; urgent and safety messages can @mention
-somebody. Nothing about Slack changes what you do in RideLog — it just tells
-the channel.
+message when a problem is reported, a daily check fails, a timed check is not
+finished by its due time, a machine goes out of or back into service, a job is
+logged that needs follow-up, a part runs low, and each morning with what
+service is due. Every one of those is a separate switch and can go to its own
+channel; urgent and safety messages can @mention somebody, and each timed
+checklist can name its own channel and mention. Nothing about Slack changes
+what you do in RideLog — it just tells the channel.
 
 ---
 

@@ -127,6 +127,17 @@ You can find it again later under **Settings → Security**. The job works out
 what maintenance has fallen due, warns about parts running low, and clears out
 old records. Nothing breaks without it; you just stop getting told things.
 
+If you give checklists due times (see *Today's checks* in the user guide), add
+a **second** cron job set to run **every five minutes** with `&job=checks` on
+the end of the same address — the exact command is on the same settings screen:
+
+```
+curl -s "https://yourdomain.com/cron.php?token=LONGRANDOMSTRING&job=checks"
+```
+
+It only looks at today's checklists and posts to Slack when one is not finished
+by its time. Without it RideLog still checks whenever somebody opens a page.
+
 **Turn on HTTPS.** **Security → SSL/TLS Status** and run AutoSSL if your host
 has not already. Then open `.htaccess` in the root of the site and uncomment the
 five lines under "Force HTTPS", and the `Strict-Transport-Security` line just

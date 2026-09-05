@@ -57,8 +57,11 @@ $inspector    = trim((string) $inspection['first_name'] . ' ' . (string) $inspec
                 <div>
                     <h2 class="card-title"><?= e((string) $inspection['checklist_name']) ?></h2>
                     <p class="card-subtitle">
-                        <?= e((string) $inspection['asset_name']) ?>
+                        <?= e(App\Models\Inspection::subject($inspection)) ?>
                         &middot; <?= e(Dates::datetime((string) ($inspection['completed_at'] ?: $inspection['started_at']))) ?>
+                        <?php if ((int) ($inspection['was_late'] ?? 0) === 1): ?>
+                            &middot; <span class="text-warn">finished after its due time</span>
+                        <?php endif; ?>
                     </p>
                 </div>
                 <?php if (!$printing): ?>
@@ -193,21 +196,38 @@ $inspector    = trim((string) $inspection['first_name'] . ' ' . (string) $inspec
             <div class="card-header"><h3 class="card-title">Details</h3></div>
             <div class="card-body">
                 <dl class="detail-list">
-                    <dt><?= e(asset_word(false, true)) ?></dt>
-                    <dd>
-                        <?php if ($printing): ?>
-                            <?= e((string) $inspection['asset_name']) ?>
-                            (<?= e((string) $inspection['asset_tag']) ?>)
-                        <?php else: ?>
-                            <a href="<?= e(url('asset-view.php', ['id' => (int) $inspection['asset_id']])) ?>">
+                    <?php if ($inspection['asset_id'] === null): ?>
+                        <dt>Area</dt>
+                        <dd><?= e((string) ($inspection['location_name'] ?? 'Area')) ?></dd>
+                    <?php else: ?>
+                        <dt><?= e(asset_word(false, true)) ?></dt>
+                        <dd>
+                            <?php if ($printing || !can('assets.view')): ?>
                                 <?= e((string) $inspection['asset_name']) ?>
-                            </a>
-                            <span class="text-subtle"><?= e((string) $inspection['asset_tag']) ?></span>
-                        <?php endif; ?>
-                        <?php if (!empty($inspection['location_name'])): ?>
-                            <div class="text-sm text-muted"><?= e((string) $inspection['location_name']) ?></div>
-                        <?php endif; ?>
-                    </dd>
+                                <span class="text-subtle">(<?= e((string) $inspection['asset_tag']) ?>)</span>
+                            <?php else: ?>
+                                <a href="<?= e(url('asset-view.php', ['id' => (int) $inspection['asset_id']])) ?>">
+                                    <?= e((string) $inspection['asset_name']) ?>
+                                </a>
+                                <span class="text-subtle"><?= e((string) $inspection['asset_tag']) ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($inspection['location_name'])): ?>
+                                <div class="text-sm text-muted"><?= e((string) $inspection['location_name']) ?></div>
+                            <?php endif; ?>
+                        </dd>
+                    <?php endif; ?>
+
+                    <?php if (!empty($inspection['due_at'])): ?>
+                        <dt>Was due by</dt>
+                        <dd>
+                            <?= e(Dates::time((string) $inspection['due_at'])) ?>
+                            <?php if ((int) ($inspection['was_late'] ?? 0) === 1): ?>
+                                <span class="badge badge-warn">Late</span>
+                            <?php elseif (!empty($inspection['completed_at'])): ?>
+                                <span class="badge badge-ok">On time</span>
+                            <?php endif; ?>
+                        </dd>
+                    <?php endif; ?>
 
                     <dt>Checked by</dt>
                     <dd>

@@ -615,10 +615,25 @@ View::partial('tabs', ['tabs' => $tabLinks, 'active' => $tab]);
                 </button>
             </div>
 
+            <p class="text-sm text-muted mt-4">
+                <strong>For timed checks, add a second job</strong> set to run <strong>every five
+                minutes</strong>. It only looks at today's checklists and posts when one is not
+                finished by its due time. Without it, RideLog still checks whenever somebody
+                opens a page, which is usually good enough on a busy day and not on a quiet one.
+            </p>
+
+            <div class="code-block">
+                <code data-copy-source>curl -s "<?= e(absolute_url('cron.php', ['token' => Settings::cronToken(), 'job' => 'checks'])) ?>"</code>
+                <button type="button" class="btn btn-ghost btn-sm"
+                        data-copy="<?= attr('curl -s "' . absolute_url('cron.php', ['token' => Settings::cronToken(), 'job' => 'checks']) . '"') ?>">
+                    <?= icon('copy', '', 15) ?> Copy
+                </button>
+            </div>
+
             <p class="text-sm text-muted mt-3">
-                The token in that address is what stops anybody else triggering the job.
-                Generating a new one immediately stops the old address working, so update
-                the cron command at the same time.
+                The token in those addresses is what stops anybody else triggering the jobs.
+                Generating a new one immediately stops the old addresses working, so update
+                both cron commands at the same time.
             </p>
 
             <form method="post" action="<?= e(url('settings.php')) ?>">

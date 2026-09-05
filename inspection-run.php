@@ -10,6 +10,7 @@ use App\Csrf;
 use App\Models\Asset;
 use App\Models\Inspection;
 use App\Request;
+use App\Scope;
 use App\Settings;
 use App\View;
 
@@ -25,13 +26,44 @@ $checklistId  = Request::int('checklist_id');
 // ---------------------------------------------------------------------------
 
 if ($inspectionId === 0) {
+    // A checklist on its own, with no machine: an area check.
+    if ($assetId === 0 && $checklistId > 0) {
+        $checklist = db()->find('checklists', $checklistId);
+
+        if ($checklist !== null && (string) $checklist['applies_to'] === 'location') {
+            $inspectionId = Inspection::start(null, $checklistId);
+
+            if ($inspectionId === 0) {
+                flash('error', 'That check could not be started. It may be switched off, or not one of yours.');
+                redirect(url('checks.php'));
+            }
+
+            redirect(url('inspection-run.php', ['id' => $inspectionId]));
+        }
+    }
+
     if ($assetId === 0) {
-        // Nothing chosen yet: ask which machine.
+        // Nothing chosen yet: the area checks this person may run, then the
+        // machines. Somebody limited to an area only sees its machines.
+        [$scopeSql, $scopeParams] = Scope::assetFilter('a');
+
+        $assets = db()->all(
+            "SELECT a.id, a.name, a.asset_tag, a.status, a.meter_type, a.meter_reading,
+                    c.name AS category_name
+             FROM {assets} a
+             LEFT JOIN {asset_categories} c ON c.id = a.category_id
+             WHERE a.deleted_at IS NULL AND a.status <> 'retired'"
+            . ($scopeSql !== null ? ' AND ' . $scopeSql : '')
+            . ' ORDER BY c.sort_order ASC, c.name ASC, a.sort_order ASC, a.name ASC',
+            $scopeParams
+        );
+
         View::render('inspections/start', [
-            'title'     => 'Run an inspection',
-            'subtitle'  => 'Pick what you are checking',
-            'activeNav' => 'inspections.php',
-            'assets'    => Asset::options(),
+            'title'          => 'Run a check',
+            'subtitle'       => 'Pick what you are checking',
+            'activeNav'      => 'inspections.php',
+            'assets'         => $assets,
+            'areaChecklists' => Inspection::areaChecklists(),
         ]);
         exit;
     }
@@ -42,11 +74,16 @@ if ($inspectionId === 0) {
         abort(404, 'That ' . asset_word() . ' does not exist.');
     }
 
-    $checklists = Inspection::checklistsFor($assetId);
+    $checklists = array_values(array_filter(
+        Inspection::checklistsFor($assetId),
+        static fn (array $row): bool => Scope::allowsChecklist($row, $asset)
+    ));
 
     if ($checklists === []) {
-        flash('error', 'There is no checklist set up for ' . (string) $asset['name']
-            . '. Ask an administrator to create one under Checklists.');
+        flash('error', Scope::limited()
+            ? (string) $asset['name'] . ' is not in your area.'
+            : 'There is no checklist set up for ' . (string) $asset['name']
+              . '. Ask an administrator to create one under Checklists.');
         redirect(url('inspections.php'));
     }
 
@@ -56,7 +93,7 @@ if ($inspectionId === 0) {
             $checklistId = (int) $checklists[0]['id'];
         } else {
             View::render('inspections/choose', [
-                'title'      => 'Run an inspection',
+                'title'      => 'Run a check',
                 'subtitle'   => (string) $asset['name'],
                 'activeNav'  => 'inspections.php',
                 'asset'      => $asset,
@@ -90,10 +127,17 @@ if ((string) $inspection['status'] !== 'in_progress') {
     redirect(url('inspection-view.php', ['id' => $inspectionId]));
 }
 
-// Only the person who started it, or a manager, may fill it in.
+// Only the person who started it, or a manager, may fill it in — and only
+// somebody whose area it is.
+if (!Scope::allowsInspection($inspection)) {
+    abort(403, 'This check is outside your area.');
+}
+
 if ((int) $inspection['user_id'] !== (int) Auth::id() && !can('inspections.delete')) {
     abort(403, 'This inspection was started by somebody else.');
 }
+
+$isArea = $inspection['asset_id'] === null;
 
 if (is_post()) {
     Csrf::verify();
@@ -104,8 +148,8 @@ if (is_post()) {
     $meta = [
         'notes'               => Request::string('notes'),
         'signature_name'      => Request::string('signature_name'),
-        'meter_reading'       => Request::string('meter_reading'),
-        'take_out_of_service' => Request::bool('take_out_of_service'),
+        'meter_reading'       => $isArea ? '' : Request::string('meter_reading'),
+        'take_out_of_service' => !$isArea && Request::bool('take_out_of_service'),
     ];
 
     $result = Inspection::saveAnswers($inspectionId, $answers, $meta);
@@ -129,7 +173,7 @@ if (is_post()) {
         : (int) $inspection['require_signature'] === 1;
 
     if ($needsSignature && $meta['signature_name'] === '') {
-        flash('error', 'Type your name to sign off the inspection. Your progress has been saved.');
+        flash('error', 'Type your name to sign off the check. Your progress has been saved.');
         redirect(url('inspection-run.php', ['id' => $inspectionId]));
     }
 
@@ -152,7 +196,7 @@ if (is_post()) {
         flash('warning', $result['failed'] . ' item' . ($result['failed'] === 1 ? '' : 's') . ' failed. '
             . ($outcome['work_order_id'] !== null ? 'A work order has been raised.' : ''));
     } else {
-        flash('success', 'Inspection passed. Nice one.');
+        flash('success', 'Check passed. Nice one.');
     }
 
     redirect(url('inspection-view.php', ['id' => $inspectionId]));
@@ -167,9 +211,19 @@ foreach ($items as $item) {
     $sections[(string) $item['section']][] = $item;
 }
 
+$subtitle = Inspection::subject($inspection);
+
+if (!$isArea && (string) $inspection['asset_tag'] !== '') {
+    $subtitle .= ' · ' . (string) $inspection['asset_tag'];
+}
+
+if (!empty($inspection['due_at'])) {
+    $subtitle .= ' · due by ' . \App\Dates::time((string) $inspection['due_at']);
+}
+
 View::render('inspections/run', [
     'title'          => (string) $inspection['checklist_name'],
-    'subtitle'       => (string) $inspection['asset_name'] . ' · ' . (string) $inspection['asset_tag'],
+    'subtitle'       => $subtitle,
     'activeNav'      => 'inspections.php',
     'hidePageHeader' => false,
     'inspection'     => $inspection,

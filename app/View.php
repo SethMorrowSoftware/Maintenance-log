@@ -131,8 +131,26 @@ final class View
             return $content;
         }
 
+        // An ordinary page view is also the moment to see whether a timed check
+        // has slipped past its due time, on a site with no frequent cron. It
+        // runs after the page has gone out, so nobody waits for it.
+        if ($layout === 'layout' && !self::$tickArmed && Auth::check()) {
+            self::$tickArmed = true;
+
+            register_shutdown_function(static function (): void {
+                if (function_exists('fastcgi_finish_request')) {
+                    @fastcgi_finish_request();
+                }
+
+                Checks::tick();
+            });
+        }
+
         return self::renderFile($layoutPath, $layoutData);
     }
+
+    /** Whether this request has already queued the checks tick. */
+    private static bool $tickArmed = false;
 
     /**
      * Render a partial and echo it. Partials live in app/Views/partials.

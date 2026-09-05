@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS {users} (
   password_hash         VARCHAR(255) NOT NULL,
   first_name            VARCHAR(80)  NOT NULL DEFAULT '',
   last_name             VARCHAR(80)  NOT NULL DEFAULT '',
-  role                  ENUM('admin','manager','technician','viewer') NOT NULL DEFAULT 'technician',
+  role                  ENUM('admin','manager','technician','viewer','staff') NOT NULL DEFAULT 'technician',
   phone                 VARCHAR(40)  NOT NULL DEFAULT '',
   job_title             VARCHAR(100) NOT NULL DEFAULT '',
   employee_number       VARCHAR(50)  NOT NULL DEFAULT '',
@@ -359,15 +359,33 @@ CREATE TABLE IF NOT EXISTS {part_transactions} (
 -- 12. checklists
 --     Inspection templates — e.g. "Daily Go-Kart Pre-Operation Inspection".
 -- -----------------------------------------------------------------------------
+--     A checklist is for every asset, one category, one asset, or an area (a
+--     location: "Bowling opening checks") with no machine involved at all.
+--
+--     The "when" columns make a checklist a timed check: due_time is the local
+--     wall-clock deadline on the days in due_days (ISO weekday digits, 1 = Mon
+--     … 7 = Sun). A timed check that is not finished by then can post to Slack
+--     (alert_missed, optionally to its own channel and with its own mention),
+--     remind people remind_minutes beforehand, and post again with a mention
+--     escalate_minutes after the deadline. All optional.
+-- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS {checklists} (
   id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name              VARCHAR(191) NOT NULL,
   description       TEXT         DEFAULT NULL,
-  applies_to        ENUM('all','category','asset') NOT NULL DEFAULT 'all',
+  applies_to        ENUM('all','category','asset','location') NOT NULL DEFAULT 'all',
   category_id       INT UNSIGNED DEFAULT NULL,
   asset_id          INT UNSIGNED DEFAULT NULL,
+  location_id       INT UNSIGNED DEFAULT NULL,
   frequency         ENUM('daily','weekly','monthly','quarterly','annual','preseason','adhoc') NOT NULL DEFAULT 'daily',
   estimated_minutes SMALLINT UNSIGNED DEFAULT NULL,
+  due_time          TIME         DEFAULT NULL,
+  due_days          VARCHAR(7)   NOT NULL DEFAULT '1234567',
+  remind_minutes    SMALLINT UNSIGNED DEFAULT NULL,
+  alert_missed      TINYINT(1)   NOT NULL DEFAULT 1,
+  alert_channel     VARCHAR(80)  NOT NULL DEFAULT '',
+  alert_mention     VARCHAR(80)  NOT NULL DEFAULT '',
+  escalate_minutes  SMALLINT UNSIGNED DEFAULT NULL,
   require_signature TINYINT(1)   NOT NULL DEFAULT 1,
   require_meter     TINYINT(1)   NOT NULL DEFAULT 0,
   is_active         TINYINT(1)   NOT NULL DEFAULT 1,
@@ -378,11 +396,15 @@ CREATE TABLE IF NOT EXISTS {checklists} (
   PRIMARY KEY (id),
   KEY idx_checklists_active (is_active),
   KEY idx_checklists_scope (applies_to, category_id, asset_id),
+  KEY idx_checklists_location (location_id),
   KEY idx_checklists_frequency (frequency),
+  KEY idx_checklists_due (is_active, due_time),
   CONSTRAINT fk_{checklists}_category FOREIGN KEY (category_id)
     REFERENCES {asset_categories} (id) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT fk_{checklists}_asset FOREIGN KEY (asset_id)
-    REFERENCES {assets} (id) ON DELETE CASCADE ON UPDATE CASCADE
+    REFERENCES {assets} (id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_{checklists}_location FOREIGN KEY (location_id)
+    REFERENCES {locations} (id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -411,6 +433,61 @@ CREATE TABLE IF NOT EXISTS {checklist_items} (
   KEY idx_items_checklist (checklist_id, sort_order),
   KEY idx_items_critical (is_critical),
   CONSTRAINT fk_{checklist_items}_checklist FOREIGN KEY (checklist_id)
+    REFERENCES {checklists} (id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -----------------------------------------------------------------------------
+-- 13a. checklist_alerts
+--      One row per alert the checks job has sent about a timed checklist on a
+--      day: the reminder, the "not finished" post, the escalation. It is what
+--      stops a job that runs every five minutes saying the same thing twice,
+--      and it is the "alerts sent" line on the board.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS {checklist_alerts} (
+  id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  checklist_id  INT UNSIGNED NOT NULL,
+  due_date      DATE         NOT NULL,
+  kind          ENUM('reminder','missed','escalation') NOT NULL,
+  missing_count SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  channel       VARCHAR(80)  NOT NULL DEFAULT '',
+  ok            TINYINT(1)   NOT NULL DEFAULT 1,
+  detail        VARCHAR(255) NOT NULL DEFAULT '',
+  sent_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_checklist_alert (checklist_id, due_date, kind),
+  KEY idx_checklist_alerts_date (due_date),
+  CONSTRAINT fk_{checklist_alerts}_checklist FOREIGN KEY (checklist_id)
+    REFERENCES {checklists} (id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -----------------------------------------------------------------------------
+-- 13b. user_areas / user_checklists
+--      Where somebody works. A person with any row in either table sees only
+--      the checks for those areas and checklists (administrators always see
+--      everything). Staff accounts live on these; anybody else can be limited
+--      the same way.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS {user_areas} (
+  user_id      INT UNSIGNED NOT NULL,
+  location_id  INT UNSIGNED NOT NULL,
+  PRIMARY KEY (user_id, location_id),
+  KEY idx_user_areas_location (location_id),
+  CONSTRAINT fk_{user_areas}_user FOREIGN KEY (user_id)
+    REFERENCES {users} (id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_{user_areas}_location FOREIGN KEY (location_id)
+    REFERENCES {locations} (id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS {user_checklists} (
+  user_id       INT UNSIGNED NOT NULL,
+  checklist_id  INT UNSIGNED NOT NULL,
+  PRIMARY KEY (user_id, checklist_id),
+  KEY idx_user_checklists_checklist (checklist_id),
+  CONSTRAINT fk_{user_checklists}_user FOREIGN KEY (user_id)
+    REFERENCES {users} (id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_{user_checklists}_checklist FOREIGN KEY (checklist_id)
     REFERENCES {checklists} (id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -543,10 +620,16 @@ CREATE TABLE IF NOT EXISTS {work_order_comments} (
 --     A completed run of a checklist against one asset. log_id has no foreign
 --     key because {maintenance_logs} is created after this table.
 -- -----------------------------------------------------------------------------
+--     asset_id is NULL for a run of an area checklist — the check is of the
+--     bowling centre, not of a machine — and location_id says which area.
+--     due_at is the deadline the checklist had when the run started (UTC), so
+--     was_late stays true to what was asked at the time.
+-- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS {inspections} (
   id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
   checklist_id      INT UNSIGNED DEFAULT NULL,
-  asset_id          INT UNSIGNED NOT NULL,
+  asset_id          INT UNSIGNED DEFAULT NULL,
+  location_id       INT UNSIGNED DEFAULT NULL,
   user_id           INT UNSIGNED DEFAULT NULL,
   schedule_id       INT UNSIGNED DEFAULT NULL,
   work_order_id     INT UNSIGNED DEFAULT NULL,
@@ -555,6 +638,8 @@ CREATE TABLE IF NOT EXISTS {inspections} (
   status            ENUM('in_progress','passed','failed','completed') NOT NULL DEFAULT 'in_progress',
   started_at        DATETIME     NOT NULL,
   completed_at      DATETIME     DEFAULT NULL,
+  due_at            DATETIME     DEFAULT NULL,
+  was_late          TINYINT(1)   NOT NULL DEFAULT 0,
   duration_minutes  INT UNSIGNED DEFAULT NULL,
   meter_reading     DECIMAL(12,2) DEFAULT NULL,
   passed_count      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
@@ -569,14 +654,18 @@ CREATE TABLE IF NOT EXISTS {inspections} (
   PRIMARY KEY (id),
   KEY idx_insp_asset (asset_id, started_at),
   KEY idx_insp_checklist (checklist_id),
+  KEY idx_insp_location (location_id),
   KEY idx_insp_user (user_id),
   KEY idx_insp_status (status),
   KEY idx_insp_started (started_at),
+  KEY idx_insp_completed (completed_at),
   KEY idx_insp_schedule (schedule_id),
   KEY idx_insp_wo (work_order_id),
   KEY idx_insp_log (log_id),
   CONSTRAINT fk_{inspections}_asset FOREIGN KEY (asset_id)
     REFERENCES {assets} (id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_{inspections}_location FOREIGN KEY (location_id)
+    REFERENCES {locations} (id) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT fk_{inspections}_checklist FOREIGN KEY (checklist_id)
     REFERENCES {checklists} (id) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT fk_{inspections}_user FOREIGN KEY (user_id)
@@ -769,7 +858,7 @@ CREATE TABLE IF NOT EXISTS {audit_log} (
 CREATE TABLE IF NOT EXISTS {notifications} (
   id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id      INT UNSIGNED NOT NULL,
-  type         ENUM('pm_due','pm_overdue','wo_assigned','wo_updated','inspection_failed','low_stock','system') NOT NULL DEFAULT 'system',
+  type         ENUM('pm_due','pm_overdue','wo_assigned','wo_updated','inspection_failed','checklist_missed','low_stock','system') NOT NULL DEFAULT 'system',
   title        VARCHAR(191) NOT NULL,
   message      VARCHAR(500) NOT NULL DEFAULT '',
   link         VARCHAR(255) NOT NULL DEFAULT '',

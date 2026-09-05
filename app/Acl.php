@@ -7,9 +7,14 @@ namespace App;
 /**
  * Role-based permissions.
  *
- * Four roles, one flat permission list, one matrix. Hiding a button is a
+ * Five roles, one flat permission list, one matrix. Hiding a button is a
  * courtesy; the server-side check is the actual control, so every page and
  * every API action calls requirePermission().
+ *
+ * Four of the roles stack: each holds everything the one below it does.
+ * Staff stands apart — the checks for their area and nothing else — so a
+ * ride operator or a bowling-desk attendant can be given a login without
+ * being given the maintenance records.
  */
 final class Acl
 {
@@ -17,13 +22,15 @@ final class Acl
     public const ROLE_MANAGER    = 'manager';
     public const ROLE_TECHNICIAN = 'technician';
     public const ROLE_VIEWER     = 'viewer';
+    public const ROLE_STAFF      = 'staff';
 
     /** Least to most privileged. Used by atLeast(). */
     private const HIERARCHY = [
-        self::ROLE_VIEWER     => 1,
-        self::ROLE_TECHNICIAN => 2,
-        self::ROLE_MANAGER    => 3,
-        self::ROLE_ADMIN      => 4,
+        self::ROLE_STAFF      => 1,
+        self::ROLE_VIEWER     => 2,
+        self::ROLE_TECHNICIAN => 3,
+        self::ROLE_MANAGER    => 4,
+        self::ROLE_ADMIN      => 5,
     ];
 
     /**
@@ -94,6 +101,12 @@ final class Acl
      * @var array<string, list<string>>
      */
     private const GRANTS = [
+        // Not part of the stack: the checks for their area, and nothing else.
+        // Which area is set per person (App\Scope).
+        self::ROLE_STAFF => [
+            'inspections.view',
+            'inspections.perform',
+        ],
         self::ROLE_VIEWER => [
             'assets.view',
             'logs.view',
@@ -168,7 +181,19 @@ final class Acl
             self::ROLE_MANAGER    => 'Maintenance Manager',
             self::ROLE_TECHNICIAN => 'Technician',
             self::ROLE_VIEWER     => 'Viewer',
+            self::ROLE_STAFF      => 'Staff (checks only)',
         ];
+    }
+
+    /**
+     * The roles the Roles page may change, least to most privileged.
+     * Administrators are fixed so nobody can lock the site.
+     *
+     * @return list<string>
+     */
+    public static function editableRoles(): array
+    {
+        return [self::ROLE_STAFF, self::ROLE_VIEWER, self::ROLE_TECHNICIAN, self::ROLE_MANAGER];
     }
 
     /**
@@ -181,6 +206,7 @@ final class Acl
             self::ROLE_MANAGER    => 'Runs maintenance: manages machines, schedules, checklists, parts and work orders, and can edit or delete any record. Does not see prices or costs.',
             self::ROLE_TECHNICIAN => 'Does the work: logs maintenance, runs inspections, updates meters and work orders. Can edit their own logs.',
             self::ROLE_VIEWER     => 'Read-only. Sees records and reports but changes nothing.',
+            self::ROLE_STAFF      => 'Runs the daily checks for their area and sees nothing else — no machines, logs, parts or reports. Pick their areas below.',
         ]);
     }
 
@@ -276,6 +302,9 @@ final class Acl
         // The administrator gets everything, including any permission added to
         // the catalogue later but forgotten in the grant list.
         $matrix[self::ROLE_ADMIN] = $known;
+
+        // Staff inherit nothing and pass nothing on.
+        $matrix[self::ROLE_STAFF] = array_values(array_intersect($known, self::GRANTS[self::ROLE_STAFF]));
 
         return $matrix;
     }
@@ -385,9 +414,9 @@ final class Acl
     }
 
     /**
-     * Save a matrix from the Roles page. Only the three changeable roles are
-     * read; when what was sent matches the defaults, nothing is stored, so the
-     * page can honestly say the site runs on the defaults.
+     * Save a matrix from the Roles page. Only the changeable roles are read;
+     * when what was sent matches the defaults, nothing is stored, so the page
+     * can honestly say the site runs on the defaults.
      *
      * @param array<string, array<mixed>> $matrix role => permissions
      */
@@ -397,7 +426,7 @@ final class Acl
         $store    = [];
         $changed  = false;
 
-        foreach ([self::ROLE_VIEWER, self::ROLE_TECHNICIAN, self::ROLE_MANAGER] as $role) {
+        foreach (self::editableRoles() as $role) {
             $store[$role] = self::normalise((array) ($matrix[$role] ?? []));
 
             if ($store[$role] !== $defaults[$role]) {
@@ -573,6 +602,14 @@ final class Acl
         $user = $user ?? Auth::user();
 
         return $user !== null && (string) ($user['role'] ?? '') === self::ROLE_ADMIN;
+    }
+
+    /** Checks-only staff: their home page is the day's checks, not the dashboard. */
+    public static function isStaff(?array $user = null): bool
+    {
+        $user = $user ?? Auth::user();
+
+        return $user !== null && (string) ($user['role'] ?? '') === self::ROLE_STAFF;
     }
 
     /**

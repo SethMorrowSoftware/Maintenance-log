@@ -38,6 +38,18 @@ next to the machine. A failed safety-critical item takes the machine out of
 service and raises an urgent work order by itself. The completed check prints as
 a signed record.
 
+**Checks that chase themselves.** Give a checklist a due time and days, and
+**Today's Checks** shows every check expected, who did it, what is late and
+what is still to do. A check not finished on time posts to Slack (its own
+channel and mention if you like), reminds beforehand, escalates afterwards, and
+tells the managers in the app. History shows completion and on-time rates per
+list, area and person. Checklists can be for an area — the bowling desk, the
+arcade — as well as for a machine.
+
+**A role for the people who only do checks.** Staff accounts see today's
+checks for their area and nothing else: no machines, logs, parts or reports.
+Anybody can be given areas, and then sees only those areas' checks.
+
 **Work orders.** Somebody reports a problem, a manager assigns it, a mechanic
 fixes it and logs the job — and the work order closes off the log.
 
