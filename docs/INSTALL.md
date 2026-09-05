@@ -94,12 +94,12 @@ will live at. Get the time zone right — every date in the system is displayed 
 it. You also choose what to **start with**:
 
 - **The Castle Fun Center fleet** (the default) — twenty go-karts, the Freefall,
-  Dragon Coaster and Swings, the zip line, eight bowling lanes, six axe-throwing
+  Dragon Coaster and Swings, the zip line, twelve bowling lanes, six axe-throwing
   lanes, and the laser tag arena, roller rink, climbing wall, mini golf course,
   arcade and shop compressor. Each comes with its daily checklist and its service
   schedule, and with no made-up history. Every name, tag and category can be
-  changed afterwards from the Machines screen; the counts that were guesses
-  (bowling lanes, the indoor extras) are the ones to check first.
+  changed afterwards from the Machines screen; the indoor extras were guesses,
+  so check those first.
 - **Fictional sample data** — fourteen made-up karts and rides with a year of
   history behind them. Good for a look around, and easy to clear out afterwards.
 - **Nothing** — just the categories, locations and the two standard checklists.

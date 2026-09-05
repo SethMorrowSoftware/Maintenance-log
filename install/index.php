@@ -1136,7 +1136,7 @@ switch ($step) {
                         <label class="form-check-label" for="f_data_fleet">
                             The Castle Fun Center fleet
                             <small>Twenty go-karts, the Freefall, Dragon Coaster and Swings, the zip line,
-                            eight bowling lanes, six axe-throwing lanes and a few others, each with its daily
+                            twelve bowling lanes, six axe-throwing lanes and a few others, each with its daily
                             checklist and service schedule — and no made-up history. Rename or delete anything
                             afterwards from the Machines screen.</small>
                         </label>
@@ -1332,13 +1332,13 @@ switch ($step) {
                     <h3 class="card-title">About the starting fleet</h3>
                 </div>
                 <div class="card-body">
-                    <p>Forty-four machines are ready: twenty go-karts, the Freefall, Dragon Coaster and
-                    Swings, the zip line, eight bowling lanes, six axe-throwing lanes, and the laser tag
+                    <p>Forty-eight machines are ready: twenty go-karts, the Freefall, Dragon Coaster and
+                    Swings, the zip line, twelve bowling lanes, six axe-throwing lanes, and the laser tag
                     arena, roller rink, climbing wall, mini golf course, arcade and shop compressor.</p>
                     <p>Every one of them can be renamed, re-tagged, moved to another category or deleted
-                    from the <strong>Machines</strong> screen. The counts that were guesses — bowling lanes,
-                    the indoor extras — are the ones to check first. Add anything else the same way,
-                    appliances included: a category is just a label.</p>
+                    from the <strong>Machines</strong> screen. The indoor extras were guesses, so check
+                    those first. Add anything else the same way, appliances included: a category is just
+                    a label.</p>
                     <p class="mb-0">Each machine already has its daily checklist and service schedule.
                     Hour meters start at zero; type in the real readings as you go round, and the 50-hour
                     kart services will fall due from there.</p>
