@@ -156,7 +156,7 @@ $hasQuery = mb_strlen($query) >= 2;
                                 <td data-label="<?= attr(asset_word(false, true)) ?>"><?= e((string) ($row['asset_name'] ?? '')) ?></td>
                                 <td data-label="Status">
                                     <?php View::partial('status-badge', [
-                                        'value' => (string) $row['status'], 'vocabulary' => 'work_order',
+                                        'value' => (string) $row['status'], 'vocabulary' => 'workorder',
                                     ]); ?>
                                 </td>
                                 <td data-label="Raised"><?= e(Dates::date((string) $row['created_at'])) ?></td>

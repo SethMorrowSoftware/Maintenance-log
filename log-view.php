@@ -40,6 +40,8 @@ if (is_post()) {
     }
 
     if ($action === 'upload_attachment') {
+        require_feature('photos');
+
         if (!Acl::canEditLog($log)) {
             abort(403, 'You can only add files to logs you recorded yourself.');
         }
@@ -62,6 +64,8 @@ if (is_post()) {
     }
 
     if ($action === 'delete_attachment') {
+        require_feature('photos');
+
         if (!Acl::canEditLog($log)) {
             abort(403, 'You can only change logs you recorded yourself.');
         }

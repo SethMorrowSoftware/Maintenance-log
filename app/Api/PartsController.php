@@ -101,6 +101,12 @@ final class PartsController
             ]);
         }
 
+        $tooMany = $way === 'out' ? Part::cannotTake($part, $amount) : null;
+
+        if ($tooMany !== null) {
+            Response::error($tooMany, 'validation_failed', 422, ['amount' => $tooMany]);
+        }
+
         $delta  = $way === 'out' ? -$amount : $amount;
         $result = Part::adjustStock($id, $delta, $way === 'out' ? 'out' : 'in', 'manual', null,
             (string) ($body['notes'] ?? ''));

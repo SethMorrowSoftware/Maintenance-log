@@ -354,7 +354,7 @@ final class CustomFields
     {
         if ((string) $field['type'] === 'number') {
             // "012.50" → "12.5", so the list sorts and the export adds up.
-            return (string) (0 + $raw);
+            return (string) (float) $raw;
         }
 
         return $raw;

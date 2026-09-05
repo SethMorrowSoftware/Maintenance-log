@@ -243,7 +243,9 @@ final class Csv
         $count   = 0;
 
         try {
-            while (($cells = fgetcsv($handle)) !== false) {
+            // The explicit empty escape keeps PHP 8.4 quiet and the parsing
+            // identical on every version.
+            while (($cells = fgetcsv($handle, null, ',', '"', '')) !== false) {
                 if ($cells === [null] || $cells === false) {
                     continue;
                 }

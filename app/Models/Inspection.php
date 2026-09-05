@@ -126,7 +126,16 @@ final class Inspection
             return (int) $existing;
         }
 
-        $checklist = db()->find('checklists', $checklistId);
+        // Only a checklist that is live and meant for this machine: the
+        // go-kart list run against a compressor is not a record of anything.
+        $checklist = null;
+
+        foreach (self::checklistsFor($assetId) as $candidate) {
+            if ((int) $candidate['id'] === $checklistId) {
+                $checklist = $candidate;
+                break;
+            }
+        }
 
         if ($checklist === null) {
             return 0;
@@ -349,8 +358,11 @@ final class Inspection
             }
         }
 
-        // Raise a work order for the failures, so somebody owns them.
-        if ((int) $inspection['failed_count'] > 0 && Settings::bool('inspection_fail_opens_wo', true)) {
+        // Raise a work order for the failures, so somebody owns them. With
+        // work orders switched off the failure is still announced, below.
+        $raiseWorkOrder = Settings::bool('inspection_fail_opens_wo', true) && \App\Features::on('work_orders');
+
+        if ((int) $inspection['failed_count'] > 0 && $raiseWorkOrder) {
             try {
                 $failedItems = db()->all(
                     "SELECT item_text, notes FROM {inspection_items}
@@ -385,7 +397,9 @@ final class Inspection
             } catch (Throwable $e) {
                 log_error('Inspection work order failed: ' . $e->getMessage());
             }
+        }
 
+        if ((int) $inspection['failed_count'] > 0) {
             try {
                 Notifier::inspectionFailed($inspection);
             } catch (Throwable $e) {

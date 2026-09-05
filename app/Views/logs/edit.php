@@ -201,7 +201,7 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                             <?php endforeach; ?>
                         </div>
 
-                        <template data-repeater-template>
+                        <template data-repeater-template data-row-attrs="data-line-total">
                             <div class="form-row <?= e($partColumns) ?>">
                                 <div class="form-group">
                                     <label class="form-label">Part</label>
@@ -287,16 +287,22 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                             ]); ?>
                         <?php endif; ?>
 
-                        <?php if ($hasMeter && feature_on('meters')): ?>
-                            <?php View::partial('form-field', [
-                                'name'   => 'meter_reading',
-                                'label'  => 'Meter reading',
-                                'type'   => 'meter',
-                                'value'  => $values['meter_reading'],
-                                'suffix' => $meterUnit,
-                                'attrs'  => ['min' => '0'],
-                                'hint'   => 'Currently ' . decimal($asset['meter_reading']) . ' ' . $meterUnit . '.',
-                            ]); ?>
+                        <?php if (feature_on('meters')): ?>
+                            <?php // Always in the page, shown only for a machine with a meter — the
+                                  // context script switches it on when a different machine is picked. ?>
+                            <div data-meter-field <?= $hasMeter ? '' : 'hidden' ?>>
+                                <?php View::partial('form-field', [
+                                    'name'   => 'meter_reading',
+                                    'label'  => 'Meter reading',
+                                    'type'   => 'meter',
+                                    'value'  => $hasMeter ? $values['meter_reading'] : '',
+                                    'suffix' => $hasMeter ? $meterUnit : '',
+                                    'attrs'  => ['min' => '0'],
+                                    'hint'   => $hasMeter
+                                        ? 'Currently ' . decimal($asset['meter_reading']) . ' ' . $meterUnit . '.'
+                                        : 'The number on the meter now.',
+                                ]); ?>
+                            </div>
                         <?php endif; ?>
                     </div>
 
@@ -384,13 +390,17 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                             'empty'   => 'Not related to a work order',
                         ]); ?>
 
-                        <label class="form-check" for="f_close_wo">
-                            <input type="checkbox" id="f_close_wo" name="close_work_order" value="1" checked>
-                            <span class="form-check-label">
-                                Mark that work order as completed
-                                <small>Untick if there is still more to do on it.</small>
-                            </span>
-                        </label>
+                        <?php if (can('workorders.close')): ?>
+                            <label class="form-check" for="f_close_wo">
+                                <input type="checkbox" id="f_close_wo" name="close_work_order" value="1" checked>
+                                <span class="form-check-label">
+                                    Mark that work order as completed
+                                    <small>Untick if there is still more to do on it.</small>
+                                </span>
+                            </label>
+                        <?php else: ?>
+                            <p class="form-hint">The work order stays open; a manager closes it once they have seen the job.</p>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
             </details>

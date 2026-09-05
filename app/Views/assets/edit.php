@@ -366,7 +366,7 @@ $template = $template ?? null;
                         <?= icon('upload', '', 16) ?>
                         <?= $editing && !empty($asset['image_path']) ? 'Replace photo' : 'Choose a photo' ?>
                         <input type="file" name="photo" accept="image/jpeg,image/png,image/webp"
-                               style="display:none">
+                               class="sr-only">
                     </label>
                     <p class="form-hint">
                         A photo makes <?= e(an_asset()) ?> easy to identify on a phone. Up to
@@ -408,8 +408,7 @@ $template = $template ?? null;
                             so past reports stay accurate.
                         </p>
                         <?php View::partial('confirm-delete', [
-                            'url'         => url('assets.php'),
-                            'id'          => (int) $asset['id'],
+                            'buttonFor'   => 'delete-record',
                             'label'       => 'Delete this ' . asset_word(),
                             'message'     => 'Delete “' . (string) $asset['name'] . '”? It will disappear from lists, '
                                            . 'but its maintenance history will be kept.',
@@ -421,3 +420,12 @@ $template = $template ?? null;
         </div>
     </div>
 </form>
+
+<?php // The delete form lives outside the edit form: a form cannot sit inside a form. ?>
+<?php if ($editing && can('assets.delete')): ?>
+    <?php View::partial('confirm-delete', [
+        'formId' => 'delete-record',
+        'url'    => url('assets.php'),
+        'id'     => (int) $asset['id'],
+    ]); ?>
+<?php endif; ?>

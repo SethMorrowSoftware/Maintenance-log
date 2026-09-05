@@ -221,7 +221,9 @@ need no nginx equivalent.
    `storage/` — your settings and your uploaded photos are in there.
 3. Open `https://yourdomain.com/install/upgrade.php` and sign in as an
    administrator. It applies whatever database changes the new version needs and
-   tells you what it did.
+   tells you what it did. (If that address answers "403 Forbidden", the
+   `install/.htaccess` file is from an older version that locked the whole
+   folder: delete that one file and try again.)
 4. Delete `install/` again.
 
 Upgrades are additive: nothing in your data is removed or rewritten. The runner

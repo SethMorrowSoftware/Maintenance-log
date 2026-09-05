@@ -148,12 +148,8 @@ if (is_post()) {
             redirect(url('profile.php', ['tab' => 'details']));
         }
 
-        // Replace rather than accumulate.
-        foreach (Uploader::forEntity('user', $userId) as $old) {
-            Uploader::delete((int) $old['id']);
-        }
-
-        $result = Uploader::handle($file, 'user', $userId, $userId);
+        $previous = Uploader::forEntity('user', $userId);
+        $result   = Uploader::handle($file, 'user', $userId, $userId);
 
         if (!$result['ok']) {
             flash('error', $result['error']);
@@ -162,6 +158,15 @@ if (is_post()) {
             flash('error', 'That file is not an image. Use a JPG or PNG.');
         } else {
             db()->update('users', ['avatar_path' => (string) $result['attachment']['file_path']], ['id' => $userId]);
+
+            // Replace rather than accumulate — but only once the new picture
+            // is safely in, so a rejected upload leaves the old one alone.
+            foreach ($previous as $old) {
+                if ((int) $old['id'] !== (int) $result['id']) {
+                    Uploader::delete((int) $old['id']);
+                }
+            }
+
             flash('success', 'Your picture has been updated.');
         }
 

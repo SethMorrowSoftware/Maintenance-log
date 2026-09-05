@@ -276,7 +276,19 @@ if (PHP_SAPI !== 'cli' && session_status() === PHP_SESSION_NONE) {
     ini_set('session.use_strict_mode', '1');
     ini_set('session.use_only_cookies', '1');
     ini_set('session.cookie_httponly', '1');
-    ini_set('session.gc_maxlifetime', (string) (60 * 60 * 24 * 2));
+    // Never shorter than the idle timeout the site owner chose, or the
+    // host's garbage collector signs people out early without a word.
+    $gcSeconds = 60 * 60 * 24 * 2;
+
+    if ($rideLogIsInstalled) {
+        try {
+            $gcSeconds = max($gcSeconds, App\Settings::sessionTimeoutMinutes() * 60);
+        } catch (Throwable $e) {
+            // No database yet: the default will do.
+        }
+    }
+
+    ini_set('session.gc_maxlifetime', (string) $gcSeconds);
 
     session_name($sessionName);
 
@@ -314,12 +326,15 @@ if ($rideLogIsInstalled && session_status() === PHP_SESSION_ACTIVE) {
 
         Auth::destroySession();
 
+        // A fresh, empty session straight away, so whatever renders next —
+        // usually the login form — has a CSRF token to put in the page.
+        @session_start();
+
         if ($wasSignedIn && !$rideLogInInstaller && Request::script() !== 'login.php') {
             if (Request::wantsJson()) {
                 Response::error('Your session has expired. Please sign in again.', 'session_expired', 401);
             }
 
-            @session_start();
             App\Flash::warning('You were signed out because your session expired.');
 
             $target = (string) ($_SERVER['REQUEST_URI'] ?? '');

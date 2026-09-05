@@ -216,8 +216,7 @@ $partId = $editing ? (int) $part['id'] : 0;
                             and their cost.
                         </p>
                         <?php View::partial('confirm-delete', [
-                            'url'         => url('parts.php'),
-                            'id'          => $partId,
+                            'buttonFor'   => 'delete-record',
                             'label'       => 'Delete this part',
                             'message'     => 'Delete “' . (string) $part['name'] . '” from the parts list?',
                             'buttonClass' => 'btn btn-danger-outline btn-block',
@@ -228,3 +227,12 @@ $partId = $editing ? (int) $part['id'] : 0;
         </div>
     </div>
 </form>
+
+<?php // The delete form lives outside the edit form: a form cannot sit inside a form. ?>
+<?php if ($editing && can('parts.manage')): ?>
+    <?php View::partial('confirm-delete', [
+        'formId' => 'delete-record',
+        'url'    => url('parts.php'),
+        'id'     => $partId,
+    ]); ?>
+<?php endif; ?>

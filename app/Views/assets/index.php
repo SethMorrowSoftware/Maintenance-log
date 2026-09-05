@@ -31,7 +31,7 @@ $statusTabs = [
             <?php foreach ($statusTabs as $value => $tab): ?>
                 <?php $isActive = (string) $filters['status'] === (string) $value; ?>
                 <a class="btn btn-secondary btn-sm<?= $isActive ? ' is-active' : '' ?>"
-                   href="<?= e(url('assets.php', array_merge($filters, ['status' => $value, 'page' => null]))) ?>">
+                   href="<?= e(url('assets.php', array_merge($_GET, ['status' => $value, 'page' => null]))) ?>">
                     <?= e($tab['label']) ?>
                     <span class="badge badge-muted" style="margin-left:4px"><?= (int) $tab['count'] ?></span>
                 </a>

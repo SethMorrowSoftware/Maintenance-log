@@ -33,7 +33,7 @@ final class Notifier
         ?int $entityId = null,
         bool $email = false
     ): int {
-        if ($userId <= 0) {
+        if ($userId <= 0 || !self::isActive($userId)) {
             return 0;
         }
 
@@ -74,6 +74,24 @@ final class Notifier
         }
 
         return $id;
+    }
+
+    /**
+     * Somebody who has been switched off or removed is told nothing: a
+     * notification nobody will read is worse than none, because the sender
+     * thinks the job is covered.
+     */
+    public static function isActive(int $userId): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+
+        try {
+            return db()->exists('users', ['id' => $userId, 'is_active' => 1, 'deleted_at' => null]);
+        } catch (Throwable $e) {
+            return false;
+        }
     }
 
     /**
@@ -307,8 +325,10 @@ final class Notifier
     {
         $failed = (int) $inspection['failed_count'];
 
+        // The people who hand out work orders, or — with work orders switched
+        // off — the people who own the checklists.
         self::pushToRole(
-            'workorders.assign',
+            Features::on('work_orders') ? 'workorders.assign' : 'checklists.manage',
             'inspection_failed',
             'Inspection failed: ' . (string) ($inspection['asset_name'] ?? an_asset()),
             $failed . ' item' . ($failed === 1 ? '' : 's') . ' failed'

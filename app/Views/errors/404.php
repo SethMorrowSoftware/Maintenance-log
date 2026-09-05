@@ -16,6 +16,6 @@ $message = $message ?? 'That page or record does not exist. It may have been del
         <a class="btn btn-primary" href="<?= e(url('index.php')) ?>">
             <?= icon('home', '', 17) ?> Dashboard
         </a>
-        <a class="btn btn-secondary" href="javascript:history.back()">Go back</a>
+        <a class="btn btn-secondary" href="<?= e(back_url()) ?>">Go back</a>
     </div>
 </div>

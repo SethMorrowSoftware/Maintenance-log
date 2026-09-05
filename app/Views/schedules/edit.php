@@ -237,8 +237,7 @@ $hasMeter  = $asset !== null && $meterUnit !== 'none';
                             Deleting a schedule does not delete the maintenance already logged against it.
                         </p>
                         <?php View::partial('confirm-delete', [
-                            'url'         => url('schedules.php'),
-                            'id'          => (int) $schedule['id'],
+                            'buttonFor'   => 'delete-record',
                             'label'       => 'Delete this schedule',
                             'message'     => 'Delete "' . (string) $schedule['name'] . '"?',
                             'buttonClass' => 'btn btn-danger-outline btn-block',
@@ -249,3 +248,12 @@ $hasMeter  = $asset !== null && $meterUnit !== 'none';
         </div>
     </div>
 </form>
+
+<?php // The delete form lives outside the edit form: a form cannot sit inside a form. ?>
+<?php if (!empty($schedule['id']) && can('schedules.manage')): ?>
+    <?php View::partial('confirm-delete', [
+        'formId' => 'delete-record',
+        'url'    => url('schedules.php'),
+        'id'     => (int) $schedule['id'],
+    ]); ?>
+<?php endif; ?>

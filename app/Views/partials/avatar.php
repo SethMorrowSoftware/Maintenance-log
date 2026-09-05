@@ -23,10 +23,22 @@ $name   = trim((string) ($user['first_name'] ?? '') . ' ' . (string) ($user['las
 $name   = $name !== '' ? $name : (string) ($user['username'] ?? 'Unknown');
 $avatar = (string) ($user['avatar_path'] ?? '');
 $title  = $showTitle ? ' title="' . attr($name) . '"' : '';
+
+// Most callers pass a joined row — a log, a work order, a comment — whose
+// "id" is the record's, not the person's. The queries alias the person's id
+// beside their name; use that when it is there.
+$avatarUserId = 0;
+
+foreach (['assignee_id', 'assigned_to', 'user_id', 'id'] as $idKey) {
+    if (array_key_exists($idKey, $user)) {
+        $avatarUserId = (int) ($user[$idKey] ?? 0);
+        break;
+    }
+}
 ?>
-<?php if ($avatar !== ''): ?>
+<?php if ($avatar !== '' && $avatarUserId > 0): ?>
     <span class="<?= e($class) ?>"<?= $title ?>>
-        <img src="<?= e(url('file.php', ['avatar' => (int) ($user['id'] ?? 0)])) ?>" alt="" loading="lazy">
+        <img src="<?= e(url('file.php', ['avatar' => $avatarUserId])) ?>" alt="" loading="lazy">
     </span>
 <?php else: ?>
     <span class="<?= e($class) ?>"<?= $title ?>

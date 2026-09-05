@@ -276,15 +276,31 @@ final class Reports
             $params
         );
 
-        $totals = ['total_cost' => 0.0, 'labor_hours' => 0.0, 'downtime_minutes' => 0];
+        // The totals come from the database, not from the rows on the page:
+        // the list is capped, and a footer that only added up the newest
+        // five thousand jobs would be quietly wrong.
+        $sums = db()->one(
+            "SELECT COUNT(*) AS n,
+                    COALESCE(SUM(l.total_cost), 0)       AS total_cost,
+                    COALESCE(SUM(l.labor_hours), 0)      AS labor_hours,
+                    COALESCE(SUM(l.downtime_minutes), 0) AS downtime_minutes
+             FROM {maintenance_logs} l
+             INNER JOIN {assets} a ON a.id = l.asset_id
+             LEFT JOIN {asset_categories} c ON c.id = a.category_id
+             LEFT JOIN {users} u ON u.id = l.user_id
+             WHERE l.deleted_at IS NULL AND {$where}",
+            $params
+        ) ?? [];
 
-        foreach ($rows as $row) {
-            $totals['total_cost']       += (float) $row['total_cost'];
-            $totals['labor_hours']      += (float) $row['labor_hours'];
-            $totals['downtime_minutes'] += (int) $row['downtime_minutes'];
-        }
+        $jobs   = (int) ($sums['n'] ?? count($rows));
+        $totals = [
+            'total_cost'       => (float) ($sums['total_cost'] ?? 0),
+            'labor_hours'      => (float) ($sums['labor_hours'] ?? 0),
+            'downtime_minutes' => (int) ($sums['downtime_minutes'] ?? 0),
+        ];
 
-        $totals['title'] = count($rows) . ' job' . (count($rows) === 1 ? '' : 's');
+        $totals['title'] = num($jobs) . ' job' . ($jobs === 1 ? '' : 's')
+            . ($jobs > count($rows) ? ' (newest ' . num(count($rows)) . ' listed)' : '');
 
         return [
             'columns' => [

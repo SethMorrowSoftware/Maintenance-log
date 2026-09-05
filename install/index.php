@@ -369,6 +369,14 @@ if ($posted) {
 
         // ---------------------------------------------------------------------
         case 'install':
+            // Every earlier step must have been completed, or the install
+            // would run with a blank administrator and no site address.
+            foreach (['db_name' => 'database', 'admin_username' => 'admin', 'site_name' => 'site'] as $needed => $stepName) {
+                if (trim((string) ($state[$needed] ?? '')) === '') {
+                    redirect_step($stepName);
+                }
+            }
+
             $result = run_installation($state);
 
             if ($result['ok']) {
@@ -395,6 +403,23 @@ if ($posted) {
 // only by the redirect that follows a successful install.
 if (($_GET['step'] ?? '') === 'done') {
     $step = 'done';
+}
+
+// Later steps need the earlier ones. Landing on one directly — a bookmark, a
+// reload after the session expired — goes back to the first step still missing.
+$stepNeeds = [
+    'admin'   => ['db_name'],
+    'site'    => ['db_name', 'admin_username'],
+    'install' => ['db_name', 'admin_username', 'site_name'],
+];
+$stepFor = ['db_name' => 'database', 'admin_username' => 'admin', 'site_name' => 'site'];
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    foreach ($stepNeeds[$step] ?? [] as $neededKey) {
+        if (trim((string) ($_SESSION['install'][$neededKey] ?? '')) === '') {
+            redirect_step($stepFor[$neededKey]);
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -624,11 +649,16 @@ function build_config_file(array $state): string
  */
 function write_install_htaccess(array &$warnings): void
 {
-    $deny = "# RideLog: the installer has run. This folder is no longer reachable.\n"
-          . "# Delete the whole install/ directory when you are done.\n"
-          . "<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n"
-          . "<IfModule !mod_authz_core.c>\n    <IfModule mod_access_compat.c>\n"
-          . "        Order allow,deny\n        Deny from all\n    </IfModule>\n</IfModule>\n";
+    // Only the installer itself is shut. upgrade.php stays reachable — it
+    // asks for an administrator sign-in — so a later version can be applied.
+    $deny = "# RideLog: the installer has run. index.php is no longer reachable.\n"
+          . "# upgrade.php still works (administrators only). Delete the whole\n"
+          . "# install/ directory when you are done.\n"
+          . "<Files \"index.php\">\n"
+          . "    <IfModule mod_authz_core.c>\n        Require all denied\n    </IfModule>\n"
+          . "    <IfModule !mod_authz_core.c>\n        <IfModule mod_access_compat.c>\n"
+          . "            Order allow,deny\n            Deny from all\n        </IfModule>\n    </IfModule>\n"
+          . "</Files>\n";
 
     if (@file_put_contents(__DIR__ . '/.htaccess', $deny) === false) {
         $warnings[] = 'Could not lock the install folder automatically. Delete the install/ directory yourself.';

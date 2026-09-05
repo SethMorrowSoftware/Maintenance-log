@@ -44,8 +44,12 @@ if (is_post()) {
         $amount = (float) str_replace(',', '', Request::string('amount'));
         $way    = Request::string('way');
 
+        $tooMany = $way === 'out' ? Part::cannotTake($part, $amount) : null;
+
         if ($amount <= 0) {
             flash('error', 'Type how many you took or put back.');
+        } elseif ($tooMany !== null) {
+            flash('error', $tooMany);
         } else {
             $delta  = $way === 'out' ? -$amount : $amount;
             $result = Part::adjustStock(

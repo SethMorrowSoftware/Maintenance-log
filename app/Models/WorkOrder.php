@@ -299,6 +299,34 @@ final class WorkOrder
             if (Status::isClosedWorkOrder((string) $data['status'])
                 && !Status::isClosedWorkOrder((string) $before['status'])) {
                 \App\Slack::problemFixed($id);
+
+                // The people involved hear that it was fixed (or dropped),
+                // unless they are the one who closed it.
+                $me         = (int) Auth::id();
+                $recipients = array_values(array_unique(array_filter(
+                    [(int) ($before['reported_by'] ?? 0), (int) ($before['assigned_to'] ?? 0)],
+                    static function (int $userId) use ($me): bool {
+                        return $userId > 0 && $userId !== $me;
+                    }
+                )));
+
+                if ($recipients !== []) {
+                    try {
+                        $resolution = trim((string) ($data['resolution'] ?? $before['resolution'] ?? ''));
+
+                        Notifier::pushMany(
+                            $recipients,
+                            'wo_updated',
+                            ((string) $data['status'] === 'cancelled' ? 'Cancelled: ' : 'Fixed: ') . (string) $before['title'],
+                            (string) $before['wo_number'] . ($resolution !== '' ? ' — ' . Str::limit($resolution, 120) : ''),
+                            'workorder-view.php?id=' . $id,
+                            'work_order',
+                            $id
+                        );
+                    } catch (Throwable $e) {
+                        log_error('Work order close notification failed: ' . $e->getMessage());
+                    }
+                }
             }
         }
 

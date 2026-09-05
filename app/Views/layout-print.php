@@ -34,7 +34,7 @@ $siteName  = Settings::siteName();
 <div class="app-content" style="max-width:1000px;margin:0 auto;">
 
     <div class="no-print flex items-center justify-between gap-3 mb-5">
-        <a class="btn btn-secondary btn-sm" href="javascript:history.back()">
+        <a class="btn btn-secondary btn-sm" href="<?= e(back_url()) ?>">
             <?= icon('arrow-left', '', 16) ?> Back
         </a>
         <button type="button" class="btn btn-primary btn-sm" data-print>

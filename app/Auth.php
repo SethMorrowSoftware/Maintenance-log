@@ -199,7 +199,9 @@ final class Auth
         }
 
         $script  = Request::script();
-        $allowed = ['profile.php', 'logout.php'];
+        // file.php serves the avatar and logo on the very page that asks for
+        // the new password; bouncing those requests would break its images.
+        $allowed = ['profile.php', 'logout.php', 'file.php'];
 
         if (in_array($script, $allowed, true) || Request::isApiPath()) {
             return;
@@ -246,7 +248,15 @@ final class Auth
         // Always spend roughly the same time whether or not the account exists,
         // so response timing does not reveal which usernames are real.
         if ($user === null) {
-            password_verify($password, '$2y$10$usesomesillystringforsalt0uJ8xQ0m1rP9sT4vW7yZ2aB5cD8eF12');
+            // A real hash at the real cost, made once per process, so the
+            // check for an unknown name takes as long as one for a known one.
+            static $dummy = null;
+
+            if ($dummy === null) {
+                $dummy = password_hash('ridelog-no-such-account', PASSWORD_DEFAULT);
+            }
+
+            password_verify($password, (string) $dummy);
             self::recordAttempt($identifier, false);
 
             return self::failure('That username or password is not correct.');
@@ -851,9 +861,11 @@ final class Auth
             return null;
         }
 
+        // The link goes to the address typed, so only an address may match:
+        // a username here would create a live link that is mailed nowhere.
         $user = db()->one(
-            'SELECT * FROM {users} WHERE (email = ? OR username = ?) AND is_active = 1 AND deleted_at IS NULL LIMIT 1',
-            [$email, $email]
+            'SELECT * FROM {users} WHERE email = ? AND is_active = 1 AND deleted_at IS NULL LIMIT 1',
+            [$email]
         );
 
         if ($user === null) {
@@ -861,6 +873,28 @@ final class Auth
         }
 
         $userId = (int) $user['id'];
+
+        // Two brakes on abuse, both silent so the page gives the same answer.
+        // A link issued in the last two minutes still works, so a repeat
+        // request does not void it; and one connection gets a handful of
+        // links per quarter hour, not a mail-bombing tool.
+        $recent = db()->value(
+            'SELECT created_at FROM {password_resets} WHERE user_id = ? AND expires_at > ? ORDER BY id DESC LIMIT 1',
+            [$userId, Dates::nowUtc()]
+        );
+
+        if ($recent !== null && strtotime((string) $recent . ' UTC') > time() - 120) {
+            return null;
+        }
+
+        $fromHere = db()->count(
+            'SELECT COUNT(*) FROM {password_resets} WHERE ip_address = ? AND created_at > ?',
+            [Request::ip(), gmdate(Dates::DB_FORMAT, time() - 900)]
+        );
+
+        if ($fromHere >= 5) {
+            return null;
+        }
 
         // Only one live link at a time.
         db()->run('DELETE FROM {password_resets} WHERE user_id = ?', [$userId]);
@@ -879,7 +913,8 @@ final class Auth
 
         Audit::record('auth.reset_requested', 'user', $userId, 'Password reset requested');
 
-        return url('reset-password.php', ['selector' => $selector, 'token' => $token]);
+        // This goes into an email, so it has to be the whole address.
+        return absolute_url('reset-password.php', ['selector' => $selector, 'token' => $token]);
     }
 
     /**

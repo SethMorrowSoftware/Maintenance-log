@@ -1097,7 +1097,15 @@
 
             form.addEventListener('input', function () { dirty = true; });
             form.addEventListener('change', function () { dirty = true; });
-            form.addEventListener('submit', function () { dirty = false; });
+
+            // Only a submit that actually goes ahead clears the flag. The
+            // form's own listeners run first, so by the time the event
+            // reaches the document, a validation stop has already been made.
+            document.addEventListener('submit', function (event) {
+                if (event.target === form && !event.defaultPrevented) {
+                    dirty = false;
+                }
+            });
 
             window.addEventListener('beforeunload', function (event) {
                 if (!dirty) {
@@ -1396,6 +1404,36 @@
         }
 
         RL.qsa('[data-cost-scope]', root).forEach(function (scope) {
+            // A stored figure that differs from what the calculator would
+            // produce was typed by hand (a supplier invoice, say). Opening
+            // the form must not quietly replace it, so mark it as hand-set
+            // before the first recalculation.
+            var storedParts = RL.qs('[data-parts-cost]', scope);
+            var storedLabor = RL.qs('[data-labor-cost]', scope);
+
+            if (storedParts && storedParts.value !== '') {
+                var lines = 0;
+
+                RL.qsa('[data-line-total]', scope).forEach(function (row) {
+                    var qty = parseFloat((row.querySelector('[data-line-qty]') || {}).value) || 0;
+                    var cost = parseFloat((row.querySelector('[data-line-cost]') || {}).value) || 0;
+                    lines += Math.round(qty * cost * 100) / 100;
+                });
+
+                if (Math.abs(parseFloat(storedParts.value) - lines) > 0.005) {
+                    storedParts.dataset.autofill = '0';
+                }
+            }
+
+            if (storedLabor && storedLabor.value !== '') {
+                var hours = parseFloat((RL.qs('[data-labor-hours]', scope) || {}).value) || 0;
+                var rate = parseFloat((RL.qs('[data-labor-rate]', scope) || {}).value) || 0;
+
+                if (rate > 0 && Math.abs(parseFloat(storedLabor.value) - Math.round(hours * rate * 100) / 100) > 0.005) {
+                    storedLabor.dataset.autofill = '0';
+                }
+            }
+
             scope.addEventListener('input', function (event) {
                 if (event.target.matches('[data-line-qty], [data-line-cost], [data-labor-hours], [data-labor-rate], [data-other-cost], [data-parts-cost], [data-labor-cost]')) {
                     // A hand-edited total should stop being overwritten.
@@ -1928,6 +1966,15 @@
             var html = template.innerHTML.replace(/__INDEX__/g, String(index));
             var row = RL.el('div', { class: 'repeater-row', 'data-repeater-row': '', html: html });
 
+            // Attributes the server puts on its own rows (data-line-total on
+            // a parts line, say) go on the new row too, or the calculator
+            // never sees it.
+            (template.dataset.rowAttrs || '').split(/\s+/).forEach(function (name) {
+                if (name) {
+                    row.setAttribute(name, '');
+                }
+            });
+
             var target = container.querySelector('[data-repeater-rows]') || container;
             target.appendChild(row);
 
@@ -2022,6 +2069,7 @@
 
                 var nameField = row.querySelector('[data-part-name]');
                 var costField = row.querySelector('[data-line-cost]');
+                var qtyField = row.querySelector('[data-line-qty]');
 
                 if (nameField && option.dataset.name) {
                     nameField.value = option.dataset.name;
@@ -2031,8 +2079,13 @@
                     costField.value = parseFloat(option.dataset.cost).toFixed(2);
                 }
 
-                // Let the cost calculator pick the change up.
-                row.dispatchEvent(new Event('input', { bubbles: true }));
+                // Let the cost calculator pick the change up. It listens for
+                // input on the price and quantity boxes, not on the row.
+                var poke = costField || qtyField;
+
+                if (poke) {
+                    poke.dispatchEvent(new Event('input', { bubbles: true }));
+                }
             });
         });
     }
@@ -2097,6 +2150,27 @@
                 var hasMeter = asset.meter_type && asset.meter_type !== 'none';
                 show('[data-ctx-meter]', !!hasMeter);
                 setText('[data-ctx-meter-value]', hasMeter ? asset.meter_reading + ' ' + asset.meter_type : '');
+
+                // The meter box on the form follows the machine: shown for
+                // one with a meter, hidden (and emptied) for one without.
+                var meterField = document.querySelector('[data-meter-field]');
+
+                if (meterField) {
+                    meterField.hidden = !hasMeter;
+
+                    var meterInput = meterField.querySelector('input');
+                    var meterHint = meterField.querySelector('.form-hint');
+
+                    if (!hasMeter && meterInput) {
+                        meterInput.value = '';
+                    }
+
+                    if (meterHint) {
+                        meterHint.textContent = hasMeter
+                            ? 'Currently ' + asset.meter_reading + ' ' + asset.meter_type + '.'
+                            : '';
+                    }
+                }
 
                 var list = panel.querySelector('[data-ctx-list]');
 
@@ -2494,6 +2568,7 @@
             var notes = RL.el('input', {
                 type: 'text',
                 class: 'form-input',
+                id: 'meter-note-input',
                 placeholder: 'Optional note',
                 maxlength: '255'
             });
@@ -2519,7 +2594,7 @@
                         })
                     ]),
                     RL.el('div', { class: 'form-group' }, [
-                        RL.el('label', { class: 'form-label', text: 'Note' }),
+                        RL.el('label', { class: 'form-label', text: 'Note', for: 'meter-note-input' }),
                         notes
                     ])
                 ]),
@@ -2871,6 +2946,14 @@
     };
 
     function boot() {
+        // Apply the remembered theme (or the one saved on the profile) now,
+        // so a choice made on another day, or another device, sticks.
+        try {
+            RL.theme.set(RL.theme.get(), false);
+        } catch (e) {
+            // Storage blocked: the system setting applies.
+        }
+
         RL.theme.syncButton();
 
         initSidebar();

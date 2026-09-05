@@ -16,6 +16,11 @@
         // Private browsing, or site data blocked. Fall through to system.
     }
 
+    // core.js stores values as JSON, so the string arrives in quotes.
+    if (typeof stored === 'string') {
+        stored = stored.replace(/^"|"$/g, '');
+    }
+
     if (stored === 'light' || stored === 'dark') {
         document.documentElement.setAttribute('data-theme', stored);
     }

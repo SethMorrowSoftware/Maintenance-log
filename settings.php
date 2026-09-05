@@ -48,7 +48,7 @@ if (is_post()) {
                     . 'If it does not arrive within a few minutes, check the spam folder '
                     . 'and then the settings below.');
             } else {
-                flash('error', 'The test could not be sent: ' . $result['error']);
+                flash('error', 'The test could not be sent: ' . (string) ($result['message'] ?? 'unknown error'));
             }
 
             audit('settings.test_email', 'setting', null,

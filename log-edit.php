@@ -64,8 +64,8 @@ if (is_post()) {
         'meter_reading'    => 'nullable|decimal|min:0',
         'downtime_minutes' => 'nullable|int|min:0|max:525600',
         'status_after'     => 'nullable|' . Status::rule('asset'),
-        'schedule_id'      => 'nullable|int',
-        'work_order_id'    => 'nullable|int',
+        'schedule_id'      => 'nullable|int|exists:maintenance_schedules,id',
+        'work_order_id'    => 'nullable|int|exists:work_orders,id',
         'followup_notes'   => 'nullable|text|max:2000',
     ], [
         'performed_at.not_future' => 'The date and time cannot be in the future. '
@@ -86,14 +86,39 @@ if (is_post()) {
         $_POST['user_id'] = Auth::id();
     }
 
+    // Where a rejected form goes back to. A new log keeps the machine,
+    // schedule and work order it was opened with, so the form comes back
+    // with the same fields — not a bare one that quietly drops the link.
+    $backTo = $editing
+        ? ['id' => $id]
+        : array_filter([
+            'asset_id'      => Request::int('asset_id'),
+            'schedule_id'   => Request::int('schedule_id'),
+            'work_order_id' => Request::int('work_order_id'),
+        ]);
+
     if ($validator->fails()) {
         flash_errors($validator->errors(), $_POST);
-        redirect(url('log-edit.php', $editing ? ['id' => $id] : []));
+        redirect(url('log-edit.php', $backTo));
     }
 
-    $data  = $validator->validated();
+    $data = $validator->validated();
+
+    // Somebody who cannot see prices cannot set one on a part line either:
+    // their form has no price box, so anything arriving here was not typed
+    // on our page. The shelf price fills in instead.
+    $partsInput = is_array($_POST['parts'] ?? null) ? $_POST['parts'] : [];
+
+    if (!costs_visible()) {
+        foreach ($partsInput as $lineKey => $line) {
+            if (is_array($line)) {
+                unset($partsInput[$lineKey]['unit_cost']);
+            }
+        }
+    }
+
     $parts = feature_on('parts')
-        ? MaintenanceLog::normaliseParts($_POST['parts'] ?? [], $editing ? MaintenanceLog::parts($id) : [])
+        ? MaintenanceLog::normaliseParts($partsInput, $editing ? MaintenanceLog::parts($id) : [])
         : ($editing ? MaintenanceLog::parts($id) : []);
 
     // Fields that belong to a module that is switched off never reach the form.
@@ -128,12 +153,45 @@ if (is_post()) {
         }
     }
 
+    // Who did the work: whoever a manager picked; otherwise, on an edit, the
+    // person already on the record (their name may no longer be in the
+    // list if they have left); on a new log, the person logging it.
     $data['user_id']           = can('logs.edit_any') && !empty($data['user_id'])
         ? (int) $data['user_id']
-        : Auth::id();
+        : ($editing && (int) ($log['user_id'] ?? 0) > 0 ? (int) $log['user_id'] : Auth::id());
     $data['requires_followup'] = Request::bool('requires_followup') ? 1 : 0;
     $data['is_completed']      = Request::bool('not_finished') ? 0 : 1;
-    $data['close_work_order']  = Request::bool('close_work_order');
+
+    // A schedule or work order only counts if it belongs to this machine —
+    // a posted id for some other machine's schedule must not roll it.
+    if (!empty($data['schedule_id'])) {
+        $scheduleAsset = (int) db()->value(
+            'SELECT asset_id FROM {maintenance_schedules} WHERE id = ?',
+            [(int) $data['schedule_id']]
+        );
+
+        if ($scheduleAsset !== (int) $data['asset_id']) {
+            $data['schedule_id'] = null;
+        }
+    }
+
+    $linkedWorkOrder = null;
+
+    if (!empty($data['work_order_id'])) {
+        $linkedWorkOrder = \App\Models\WorkOrder::find((int) $data['work_order_id']);
+
+        if ($linkedWorkOrder === null || (int) $linkedWorkOrder['asset_id'] !== (int) $data['asset_id']) {
+            $linkedWorkOrder       = null;
+            $data['work_order_id'] = null;
+        }
+    }
+
+    // Closing the work order from here needs the same right as closing it
+    // on its own page.
+    $data['close_work_order'] = Request::bool('close_work_order')
+        && $linkedWorkOrder !== null
+        && can('workorders.close')
+        && Acl::canEditWorkOrder($linkedWorkOrder);
 
     if (!$data['requires_followup']) {
         $data['followup_notes'] = null;
@@ -153,8 +211,16 @@ if (is_post()) {
     }
 
     // Catch a mistyped meter here, where it can still be corrected in the same
-    // form, rather than saving the log and quietly dropping the reading.
+    // form, rather than saving the log and quietly dropping the reading. An
+    // old log being edited keeps the reading it recorded at the time — the
+    // machine has moved on since, and that is not a mistake.
+    $meterAsRecorded = $editing
+        && $log['meter_reading'] !== null
+        && ($data['meter_reading'] ?? '') !== ''
+        && abs((float) $data['meter_reading'] - (float) $log['meter_reading']) < 0.005;
+
     if ($asset !== null
+        && !$meterAsRecorded
         && ($data['meter_reading'] ?? '') !== ''
         && (float) $data['meter_reading'] < (float) $asset['meter_reading'] - 0.004) {
         flash_errors([
@@ -163,7 +229,7 @@ if (is_post()) {
                 . 'If the meter was replaced, change it on the ' . asset_word() . ' itself.',
         ], $_POST);
 
-        redirect(url('log-edit.php', $editing ? ['id' => $id] : []));
+        redirect(url('log-edit.php', $backTo));
     }
 
     try {
@@ -310,6 +376,16 @@ if ($asset !== null && feature_on('work_orders')) {
     );
 }
 
+// Who can be named as having done the work. The person already on an
+// existing record stays in the list even if they have since left, so
+// editing a title does not silently hand their job to somebody else.
+$technicians = can('logs.edit_any') ? \App\Models\WorkOrder::assigneeOptions() : [];
+
+if ($editing && $technicians !== [] && (int) ($log['user_id'] ?? 0) > 0 && !isset($technicians[(int) $log['user_id']])) {
+    $technicians[(int) $log['user_id']] = trim((string) ($log['first_name'] ?? '') . ' ' . (string) ($log['last_name'] ?? ''))
+        ?: ((string) ($log['username'] ?? 'Former user'));
+}
+
 View::render('logs/edit', [
     'title'       => $editing ? 'Edit maintenance log' : 'Log maintenance',
     'subtitle'    => $editing
@@ -332,5 +408,5 @@ View::render('logs/edit', [
     'partOptions'    => can('parts.view') ? Part::options() : [],
     'assetSchedules' => $assetSchedules,
     'openWorkOrders' => $openWorkOrders,
-    'technicians'    => can('logs.edit_any') ? \App\Models\WorkOrder::assigneeOptions() : [],
+    'technicians'    => $technicians,
 ]);

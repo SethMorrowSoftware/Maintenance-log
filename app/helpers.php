@@ -402,6 +402,43 @@ if (!function_exists('asset_url')) {
     }
 }
 
+if (!function_exists('back_url')) {
+    /**
+     * Where a "Back" link should go: the page that sent the visitor here, if
+     * it was one of ours, otherwise the fallback. A plain href, because the
+     * content security policy blocks javascript: links.
+     */
+    function back_url(?string $fallback = null): string
+    {
+        $fallback = $fallback ?? url('index.php');
+        $referer  = (string) ($_SERVER['HTTP_REFERER'] ?? '');
+
+        if ($referer === '') {
+            return $fallback;
+        }
+
+        $parts = parse_url($referer);
+
+        if (!is_array($parts) || empty($parts['host'])) {
+            return $fallback;
+        }
+
+        $here = strtolower((string) preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
+
+        if ($here === '' || strtolower((string) $parts['host']) !== $here) {
+            return $fallback;
+        }
+
+        $path = (string) ($parts['path'] ?? '/');
+
+        if ($path === '' || strpos($path, '/') !== 0 || strpos($path, '//') === 0) {
+            return $fallback;
+        }
+
+        return $path . (isset($parts['query']) && $parts['query'] !== '' ? '?' . $parts['query'] : '');
+    }
+}
+
 if (!function_exists('current_url')) {
     /** The current URL including its query string. */
     function current_url(): string

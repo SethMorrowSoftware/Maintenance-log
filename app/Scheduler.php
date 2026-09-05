@@ -44,18 +44,21 @@ final class Scheduler
 
         // --- Calendar component ---------------------------------------------
         if ($frequencyType !== 'meter') {
-            // Base the next date on when it was last done, falling back to
-            // today so a brand new schedule becomes due one interval out.
+            // Base the next date on when it was last done. A schedule that has
+            // never been done keeps the first due date it was given when it
+            // was created: rebasing it on "today" every night would push it
+            // one interval away forever, and it could never come due.
             $lastPerformed = $schedule['last_performed_at'] ?? null;
 
             if (is_string($lastPerformed) && $lastPerformed !== '') {
-                $local = Dates::toLocal($lastPerformed);
-                $base  = $local === null ? Dates::today() : $local->format(Dates::DB_DATE);
+                $local    = Dates::toLocal($lastPerformed);
+                $base     = $local === null ? Dates::today() : $local->format(Dates::DB_DATE);
+                $nextDate = Dates::addInterval($base, $frequencyType, $frequencyVal);
+            } elseif (!empty($schedule['next_due_date'])) {
+                $nextDate = (string) $schedule['next_due_date'];
             } else {
-                $base = Dates::today();
+                $nextDate = Dates::addInterval(Dates::today(), $frequencyType, $frequencyVal);
             }
-
-            $nextDate = Dates::addInterval($base, $frequencyType, $frequencyVal);
 
             // If the schedule has been neglected the computed date can still be
             // in the past. That is correct and we leave it: the point of the
@@ -70,14 +73,15 @@ final class Scheduler
             $lastMeter = $schedule['last_meter'] ?? null;
 
             if ($lastMeter !== null && $lastMeter !== '') {
-                $base = (float) $lastMeter;
-            } elseif ($asset !== null) {
-                $base = (float) ($asset['meter_reading'] ?? 0);
+                $nextMeter = round((float) $lastMeter + $interval, 2);
+            } elseif (!empty($schedule['next_due_meter'])) {
+                // Never done, first threshold already set: keep it, for the
+                // same reason as the date above.
+                $nextMeter = (float) $schedule['next_due_meter'];
             } else {
-                $base = 0.0;
+                $base      = $asset !== null ? (float) ($asset['meter_reading'] ?? 0) : 0.0;
+                $nextMeter = round($base + $interval, 2);
             }
-
-            $nextMeter = round($base + $interval, 2);
         }
 
         return ['next_due_date' => $nextDate, 'next_due_meter' => $nextMeter];
@@ -117,6 +121,15 @@ final class Scheduler
         $schedule = db()->one('SELECT * FROM {maintenance_schedules} WHERE id = ? LIMIT 1', [$scheduleId]);
 
         if ($schedule === null) {
+            return;
+        }
+
+        // A job written up late must not rewind a schedule that a newer job
+        // has already rolled forward. Only the most recent job counts.
+        $lastDone = (string) ($schedule['last_performed_at'] ?? '');
+
+        if ($lastDone !== '' && $lastDone > $performedAtUtc
+            && (int) ($schedule['last_log_id'] ?? 0) !== (int) $logId) {
             return;
         }
 
@@ -325,11 +338,12 @@ final class Scheduler
                 : 'by meter reading';
 
             $message = $assetName . ' (' . (string) $schedule['asset_tag'] . ') — due ' . $when . '.';
-            $link    = 'schedules.php?id=' . (int) $schedule['id'];
+            $link    = 'schedules.php?asset_id=' . (int) $schedule['asset_id'];
 
             $assignee = (int) ($schedule['assigned_to'] ?? 0);
 
-            if ($assignee > 0) {
+            // Somebody who has left cannot act on it, so it goes to the role.
+            if ($assignee > 0 && Notifier::isActive($assignee)) {
                 $notified += self::pushOne($assignee, $state, $title, $message, $link, (int) $schedule['id']);
             } else {
                 // Nobody owns it, so tell everyone who could act on it.
@@ -395,6 +409,10 @@ final class Scheduler
      */
     public static function onMeterUpdated(int $assetId): void
     {
+        if (!Features::on('schedules')) {
+            return;
+        }
+
         try {
             $schedules = db()->all(
                 'SELECT * FROM {maintenance_schedules}
@@ -426,11 +444,11 @@ final class Scheduler
             $message = (string) $asset['name'] . ' has reached '
                      . decimal($meter) . ' ' . (string) $asset['meter_type']
                      . ' (due at ' . decimal($schedule['next_due_meter']) . ').';
-            $link    = 'schedules.php?id=' . (int) $schedule['id'];
+            $link    = 'schedules.php?asset_id=' . $assetId;
 
             $assignee = (int) ($schedule['assigned_to'] ?? 0);
 
-            if ($assignee > 0) {
+            if ($assignee > 0 && Notifier::isActive($assignee)) {
                 Notifier::push($assignee, 'pm_overdue', $title, $message, $link, 'schedule', (int) $schedule['id'], true);
             } else {
                 Notifier::pushToRole('schedules.manage', 'pm_overdue', $title, $message, $link, 'schedule', (int) $schedule['id']);

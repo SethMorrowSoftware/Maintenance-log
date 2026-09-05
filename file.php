@@ -183,6 +183,10 @@ function may_view_attachment(array $attachment): bool
             // beside every log entry and comment.
             return true;
 
+        case 'setting':
+            // The site logo, in the sidebar of every page.
+            return (int) \App\Settings::get('logo_path', 0) === (int) $attachment['id'];
+
         default:
             return false;
     }

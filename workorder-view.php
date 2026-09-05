@@ -29,6 +29,12 @@ if (is_post()) {
     $action = Request::string('action');
 
     if ($action === 'comment') {
+        // Anyone who works on work orders may join the conversation; a
+        // read-only account may not.
+        if (!can('workorders.edit') && !Acl::canEditWorkOrder($workOrder)) {
+            abort(403, 'You cannot comment on work orders.');
+        }
+
         $comment = Request::string('comment');
 
         if ($comment === '') {
@@ -60,8 +66,13 @@ if (is_post()) {
 
             $downtime = Request::intOrNull('downtime_minutes');
 
+            if ($downtime !== null && $downtime < 0) {
+                flash('error', 'Downtime cannot be less than zero.');
+                redirect(url('workorder-view.php', ['id' => $id]));
+            }
+
             if ($downtime !== null) {
-                $update['downtime_minutes'] = $downtime;
+                $update['downtime_minutes'] = min($downtime, 525600);
             }
 
             WorkOrder::update($id, $update);
@@ -94,6 +105,12 @@ if (is_post()) {
     }
 
     if ($action === 'upload_attachment') {
+        require_feature('photos');
+
+        if (!Acl::canEditWorkOrder($workOrder)) {
+            abort(403, 'You cannot add files to this work order.');
+        }
+
         $files = Request::files('attachments');
 
         if ($files !== []) {
@@ -110,6 +127,12 @@ if (is_post()) {
     }
 
     if ($action === 'delete_attachment') {
+        require_feature('photos');
+
+        if (!Acl::canEditWorkOrder($workOrder)) {
+            abort(403, 'You cannot change this work order.');
+        }
+
         $attachmentId = Request::int('attachment_id');
         $attachment   = db()->find('attachments', $attachmentId);
 

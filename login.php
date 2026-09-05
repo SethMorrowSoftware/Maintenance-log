@@ -27,7 +27,11 @@ if (is_post()) {
 
     if ($result['ok']) {
         flash('success', 'Welcome back, ' . Auth::name($result['user']) . '.');
-        redirect($redirect !== null ? url(ltrim($redirect, '/')) : url('index.php'));
+        // A path that starts with "/" already carries the site's folder, so
+        // it goes back as it came; a bare page name gets the folder added.
+        redirect($redirect === null
+            ? url('index.php')
+            : (strpos($redirect, '/') === 0 ? $redirect : url($redirect)));
     }
 
     $error = $result['error'];

@@ -26,7 +26,7 @@ foreach (['open', 'assigned', 'in_progress', 'on_hold'] as $key) {
             ?>
             <?php foreach ($strip as $value => $tab): ?>
                 <a class="btn btn-secondary btn-sm<?= (string) $filters['status'] === (string) $value ? ' is-active' : '' ?>"
-                   href="<?= e(url('workorders.php', array_merge($filters, ['status' => $value, 'page' => null]))) ?>">
+                   href="<?= e(url('workorders.php', array_merge($_GET, ['status' => $value, 'page' => null]))) ?>">
                     <?= e($tab['label']) ?>
                     <span class="badge badge-muted" style="margin-left:4px"><?= (int) $tab['count'] ?></span>
                 </a>

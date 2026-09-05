@@ -265,32 +265,97 @@ final class MaintenanceLog
             return;
         }
 
-        $userId = Auth::id();
+        $userId      = Auth::id();
+        $beforeParts = self::parts($id);
 
-        db()->transaction(static function (Database $db) use ($id, $data, $parts, $before, $userId): void {
+        db()->transaction(static function (Database $db) use ($id, $data, $parts, $before, $beforeParts, $userId): void {
             $row = self::rowFor($data, $parts);
             $row['updated_by'] = $userId;
 
             $db->update('maintenance_logs', $row, ['id' => $id]);
 
-            // Editing replaces the parts list. Stock is put back for what was
-            // there before and taken again for what is there now, so the two
-            // can never drift apart.
-            self::returnPartsToStock($id);
-            self::savePartsFor($id, $parts, true);
+            // Editing replaces the parts list. Stock moves only by the
+            // difference, so fixing a typo in the title writes no movement
+            // and cannot trip a low-stock alert twice.
+            self::savePartsFor($id, $parts, false);
+            self::reconcileStock($id, $beforeParts, $parts);
 
             Audit::updated('maintenance_log', $id, 'Edited "' . (string) $row['title'] . '"', $before, $row);
         });
 
-        // A corrected meter reading or status still needs to take effect.
+        // Only what actually changed takes effect again. Replaying every
+        // side effect would rewind a schedule a later job has rolled forward,
+        // put the machine back into a status it has since left, and write a
+        // duplicate meter reading — all from correcting a spelling mistake.
+        $meter        = $data['meter_reading'] ?? null;
+        $meterGiven   = $meter !== null && $meter !== '';
+        $meterChanged = $meterGiven
+            && ($before['meter_reading'] === null || abs((float) $meter - (float) $before['meter_reading']) > 0.004);
+
+        $statusAfter   = (string) ($data['status_after'] ?? '');
+        $statusChanged = $statusAfter !== '' && $statusAfter !== (string) ($before['status_after'] ?? '');
+
+        $scheduleId      = $data['schedule_id'] ?? null;
+        $scheduleChanged = !empty($scheduleId) && (
+            (int) $scheduleId !== (int) ($before['schedule_id'] ?? 0)
+            || (string) ($data['performed_at'] ?? '') !== (string) $before['performed_at']
+            || $meterChanged
+        );
+
         self::applySideEffects(
             $id,
             (int) ($data['asset_id'] ?? $before['asset_id']),
             $data,
-            $data['meter_reading'] ?? null,
-            $data['status_after'] ?? null,
-            $data['schedule_id'] ?? null
+            $meterChanged ? $meter : null,
+            $statusChanged ? $statusAfter : null,
+            $scheduleChanged ? $scheduleId : null
         );
+    }
+
+    /**
+     * Move stock by the difference between the parts a log used to list and
+     * the parts it lists now.
+     *
+     * @param list<array<string, mixed>> $before rows from parts()
+     * @param list<array<string, mixed>> $after  normalised rows from the form
+     */
+    private static function reconcileStock(int $logId, array $before, array $after): void
+    {
+        $was = [];
+        $now = [];
+
+        foreach ($before as $line) {
+            if (!empty($line['part_id']) && (int) ($line['from_inventory'] ?? 1) === 1) {
+                $was[(int) $line['part_id']] = ($was[(int) $line['part_id']] ?? 0.0) + (float) $line['quantity'];
+            }
+        }
+
+        foreach ($after as $line) {
+            if (!empty($line['part_id'])) {
+                $now[(int) $line['part_id']] = ($now[(int) $line['part_id']] ?? 0.0) + (float) $line['quantity'];
+            }
+        }
+
+        foreach (array_unique(array_merge(array_keys($was), array_keys($now))) as $partId) {
+            $delta = round(($now[$partId] ?? 0.0) - ($was[$partId] ?? 0.0), 2);
+
+            if (abs($delta) < 0.001) {
+                continue;
+            }
+
+            try {
+                Part::adjustStock(
+                    $partId,
+                    -$delta,
+                    $delta > 0 ? 'out' : 'in',
+                    'maintenance_log',
+                    $logId,
+                    $delta > 0 ? 'Used on a job (added when the job was edited)' : 'Returned when the job was edited'
+                );
+            } catch (Throwable $e) {
+                log_error('Stock adjustment failed: ' . $e->getMessage());
+            }
+        }
     }
 
     /**
@@ -602,9 +667,17 @@ final class MaintenanceLog
                 $unitCost = 0.0;
             }
 
+            // The part number comes from the stock record when the line was
+            // picked from stock; the form has no box for it.
+            $partNumber = trim((string) ($row['part_number'] ?? ''));
+
+            if ($partNumber === '' && $partId !== null) {
+                $partNumber = (string) (db()->value('SELECT part_number FROM {parts} WHERE id = ?', [$partId]) ?? '');
+            }
+
             $out[] = [
                 'part_id'     => $partId,
-                'part_number' => mb_substr(trim((string) ($row['part_number'] ?? '')), 0, 100, 'UTF-8'),
+                'part_number' => mb_substr($partNumber, 0, 100, 'UTF-8'),
                 'part_name'   => mb_substr($name, 0, 191, 'UTF-8'),
                 'quantity'    => max(0, $quantity),
                 'unit_cost'   => max(0, $unitCost),

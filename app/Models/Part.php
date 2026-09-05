@@ -190,6 +190,27 @@ final class Part
      * @param  string $type  in | out | adjust
      * @return array{ok: bool, balance: float}
      */
+    /**
+     * Why somebody may not take this many off the shelf by hand, or null when
+     * they may. A slip of the finger — 50 instead of 5 — must not put the
+     * count below zero; a job that genuinely used more than the shelf shows
+     * is still allowed, and shows up as "out of stock" to be corrected.
+     *
+     * @param array<string, mixed> $part
+     */
+    public static function cannotTake(array $part, float $amount): ?string
+    {
+        $onHand = (float) ($part['quantity_on_hand'] ?? 0);
+
+        if ($amount <= $onHand + 0.004) {
+            return null;
+        }
+
+        return 'Only ' . decimal($onHand) . ' ' . (string) ($part['unit_of_measure'] ?? '')
+            . ' on the shelf, so ' . decimal($amount) . ' cannot come off it. '
+            . 'If the shelf count is wrong, edit the part and correct the quantity on hand first.';
+    }
+
     public static function adjustStock(
         int $partId,
         float $delta,
@@ -204,12 +225,14 @@ final class Part
             return ['ok' => false, 'balance' => 0.0];
         }
 
-        $balance = round((float) $part['quantity_on_hand'] + $delta, 2);
+        // One statement, so two people taking parts at the same moment cannot
+        // overwrite each other's count; the balance is then read back.
+        db()->run(
+            'UPDATE {parts} SET quantity_on_hand = ROUND(quantity_on_hand + ?, 2), updated_by = ? WHERE id = ?',
+            [$delta, Auth::id(), $partId]
+        );
 
-        db()->update('parts', [
-            'quantity_on_hand' => $balance,
-            'updated_by'       => Auth::id(),
-        ], ['id' => $partId]);
+        $balance = round((float) db()->value('SELECT quantity_on_hand FROM {parts} WHERE id = ?', [$partId]), 2);
 
         try {
             db()->insert('part_transactions', [

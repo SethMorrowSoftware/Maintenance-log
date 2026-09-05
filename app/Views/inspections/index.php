@@ -10,7 +10,7 @@ use App\View;
         <div class="btn-group">
             <?php foreach (['' => 'All', 'passed' => 'Passed', 'failed' => 'Failed', 'in_progress' => 'Unfinished'] as $key => $label): ?>
                 <a class="btn btn-secondary btn-sm<?= (string) $filters['status'] === (string) $key ? ' is-active' : '' ?>"
-                   href="<?= e(url('inspections.php', array_merge($filters, ['status' => $key, 'page' => null]))) ?>"><?= e($label) ?></a>
+                   href="<?= e(url('inspections.php', array_merge($_GET, ['status' => $key, 'page' => null]))) ?>"><?= e($label) ?></a>
             <?php endforeach; ?>
         </div>
     </div>
@@ -44,12 +44,23 @@ use App\View;
                 </thead>
                 <tbody>
                     <?php foreach ($rows as $row): ?>
+                        <?php
+                        // An unfinished check opens in the runner, which only the
+                        // person doing it (or a manager) may use; for everyone else
+                        // it is just a row until it is finished.
+                        $unfinished = (string) $row['status'] === 'in_progress';
+                        $rowUrl     = $unfinished
+                            ? (can('inspections.perform') ? url('inspection-run.php', ['id' => (int) $row['id']]) : '')
+                            : url('inspection-view.php', ['id' => (int) $row['id']]);
+                        ?>
                         <tr class="<?= (int) $row['critical_failed'] === 1 ? 'is-danger' : ((int) $row['failed_count'] > 0 ? 'is-warn' : '') ?>"
-                            data-row-href="<?= e(url('inspection-view.php', ['id' => (int) $row['id']])) ?>">
+                            <?= $rowUrl !== '' ? 'data-row-href="' . e($rowUrl) . '"' : '' ?>>
                             <td data-label="When" class="is-row-title">
-                                <a href="<?= e(url((string) $row['status'] === 'in_progress' ? 'inspection-run.php' : 'inspection-view.php', ['id' => (int) $row['id']])) ?>">
-                                    <?= e(Dates::date((string) $row['started_at'])) ?>
-                                </a>
+                                <?php if ($rowUrl !== ''): ?>
+                                    <a href="<?= e($rowUrl) ?>"><?= e(Dates::date((string) $row['started_at'])) ?></a>
+                                <?php else: ?>
+                                    <span class="cell-primary"><?= e(Dates::date((string) $row['started_at'])) ?></span>
+                                <?php endif; ?>
                                 <span class="cell-secondary"><?= e(Dates::time((string) $row['started_at'])) ?></span>
                             </td>
                             <td data-label="<?= attr(asset_word(false, true)) ?>">

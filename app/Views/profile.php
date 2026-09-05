@@ -261,7 +261,7 @@ use App\View;
                         <?php // data-autosubmit is wired in core.js; an inline
                               // onchange would need 'unsafe-inline' in the CSP. ?>
                         <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp"
-                               style="display:none" data-autosubmit>
+                               class="sr-only" data-autosubmit>
                     </label>
                 </form>
 

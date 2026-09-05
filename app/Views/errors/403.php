@@ -16,6 +16,6 @@ $message = $message ?? 'You do not have permission to view this page. If you thi
         <a class="btn btn-primary" href="<?= e(url('index.php')) ?>">
             <?= icon('home', '', 17) ?> Dashboard
         </a>
-        <a class="btn btn-secondary" href="javascript:history.back()">Go back</a>
+        <a class="btn btn-secondary" href="<?= e(back_url()) ?>">Go back</a>
     </div>
 </div>

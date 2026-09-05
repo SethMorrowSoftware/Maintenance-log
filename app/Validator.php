@@ -544,11 +544,10 @@ final class Validator
                 $bindings[] = $ignoreId;
             }
 
-            // Soft-deleted rows should not block a new record from reusing a tag.
-            if (in_array('deleted_at', $db->columns($table), true)) {
-                $sql .= ' AND deleted_at IS NULL';
-            }
-
+            // Soft-deleted rows count too: the database's unique index does
+            // not know about deleted_at, so a tag that a removed record still
+            // holds would otherwise pass here and fail there with no field
+            // message.
             $count = $db->count($sql, $bindings);
         } catch (Throwable $e) {
             // If the check itself fails, do not block the save — the database

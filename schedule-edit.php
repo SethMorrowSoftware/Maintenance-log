@@ -95,6 +95,19 @@ if (is_post()) {
     try {
         if ($editing) {
             $before = $schedule;
+
+            // A never-done schedule keeps its first due date through edits,
+            // unless the interval itself changed — then it starts afresh.
+            if (empty($before['last_performed_at'])) {
+                foreach (['frequency_type', 'frequency_value', 'meter_interval'] as $key) {
+                    if ((string) ($data[$key] ?? '') !== (string) ($before[$key] ?? '')) {
+                        $data['next_due_date']  = null;
+                        $data['next_due_meter'] = null;
+                        break;
+                    }
+                }
+            }
+
             db()->update('maintenance_schedules', $data, ['id' => $id]);
             audit('update', 'schedule', $id, 'Updated schedule "' . (string) $data['name'] . '"', $before, $data);
             $savedId = $id;
