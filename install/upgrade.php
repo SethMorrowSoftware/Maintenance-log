@@ -93,10 +93,49 @@ function record_migration(string $name): void
     }
 }
 
+/**
+ * Settings that seed.sql would add but the database does not have yet.
+ *
+ * A release can introduce settings without needing a migration — a new
+ * section of the Settings screen, say. There is still something to do then,
+ * and saying "nothing to do" would leave those settings permanently missing
+ * because nobody would press the button.
+ *
+ * @return list<string>
+ */
+function missing_settings(): array
+{
+    $sql = @file_get_contents(__DIR__ . '/seed.sql');
+
+    if ($sql === false) {
+        return [];
+    }
+
+    // Only the settings INSERT: the other seeded tables have rows that look
+    // similar. The column list carries no quotes, so it cannot match.
+    if (preg_match('/INSERT\s+IGNORE\s+INTO\s+\{settings\}.*?;/is', $sql, $block) !== 1) {
+        return [];
+    }
+
+    if (preg_match_all("/\(\s*'([a-z0-9_]+)'\s*,/i", $block[0], $found) < 1) {
+        return [];
+    }
+
+    try {
+        $have = db()->column('SELECT setting_key FROM {settings}');
+    } catch (Throwable $e) {
+        // Cannot tell, so do not claim there is work outstanding.
+        return [];
+    }
+
+    return array_values(array_diff(array_unique($found[1]), $have));
+}
+
 $migrations = discover_migrations();
 $pending    = array_values(array_filter($migrations, static function (array $m): bool {
     return !$m['applied'];
 }));
+$missingSettings = missing_settings();
 
 $currentVersion = Settings::schemaVersion();
 $targetVersion  = RIDELOG_VERSION;
@@ -184,10 +223,13 @@ if (is_post()) {
     $pending    = array_values(array_filter($migrations, static function (array $m): bool {
         return !$m['applied'];
     }));
-    $currentVersion = Settings::schemaVersion();
+    $missingSettings = missing_settings();
+    $currentVersion  = Settings::schemaVersion();
 }
 
-$upToDate = $pending === [] && version_compare($currentVersion, $targetVersion, '>=');
+$upToDate = $pending === []
+    && $missingSettings === []
+    && version_compare($currentVersion, $targetVersion, '>=');
 
 ob_start();
 ?>
@@ -258,12 +300,21 @@ ob_start();
                 </div>
             </div>
 
-            <?php if ($pending !== []): ?>
+            <?php if ($pending !== [] || $missingSettings !== []): ?>
                 <h3>Will be applied</h3>
                 <ul>
                     <?php foreach ($pending as $migration): ?>
                         <li><code><?= e($migration['name']) ?></code></li>
                     <?php endforeach; ?>
+                    <?php if ($missingSettings !== []): ?>
+                        <li>
+                            <?= count($missingSettings) ?> new setting<?= count($missingSettings) === 1 ? '' : 's' ?>
+                            this version added
+                            <span class="text-sm text-muted">
+                                (<?= e(implode(', ', array_slice($missingSettings, 0, 6))) ?><?= count($missingSettings) > 6 ? ', …' : '' ?>)
+                            </span>
+                        </li>
+                    <?php endif; ?>
                 </ul>
             <?php endif; ?>
         <?php endif; ?>
