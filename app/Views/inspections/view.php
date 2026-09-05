@@ -193,7 +193,7 @@ $inspector    = trim((string) $inspection['first_name'] . ' ' . (string) $inspec
             <div class="card-header"><h3 class="card-title">Details</h3></div>
             <div class="card-body">
                 <dl class="detail-list">
-                    <dt>Asset</dt>
+                    <dt>Machine</dt>
                     <dd>
                         <?php if ($printing): ?>
                             <?= e((string) $inspection['asset_name']) ?>

@@ -22,7 +22,7 @@ $id    = Request::int('id');
 $asset = Asset::find($id);
 
 if ($asset === null) {
-    abort(404, 'That asset does not exist. It may have been deleted.');
+    abort(404, 'That machine does not exist. It may have been deleted.');
 }
 
 // -----------------------------------------------------------------------------
@@ -70,7 +70,7 @@ if (is_post()) {
         $attachmentId = Request::int('attachment_id');
         $attachment   = db()->find('attachments', $attachmentId);
 
-        // Only remove a file that actually belongs to this asset.
+        // Only remove a file that actually belongs to this machine.
         if ($attachment !== null
             && (string) $attachment['entity_type'] === 'asset'
             && (int) $attachment['entity_id'] === $id) {
@@ -113,13 +113,19 @@ $summary = Asset::summary($id);
 
 $tab = Request::enum(
     'tab',
-    ['overview', 'logs', 'schedules', 'inspections', 'workorders', 'files', 'meter', 'history'],
+    ['overview', 'timeline', 'logs', 'schedules', 'inspections', 'workorders', 'files', 'meter', 'history'],
     'overview'
 );
 
+$q    = trim(Request::string('q'));
 $data = [];
 
 switch ($tab) {
+    case 'timeline':
+        // Everything that ever happened to it, in one list, searchable.
+        $data['events'] = Asset::timeline($id, $q);
+        break;
+
     case 'logs':
         $data['logs'] = db()->all(
             'SELECT l.*, u.first_name, u.last_name, u.username, u.avatar_path
@@ -223,12 +229,13 @@ View::render('assets/view', [
     'activeNav'   => 'assets.php',
     'pageActions' => $actions,
     'breadcrumbs' => [
-        ['label' => 'Assets', 'url' => url('assets.php')],
+        ['label' => 'Machines', 'url' => url('assets.php')],
         ['label' => (string) $asset['name']],
     ],
     'asset'    => $asset,
     'counts'   => $counts,
     'summary'  => $summary,
     'tab'      => $tab,
+    'q'        => $q,
     'data'     => $data,
 ]);

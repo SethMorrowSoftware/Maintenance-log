@@ -113,6 +113,22 @@ final class Csv
     }
 
     /**
+     * One row as a string, for callers writing their own file.
+     *
+     * @param array<int, mixed> $cells
+     */
+    public static function line(array $cells): string
+    {
+        $fields = [];
+
+        foreach ($cells as $cell) {
+            $fields[] = '"' . str_replace('"', '""', self::escapeCell($cell)) . '"';
+        }
+
+        return implode(',', $fields) . "\r\n";
+    }
+
+    /**
      * Write one row.
      *
      * Every field is quoted, not just the ones that strictly need it. That is

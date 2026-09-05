@@ -319,6 +319,7 @@ reports.view reports.export
 users.view users.manage
 settings.manage
 audit.view
+costs.view
 ```
 
 | Role | Grants |
@@ -326,7 +327,19 @@ audit.view
 | `viewer` | all `*.view` + `reports.view` |
 | `technician` | viewer + `logs.create`, `logs.edit_own`, `assets.meter`, `inspections.perform`, `workorders.create`, `workorders.edit`, `parts.adjust` |
 | `manager` | technician + `assets.*`, `logs.edit_any`, `logs.delete`, `schedules.manage`, `checklists.manage`, `inspections.delete`, `workorders.*`, `parts.manage`, `reports.export`, `audit.view` |
-| `admin` | everything, including `users.manage` and `settings.manage` |
+| `admin` | everything, including `users.manage`, `settings.manage` and `costs.view` |
+
+**Money is admin-only.** `costs.view` is granted to `admin` and nobody else. Every
+place a price, cost, rate, spend or stock value could appear — views, list columns,
+CSV exports, reports (`Reports::withoutMoney()` strips `format: money` columns and
+series; the cost report is not offered at all), the JSON API, the audit diff — checks
+`costs_visible()` first. Forms for people without it carry no money fields; the server
+ignores any that arrive and prices parts from the shelf price and labour from
+`default_labor_rate`, so the administrator's figures stay right.
+
+**Vocabulary.** The code, URLs, database and permission names say `assets` and
+`schedules`; every label a person reads says **Machines** and **Scheduled Service**.
+Do not rename the identifiers.
 
 API:
 ```php
@@ -493,15 +506,21 @@ Data comes from a `<script type="application/json" id="...">` block or `data-cha
 ## 8. Feature requirements
 
 ### Dashboard (`index.php`)
-KPI tiles (total assets, in service, down, overdue PMs, open work orders, inspections due
-today) · overdue & upcoming maintenance table · open work orders · recent activity feed ·
-12-month maintenance-count bar chart · asset-status donut · cost trend line ·
-inspections-due-today list · quick-action buttons. Everything respects permissions.
+Managers and administrators: KPI tiles (total assets, in service, down, overdue PMs, open
+work orders, inspections due today) · overdue & upcoming maintenance table · open work
+orders · recent activity feed · 12-month maintenance-count bar chart · asset-status donut ·
+cost trend line (admin only) · inspections-due-today list · quick-action buttons.
+Technicians and viewers get `dashboard-technician`: three action tiles, their own jobs,
+machines down, machines still to check today, service due, open problems, recent work.
+Everything respects permissions.
 
-### Assets
+### Assets (shown as "Machines")
 List with search, filter (category/location/status/criticality), sort, pagination,
-card & table views, CSV export. Profile page with tabs: Overview · Maintenance History ·
-Schedules · Inspections · Work Orders · Parts Used · Attachments · Meter History · Audit.
+card & table views, CSV export. Profile page with tabs: Overview · History (one searchable
+timeline of jobs, inspections, work orders raised and closed, status changes and manual
+meter readings — `Asset::timeline()`) · Jobs · Schedules · Inspections · Work Orders ·
+Files · Meter · Changes (audit). The same timeline, six events deep, renders beside the
+log and work-order forms (`partials/asset-context`, refreshed via `assets.history`).
 Create/edit with photo upload. Status change with reason (writes an audit + optional log).
 Quick meter update. Soft delete. Printable QR label — pointing a phone at it opens the
 asset, or drops straight into a new log or inspection, depending on how the sheet was
@@ -520,7 +539,7 @@ decrementing stock), parts/labor/total cost (auto-calculated, overridable), mete
 link to a PM schedule (marks it complete and rolls the next due date), attachments.
 Detail view shows the full record, attachments, and an audit trail.
 
-### PM schedules
+### PM schedules (shown as "Scheduled Service")
 Per-asset recurring plans by calendar interval **or** meter interval. Computes
 `next_due_date` / `next_due_meter`, shows overdue/due-soon/ok, links a checklist template,
 optional assignee, "Log this now" shortcut that pre-fills a maintenance log. Recomputes on
@@ -553,8 +572,19 @@ Every report: filter form, results table, chart where meaningful, CSV export, pr
 ### Users, settings, audit
 User CRUD with role assignment, activate/deactivate, force password change, reset password,
 avatar. Self-service profile + password change. Settings page grouped into tabs
-(General · Localization · Maintenance · Uploads · Email · Security · Branding) with a
-"send test email" button. Audit log with filters and detail diff view.
+(General · Localization · Maintenance · Uploads · Email · Security · Branding · System)
+with a "send test email" button. The System tab (`App\Health`) is a plain-language health
+report — PHP, extensions, database, writable folders, setup files, HTTPS, nightly job,
+error log, disk, labour rate, email — plus counts and a one-click full export
+(`export.php`: one CSV per table in a ZIP, or a single JSON file without `zip`; secrets
+and photos excluded). Audit log with filters and detail diff view (money rows hidden
+without `costs.view`).
+
+### Drafts
+Forms marked `data-draft="key"` (log and work-order forms) keep a snapshot of every
+field in `localStorage` as it is typed (`initDrafts` in core.js) and offer it back on
+return. Only the server knows a save succeeded: it calls `Flash::clearDraft($key)`, the
+layout passes the keys in `RL.config.clearDrafts`, and the browser forgets them.
 
 ### Notifications
 In-app bell with unread count, `notifications.php` list, mark read/all read. Generated for

@@ -100,7 +100,7 @@ $data = [
 if ($printing) {
     $data['docTitle']  = 'Maintenance record';
     $data['printMeta'] = [
-        'Asset'  => (string) $log['asset_name'] . ' (' . (string) $log['asset_tag'] . ')',
+        'Machine'  => (string) $log['asset_name'] . ' (' . (string) $log['asset_tag'] . ')',
         'Job'    => (string) $log['title'],
         'Record' => '#' . $id,
     ];

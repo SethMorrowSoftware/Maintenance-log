@@ -58,7 +58,7 @@ $noun         = $isCategories ? 'category' : 'location';
                                 <?php else: ?>
                                     <th>Building</th>
                                 <?php endif; ?>
-                                <th class="is-numeric">Assets</th>
+                                <th class="is-numeric">Machines</th>
                                 <th class="is-actions"></th>
                             </tr>
                         </thead>
@@ -96,7 +96,7 @@ $noun         = $isCategories ? 'category' : 'location';
                                                 : '<span class="text-subtle">&mdash;</span>' ?>
                                         </td>
                                     <?php endif; ?>
-                                    <td data-label="Assets" class="is-numeric">
+                                    <td data-label="Machines" class="is-numeric">
                                         <?php if ((int) $row['asset_count'] > 0): ?>
                                             <a href="<?= e(url('assets.php', [
                                                 ($isCategories ? 'category_id' : 'location_id') => $rowId,
@@ -229,8 +229,8 @@ $noun         = $isCategories ? 'category' : 'location';
                         <input type="checkbox" id="f_is_active" name="is_active" value="1"
                             <?= checked((int) ($editingRow['is_active'] ?? 1), 1) ?>>
                         <span class="form-check-label">
-                            Offer this when adding an asset
-                            <small>Untick to retire it without touching the assets that use it.</small>
+                            Offer this when adding a machine
+                            <small>Untick to retire it without touching the machines that use it.</small>
                         </span>
                     </label>
                 </div>

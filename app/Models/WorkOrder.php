@@ -236,7 +236,7 @@ final class WorkOrder
                     'wo_updated',
                     ((string) ($data['priority'] ?? '') === 'urgent' ? 'Urgent: ' : 'New work order: ')
                     . (string) $data['title'],
-                    ($row['asset_name'] ?? 'No asset') . ' — ' . $data['wo_number'],
+                    ($row['asset_name'] ?? 'No machine') . ' — ' . $data['wo_number'],
                     'workorder-view.php?id=' . $id,
                     'work_order',
                     $id

@@ -96,15 +96,17 @@ $partId = $editing ? (int) $part['id'] : 0;
                             'attrs'       => ['maxlength' => 20],
                         ]); ?>
 
-                        <?php View::partial('form-field', [
-                            'name'   => 'unit_cost',
-                            'label'  => 'Cost each',
-                            'type'   => 'money',
-                            'value'  => $values['unit_cost'],
-                            'prefix' => $currency,
-                            'hint'   => 'Fills in the cost when the part is used on a job.',
-                            'attrs'  => ['min' => '0', 'step' => '0.01'],
-                        ]); ?>
+                        <?php if (costs_visible()): ?>
+                            <?php View::partial('form-field', [
+                                'name'   => 'unit_cost',
+                                'label'  => 'Cost each',
+                                'type'   => 'money',
+                                'value'  => $values['unit_cost'],
+                                'prefix' => $currency,
+                                'hint'   => 'Fills in the cost when the part is used on a job.',
+                                'attrs'  => ['min' => '0', 'step' => '0.01'],
+                            ]); ?>
+                        <?php endif; ?>
                     </div>
 
                     <div class="form-row cols-3">

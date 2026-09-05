@@ -223,4 +223,6 @@ View::render('settings/index', [
     'rows'       => Settings::group($tab),
     'choices'    => $choices,
     'uploadLimit' => Settings::hostUploadLimitBytes(),
+    // The System tab is a health report, not a form.
+    'health'     => $tab === 'system' ? \App\Health::report() : null,
 ]);

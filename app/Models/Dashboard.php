@@ -72,7 +72,7 @@ final class Dashboard
     }
 
     /**
-     * Asset counts by status, shaped for the donut chart.
+     * Machine counts by status, shaped for the donut chart.
      *
      * @return list<array{label: string, value: int, color: string}>
      */
@@ -217,7 +217,7 @@ final class Dashboard
     }
 
     /**
-     * Assets that are not earning: down or in the shop.
+     * Machines that are not earning: down or in the shop.
      *
      * @return list<array<string, mixed>>
      */
@@ -278,9 +278,9 @@ final class Dashboard
     }
 
     /**
-     * Assets whose daily inspection has not been run today.
+     * Machines whose daily inspection has not been run today.
      *
-     * Compares against checklists marked "daily" that apply to the asset,
+     * Compares against checklists marked "daily" that apply to the machine,
      * either globally or through its category.
      *
      * @return list<array<string, mixed>>
@@ -327,10 +327,10 @@ final class Dashboard
             return [];
         }
 
-        // An asset can match several daily checklists at once: one aimed at its
+        // A machine can match several daily checklists at once: one aimed at its
         // category and a catch-all aimed at everything. Listing both would tell
         // a technician to inspect the same kart twice, so keep only the most
-        // specific one. A checklist written for this asset beats one written
+        // specific one. A checklist written for this machine beats one written
         // for its category, which beats the catch-all.
         $rank = ['asset' => 3, 'category' => 2, 'all' => 1];
         $best = [];

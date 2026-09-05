@@ -71,9 +71,9 @@ if (is_post()) {
         'performed_at.not_future' => 'The date and time cannot be in the future. '
                                    . 'If you are logging work you are about to do, log it once it is done.',
         'title.required'          => 'Give the job a short title, so it is recognisable in a list.',
-        'asset_id.required'       => 'Choose which asset this work was done on.',
+        'asset_id.required'       => 'Choose which machine this work was done on.',
     ], [
-        'asset_id'         => 'Asset',
+        'asset_id'         => 'Machine',
         'log_type'         => 'Type of work',
         'performed_at'     => 'Date and time',
         'labor_hours'      => 'Time taken',
@@ -92,7 +92,22 @@ if (is_post()) {
     }
 
     $data  = $validator->validated();
-    $parts = MaintenanceLog::normaliseParts($_POST['parts'] ?? []);
+    $parts = MaintenanceLog::normaliseParts($_POST['parts'] ?? [], $editing ? MaintenanceLog::parts($id) : []);
+
+    // Somebody who cannot see money cannot set it either: their form has no
+    // cost fields, so anything arriving here was not typed on our page.
+    // Editing an existing log keeps the rate and extras an administrator
+    // recorded; labour cost is recomputed from the hours they just gave.
+    if (!costs_visible()) {
+        foreach (['labor_rate', 'labor_cost', 'parts_cost', 'other_cost'] as $moneyField) {
+            $data[$moneyField] = null;
+        }
+
+        if ($editing) {
+            $data['labor_rate'] = $log['labor_rate'];
+            $data['other_cost'] = $log['other_cost'];
+        }
+    }
 
     $data['user_id']           = can('logs.edit_any') && !empty($data['user_id'])
         ? (int) $data['user_id']
@@ -105,7 +120,7 @@ if (is_post()) {
         $data['followup_notes'] = null;
     }
 
-    // Record what the asset's status was before, so the history reads properly.
+    // Record what the machine's status was before, so the history reads properly.
     $asset = Asset::find((int) $data['asset_id']);
     $data['status_before'] = $asset === null ? null : (string) $asset['status'];
 
@@ -113,7 +128,7 @@ if (is_post()) {
         $data['status_after'] = null;
     }
 
-    // A meter reading only makes sense on an asset that has a meter.
+    // A meter reading only makes sense on a machine that has a meter.
     if ($asset !== null && (string) $asset['meter_type'] === 'none') {
         $data['meter_reading'] = null;
     }
@@ -126,7 +141,7 @@ if (is_post()) {
         flash_errors([
             'meter_reading' => 'The meter currently reads ' . decimal($asset['meter_reading']) . ' '
                 . (string) $asset['meter_type'] . '. A reading cannot go backwards — check the number. '
-                . 'If the meter was replaced, change it on the asset itself.',
+                . 'If the meter was replaced, change it on the machine itself.',
         ], $_POST);
 
         redirect(url('log-edit.php', $editing ? ['id' => $id] : []));
@@ -137,9 +152,11 @@ if (is_post()) {
             MaintenanceLog::update($id, $data, $parts);
             $savedId = $id;
             flash('success', 'Saved.');
+            \App\Flash::clearDraft('log-' . $id);
         } else {
             $savedId = MaintenanceLog::create($data, $parts);
             flash('success', 'Logged. Thanks for keeping the record up to date.');
+            \App\Flash::clearDraft('log-new');
         }
 
         // Photos
@@ -253,7 +270,7 @@ $values    = $editing ? array_merge($defaults, $log) : $defaults;
 $logParts  = $editing ? MaintenanceLog::parts($id) : [];
 $asset     = ((int) $values['asset_id']) > 0 ? Asset::find((int) $values['asset_id']) : null;
 
-// Schedules on the chosen asset, so the log can be tied to one.
+// Schedules on the chosen machine, so the log can be tied to one.
 $assetSchedules = [];
 
 if ($asset !== null) {
@@ -292,6 +309,7 @@ View::render('logs/edit', [
     'schedule'       => $schedule,
     'workOrder'      => $workOrder,
     'assets'         => Asset::options(),
+    'assetHistory'   => $asset === null ? [] : Asset::timeline((int) $asset['id'], '', 6),
     'partOptions'    => can('parts.view') ? Part::options() : [],
     'assetSchedules' => $assetSchedules,
     'openWorkOrders' => $openWorkOrders,

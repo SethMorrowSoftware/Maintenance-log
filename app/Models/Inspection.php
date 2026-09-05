@@ -13,7 +13,7 @@ use App\Settings;
 use Throwable;
 
 /**
- * Inspections: a run of a checklist against one asset.
+ * Inspections: a run of a checklist against one machine.
  *
  * Item text is copied onto the inspection when it is answered, not referenced.
  * Editing a checklist template months later must not silently rewrite what a
@@ -49,7 +49,7 @@ final class Inspection
     }
 
     /**
-     * Checklists that apply to an asset, most specific first.
+     * Checklists that apply to a machine, most specific first.
      *
      * @return list<array<string, mixed>>
      */
@@ -100,7 +100,7 @@ final class Inspection
     /**
      * Start an inspection, copying the template's items onto it.
      *
-     * Returns an existing in-progress run for the same asset, checklist and
+     * Returns an existing in-progress run for the same machine, checklist and
      * person rather than starting a second one — a technician who loses signal
      * mid-inspection and comes back should not start over.
      */

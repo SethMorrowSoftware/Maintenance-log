@@ -23,7 +23,11 @@ required and the date and time are already filled in; everything else is folded
 away until you want it.
 
 **Keep track of the machines.** Every kart, ride, boat and compressor, with its
-hour meter, its service history, its lifetime cost and its current status.
+hour meter, its service history, its lifetime cost and its current status. Each
+one has a **History** tab: every job, check, reported problem, status change and
+meter reading in one searchable list — the page to open before pulling
+something apart. The same recent history sits beside the log form and the
+report-a-problem form while you type.
 
 **Preventive maintenance that chases you.** Schedule a job by the calendar, by
 the meter, or whichever comes first. The dashboard shows what is due and what is
@@ -42,16 +46,31 @@ to reorder. Using a part on a job takes it off the count and writes a movement
 nobody has to remember to enter.
 
 **Reports.** Maintenance history, spend per machine, month by month, downtime,
-inspection compliance, the asset list, parts used and who did the work. Every
+inspection compliance, the machine list, parts used and who did the work. Every
 one of them exports to CSV and prints.
+
+**Money is the administrator's business.** Prices, costs and spend are shown to
+administrators only — on pages, in reports, in exports and in the API.
+Technicians and managers record hours and parts; the cost is worked out behind
+the scenes from the shelf price and the default labour rate, so the
+administrator's figures are still right.
 
 **QR labels.** A sheet of stickers, one per machine. Point a phone at one and it
 opens that machine's page — or straight into a new log, if that is what you set
 the labels to do.
 
 **Four roles.** Viewer, technician, manager, administrator. A technician can log
-their own work and run inspections; a manager can do everything with the
-machines; an administrator can also manage people and settings.
+their own work and run inspections, and gets a simpler home page built around
+three buttons; a manager can do everything with the machines; an administrator
+can also manage people and settings, and is the only one who sees money.
+
+**Nothing typed is lost.** The log and report forms keep a draft on the device
+as you type and offer it back if the phone locks, the tab closes or the session
+expires.
+
+**It tells you when it is unwell.** Settings → System checks PHP, the database,
+the storage folders, the nightly job and the error log in plain language, and
+has a one-click download of every record as a ZIP of spreadsheets.
 
 ---
 

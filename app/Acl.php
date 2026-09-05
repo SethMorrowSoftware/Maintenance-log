@@ -33,11 +33,11 @@ final class Acl
      * @var array<string, array<string, string>>
      */
     private const CATALOGUE = [
-        'Assets' => [
-            'assets.view'   => 'View assets',
-            'assets.create' => 'Add assets',
-            'assets.edit'   => 'Edit assets',
-            'assets.delete' => 'Delete assets',
+        'Machines' => [
+            'assets.view'   => 'View machines',
+            'assets.create' => 'Add machines',
+            'assets.edit'   => 'Edit machines',
+            'assets.delete' => 'Delete machines',
             'assets.meter'  => 'Update meter readings',
         ],
         'Maintenance logs' => [
@@ -48,8 +48,8 @@ final class Acl
             'logs.delete'   => 'Delete maintenance logs',
         ],
         'Schedules' => [
-            'schedules.view'   => 'View PM schedules',
-            'schedules.manage' => 'Create and edit PM schedules',
+            'schedules.view'   => 'See scheduled service',
+            'schedules.manage' => 'Set up and edit scheduled service',
         ],
         'Checklists' => [
             'checklists.view'   => 'View checklist templates',
@@ -76,6 +76,9 @@ final class Acl
         'Reports' => [
             'reports.view'   => 'View reports',
             'reports.export' => 'Export reports to CSV',
+        ],
+        'Money' => [
+            'costs.view' => 'See prices, costs and spend',
         ],
         'Administration' => [
             'users.view'      => 'View user accounts',
@@ -132,6 +135,9 @@ final class Acl
         self::ROLE_ADMIN => [
             'users.manage',
             'settings.manage',
+            // Money is an administrator's business. Everybody else records
+            // hours and parts; the figures are worked out behind the scenes.
+            'costs.view',
         ],
     ];
 
@@ -165,8 +171,8 @@ final class Acl
     public static function roleDescriptions(): array
     {
         return [
-            self::ROLE_ADMIN      => 'Full access, including user accounts and site settings.',
-            self::ROLE_MANAGER    => 'Runs maintenance: manages assets, schedules, checklists, parts and work orders, and can edit or delete any record.',
+            self::ROLE_ADMIN      => 'Full access, including user accounts, site settings, and the only role that sees prices and costs.',
+            self::ROLE_MANAGER    => 'Runs maintenance: manages machines, schedules, checklists, parts and work orders, and can edit or delete any record. Does not see prices or costs.',
             self::ROLE_TECHNICIAN => 'Does the work: logs maintenance, runs inspections, updates meters and work orders. Can edit their own logs.',
             self::ROLE_VIEWER     => 'Read-only. Sees records and reports but changes nothing.',
         ];

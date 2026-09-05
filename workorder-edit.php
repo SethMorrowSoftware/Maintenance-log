@@ -53,7 +53,7 @@ if (is_post()) {
     ], [
         'title.required' => 'Say briefly what the problem is.',
     ], [
-        'asset_id'        => 'Asset',
+        'asset_id'        => 'Machine',
         'assigned_to'     => 'Assigned to',
         'due_date'        => 'Due date',
         'estimated_hours' => 'Estimated hours',
@@ -85,10 +85,12 @@ if (is_post()) {
             WorkOrder::update($id, $data);
             $savedId = $id;
             flash('success', 'Saved.');
+            \App\Flash::clearDraft('wo-' . $id);
         } else {
             $data['status'] = 'open';
             $savedId = WorkOrder::create($data);
             flash('success', 'Reported. Thanks — somebody will pick this up.');
+            \App\Flash::clearDraft('wo-new');
         }
 
         $files = Request::files('attachments');
@@ -126,6 +128,10 @@ $defaults = [
 
 $values = $editing ? array_merge($defaults, $workOrder) : $defaults;
 
+// The machine this report is about, so the form can show what has already
+// happened to it. Rebuilt on the page if a different one is picked.
+$asset = (int) $values['asset_id'] > 0 ? Asset::find((int) $values['asset_id']) : null;
+
 View::render('workorders/edit', [
     'title'    => $editing ? 'Edit ' . (string) $workOrder['wo_number'] : 'Report an issue',
     'subtitle' => $editing
@@ -141,4 +147,6 @@ View::render('workorders/edit', [
     'values'    => $values,
     'assets'    => Asset::options(),
     'assignees' => WorkOrder::assigneeOptions(),
+    'asset'        => $asset,
+    'assetHistory' => $asset === null ? [] : Asset::timeline((int) $asset['id'], '', 6),
 ]);

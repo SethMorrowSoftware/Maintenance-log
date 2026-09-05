@@ -38,7 +38,7 @@ final class Reports
         ],
         'cost' => [
             'label' => 'What it cost',
-            'blurb' => 'Money spent per asset — parts, labour and everything else.',
+            'blurb' => 'Money spent per machine — parts, labour and everything else.',
             'icon'  => 'dollar-sign',
         ],
         'monthly' => [
@@ -57,7 +57,7 @@ final class Reports
             'icon'  => 'clipboard-check',
         ],
         'inventory' => [
-            'label' => 'Asset list',
+            'label' => 'Machine list',
             'blurb' => 'Every machine with its meter, status and lifetime cost.',
             'icon'  => 'assets',
         ],
@@ -86,16 +86,79 @@ final class Reports
     public static function run(string $key, array $filters): array
     {
         switch ($key) {
-            case 'cost':        return self::cost($filters);
-            case 'monthly':     return self::monthly($filters);
-            case 'downtime':    return self::downtime($filters);
-            case 'compliance':  return self::compliance($filters);
-            case 'inventory':   return self::inventory($filters);
-            case 'parts':       return self::parts($filters);
-            case 'technicians': return self::technicians($filters);
+            case 'cost':        $result = self::cost($filters); break;
+            case 'monthly':     $result = self::monthly($filters); break;
+            case 'downtime':    $result = self::downtime($filters); break;
+            case 'compliance':  $result = self::compliance($filters); break;
+            case 'inventory':   $result = self::inventory($filters); break;
+            case 'parts':       $result = self::parts($filters); break;
+            case 'technicians': $result = self::technicians($filters); break;
             case 'history':
-            default:            return self::history($filters);
+            default:            $result = self::history($filters);
         }
+
+        return costs_visible() ? $result : self::withoutMoney($result);
+    }
+
+    /**
+     * The reports somebody is allowed to open. Money reports need costs.view.
+     *
+     * @return array<string, array{label: string, blurb: string, icon: string}>
+     */
+    public static function available(): array
+    {
+        $catalogue = self::CATALOGUE;
+
+        if (!costs_visible()) {
+            unset($catalogue['cost']);
+
+            // The one-line descriptions must not promise columns that are
+            // about to be taken out.
+            $catalogue['monthly']['blurb']   = 'Jobs, hours and downtime per month, so you can see a trend.';
+            $catalogue['inventory']['blurb'] = 'Every machine with its meter, status and last service.';
+            $catalogue['parts']['blurb']     = 'What came off the shelf, and how much of it.';
+        }
+
+        return $catalogue;
+    }
+
+    /**
+     * The same report with every money column, total and chart taken out.
+     *
+     * Columns carry a 'format', so this is not a list of field names to keep
+     * in step with each report — anything formatted as money goes, and a chart
+     * whose only series is money goes with it.
+     *
+     * @param  array<string, mixed> $result
+     * @return array<string, mixed>
+     */
+    private static function withoutMoney(array $result): array
+    {
+        $kept = [];
+
+        foreach ($result['columns'] as $column) {
+            if (($column['format'] ?? '') === 'money') {
+                unset($result['totals'][$column['key']]);
+                continue;
+            }
+
+            $kept[] = $column;
+        }
+
+        $result['columns'] = $kept;
+
+        if (isset($result['chart']['series'])) {
+            $result['chart']['series'] = array_values(array_filter(
+                $result['chart']['series'],
+                static fn (array $series): bool => ($series['format'] ?? '') !== 'money'
+            ));
+
+            if ($result['chart']['series'] === []) {
+                unset($result['chart']);
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -198,7 +261,7 @@ final class Reports
         return [
             'columns' => [
                 ['key' => 'performed_at', 'label' => 'When',      'format' => 'datetime'],
-                ['key' => 'asset_name',   'label' => 'Asset',     'format' => 'text'],
+                ['key' => 'asset_name',   'label' => 'Machine',     'format' => 'text'],
                 ['key' => 'asset_tag',    'label' => 'Tag',       'format' => 'text'],
                 ['key' => 'log_type',     'label' => 'Type',      'format' => 'log_type'],
                 ['key' => 'title',        'label' => 'Job',       'format' => 'text'],
@@ -214,7 +277,7 @@ final class Reports
     }
 
     // -------------------------------------------------------------------------
-    // Cost per asset
+    // Cost per machine
     // -------------------------------------------------------------------------
 
     /**
@@ -251,14 +314,14 @@ final class Reports
             }
         }
 
-        $totals['asset_name'] = 'All ' . count($rows) . ' assets';
+        $totals['asset_name'] = 'All ' . count($rows) . ' machines';
 
         // The ten dearest, for the chart.
         $chartRows = array_slice($rows, 0, 10);
 
         return [
             'columns' => [
-                ['key' => 'asset_name',    'label' => 'Asset',    'format' => 'text'],
+                ['key' => 'asset_name',    'label' => 'Machine',    'format' => 'text'],
                 ['key' => 'asset_tag',     'label' => 'Tag',      'format' => 'text'],
                 ['key' => 'category_name', 'label' => 'Category', 'format' => 'text'],
                 ['key' => 'jobs',          'label' => 'Jobs',     'format' => 'number', 'align' => 'right'],
@@ -400,7 +463,7 @@ final class Reports
 
         return [
             'columns' => [
-                ['key' => 'asset_name',       'label' => 'Asset',        'format' => 'text'],
+                ['key' => 'asset_name',       'label' => 'Machine',        'format' => 'text'],
                 ['key' => 'asset_tag',        'label' => 'Tag',          'format' => 'text'],
                 ['key' => 'status',           'label' => 'Status now',   'format' => 'asset_status'],
                 ['key' => 'incidents',        'label' => 'Times down',   'format' => 'number',   'align' => 'right'],
@@ -474,7 +537,7 @@ final class Reports
 
         return [
             'columns' => [
-                ['key' => 'asset_name', 'label' => 'Asset',      'format' => 'text'],
+                ['key' => 'asset_name', 'label' => 'Machine',      'format' => 'text'],
                 ['key' => 'asset_tag',  'label' => 'Tag',        'format' => 'text'],
                 ['key' => 'runs',       'label' => 'Checks',     'format' => 'number',  'align' => 'right'],
                 ['key' => 'passed',     'label' => 'Passed',     'format' => 'number',  'align' => 'right'],
@@ -491,7 +554,7 @@ final class Reports
     }
 
     // -------------------------------------------------------------------------
-    // Asset inventory
+    // Machine inventory
     // -------------------------------------------------------------------------
 
     /**
@@ -544,11 +607,11 @@ final class Reports
             $totals['lifetime_cost'] += (float) $row['lifetime_cost'];
         }
 
-        $totals['asset_name'] = count($rows) . ' asset' . (count($rows) === 1 ? '' : 's');
+        $totals['asset_name'] = count($rows) . ' machine' . (count($rows) === 1 ? '' : 's');
 
         return [
             'columns' => [
-                ['key' => 'asset_name',    'label' => 'Asset',        'format' => 'text'],
+                ['key' => 'asset_name',    'label' => 'Machine',        'format' => 'text'],
                 ['key' => 'asset_tag',     'label' => 'Tag',          'format' => 'text'],
                 ['key' => 'category_name', 'label' => 'Category',     'format' => 'text'],
                 ['key' => 'location_name', 'label' => 'Where',        'format' => 'text'],
@@ -561,7 +624,7 @@ final class Reports
             ],
             'rows'   => $rows,
             'totals' => $totals,
-            'empty'  => 'No assets match that.',
+            'empty'  => 'No machines match that.',
         ];
     }
 

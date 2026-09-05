@@ -86,6 +86,12 @@ if (is_post()) {
         $data[$field] = ($data[$field] ?? '') === '' ? 0 : (float) $data[$field];
     }
 
+    // The price is not on the form for somebody who cannot see money, and an
+    // absent field must never zero the one that is there.
+    if (!costs_visible()) {
+        unset($data['unit_cost']);
+    }
+
     $data['unit_of_measure'] = ($data['unit_of_measure'] ?? '') === ''
         ? 'each'
         : (string) $data['unit_of_measure'];
@@ -163,7 +169,7 @@ View::render('parts/edit', [
         : 'Something you keep on the shelf',
     'activeNav'   => 'parts.php',
     'breadcrumbs' => [
-        ['label' => 'Parts Inventory', 'url' => url('parts.php')],
+        ['label' => 'Parts', 'url' => url('parts.php')],
         ['label' => $editing ? 'Edit' : 'New'],
     ],
     'editing'    => $editing,

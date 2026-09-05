@@ -11,18 +11,18 @@ use App\Response;
 use App\Status;
 
 /**
- * Assets, for the pickers and the meter widget.
+ * Machines, for the pickers and the meter widget.
  */
 final class AssetsController
 {
     /** @return list<string> */
     public static function routes(): array
     {
-        return ['list', 'get', 'update_meter', 'due'];
+        return ['list', 'get', 'update_meter', 'due', 'history'];
     }
 
     /**
-     * Assets matching a phrase, for a picker.
+     * Machines matching a phrase, for a picker.
      *
      * @return array<string, mixed>
      */
@@ -81,7 +81,7 @@ final class AssetsController
     }
 
     /**
-     * One asset, with what the log form needs to know about it.
+     * One machine, with what the log form needs to know about it.
      *
      * @return array<string, mixed>
      */
@@ -92,7 +92,7 @@ final class AssetsController
         $asset = Asset::find(Request::int('id'));
 
         if ($asset === null) {
-            Response::error('That asset does not exist.', 'not_found', 404);
+            Response::error('That machine does not exist.', 'not_found', 404);
         }
 
         return [
@@ -109,7 +109,7 @@ final class AssetsController
     }
 
     /**
-     * Record a meter reading from the widget on the asset page.
+     * Record a meter reading from the widget on the machine page.
      *
      * @return array<string, mixed>
      */
@@ -149,7 +149,53 @@ final class AssetsController
     }
 
     /**
-     * What is due on an asset, for the log form.
+     * The last few things that happened to a machine, for the panel beside a
+     * form. Rebuilt on the page when somebody picks a different machine.
+     *
+     * @return array<string, mixed>
+     */
+    public static function history(): array
+    {
+        Acl::requirePermission('assets.view');
+
+        $asset = Asset::find(Request::int('id'));
+
+        if ($asset === null) {
+            Response::error('That machine does not exist.', 'not_found', 404);
+        }
+
+        $events = [];
+
+        foreach (Asset::timeline((int) $asset['id'], '', 6) as $event) {
+            $events[] = [
+                'when'   => \App\Dates::ago((string) $event['when']),
+                'label'  => (string) $event['label'],
+                'title'  => (string) $event['title'],
+                'detail' => \App\Str::limit(strtok((string) $event['detail'], "\n") ?: '', 110),
+                'url'    => (string) $event['url'],
+                'tone'   => (string) $event['tone'],
+            ];
+        }
+
+        return [
+            'asset' => [
+                'id'            => (int) $asset['id'],
+                'name'          => (string) $asset['name'],
+                'asset_tag'     => (string) $asset['asset_tag'],
+                'status'        => (string) $asset['status'],
+                'status_label'  => Status::label((string) $asset['status'], 'asset'),
+                'status_tone'   => Status::tone((string) $asset['status'], 'asset'),
+                'meter_type'    => (string) $asset['meter_type'],
+                'meter_reading' => decimal($asset['meter_reading']),
+                'url'           => url('asset-view.php', ['id' => (int) $asset['id']]),
+                'history_url'   => url('asset-view.php', ['id' => (int) $asset['id'], 'tab' => 'timeline']),
+            ],
+            'events' => $events,
+        ];
+    }
+
+    /**
+     * What is due on a machine, for the log form.
      *
      * @return array<string, mixed>
      */
@@ -160,7 +206,7 @@ final class AssetsController
         $assetId = Request::int('id');
 
         if ($assetId <= 0) {
-            Response::error('Which asset?', 'validation_failed', 422);
+            Response::error('Which machine?', 'validation_failed', 422);
         }
 
         return ['schedules' => \App\Scheduler::forAsset($assetId)];

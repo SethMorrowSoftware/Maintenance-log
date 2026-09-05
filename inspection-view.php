@@ -72,7 +72,7 @@ $data = [
 if ($printing) {
     $data['docTitle']  = 'Inspection report';
     $data['printMeta'] = [
-        'Asset'     => (string) $inspection['asset_name'] . ' (' . (string) $inspection['asset_tag'] . ')',
+        'Machine'     => (string) $inspection['asset_name'] . ' (' . (string) $inspection['asset_tag'] . ')',
         'Checklist' => (string) $inspection['checklist_name'],
         'Carried out' => Dates::datetime((string) ($inspection['completed_at'] ?: $inspection['started_at'])),
         'Report'    => '#' . $id,

@@ -1,6 +1,6 @@
 <?php
 /**
- * The current meter reading for an asset, with a quick-update control.
+ * The current meter reading for a machine, with a quick-update control.
  *
  * Variables: $asset (array), $canUpdate (bool), $compact (bool)
  */

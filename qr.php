@@ -31,7 +31,7 @@ if ($code === '') {
 
 if ($code === '') {
     flash('error', 'That code could not be read. Try scanning it again, or find the '
-        . 'machine on the assets list.');
+        . 'machine on the machines list.');
     redirect(url('assets.php'));
 }
 

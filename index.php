@@ -23,8 +23,29 @@ Auth::requireLogin();
  */
 run_hourly_tasks();
 
+// A technician's morning and a manager's morning are different pages, not one
+// page with things switched off: the technician gets three big buttons and
+// what is broken or due, the manager gets the figures as well.
+$simple = !\App\Acl::atLeast('manager');
+
+if ($simple) {
+    View::render('dashboard-technician', [
+        'title'       => 'Home',
+        'subtitle'    => greeting() . ', ' . first_name() . '.',
+        'activeNav'   => 'index.php',
+        'dueList'     => can('schedules.view') ? Dashboard::dueMaintenance(8) : [],
+        'workOrders'  => can('workorders.view') ? Dashboard::openWorkOrders(6) : [],
+        'myWork'      => Dashboard::myWork(6),
+        'assetsDown'  => can('assets.view') ? Dashboard::assetsDown(6) : [],
+        'inspections' => can('inspections.view') ? Dashboard::inspectionsDueToday(12) : [],
+        'recentLogs'  => can('logs.view') ? Dashboard::recentLogs(6) : [],
+        'followUps'   => can('logs.view') ? Dashboard::followUps(4) : [],
+    ]);
+    exit;
+}
+
 $counts    = Dashboard::counts();
-$costTrend = Dashboard::costTrend(30);
+$costTrend = costs_visible() ? Dashboard::costTrend(30) : ['current' => 0.0, 'previous' => 0.0, 'change_pct' => null];
 
 View::render('dashboard', [
     'title'       => 'Dashboard',
@@ -43,7 +64,7 @@ View::render('dashboard', [
     'followUps'   => can('logs.view') ? Dashboard::followUps(4) : [],
     'statusChart' => can('assets.view') ? Dashboard::statusBreakdown() : [],
     'logsChart'   => can('logs.view') ? Dashboard::logsByMonth(12) : ['labels' => [], 'series' => []],
-    'costChart'   => can('reports.view') ? Dashboard::costByMonth(12) : ['labels' => [], 'series' => []],
+    'costChart'   => costs_visible() ? Dashboard::costByMonth(12) : ['labels' => [], 'series' => []],
 ]);
 
 // -----------------------------------------------------------------------------

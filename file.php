@@ -55,7 +55,7 @@ if ($avatarUserId !== null) {
 }
 
 // -----------------------------------------------------------------------------
-// Asset photos
+// Machine photos
 // -----------------------------------------------------------------------------
 
 $assetPhotoId = Request::intOrNull('asset_photo');
@@ -71,7 +71,7 @@ if ($assetPhotoId !== null) {
     );
 
     if ($asset === null || empty($asset['image_path'])) {
-        Response::abortPage(404, 'That asset has no photo.');
+        Response::abortPage(404, 'That machine has no photo.');
     }
 
     $path = Uploader::absolutePath((string) $asset['image_path']);

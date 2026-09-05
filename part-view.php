@@ -82,7 +82,7 @@ View::render('parts/view', [
     'activeNav'   => 'parts.php',
     'pageActions' => $actions,
     'breadcrumbs' => [
-        ['label' => 'Parts Inventory', 'url' => url('parts.php')],
+        ['label' => 'Parts', 'url' => url('parts.php')],
         ['label' => (string) $part['name']],
     ],
     'part'         => $part,

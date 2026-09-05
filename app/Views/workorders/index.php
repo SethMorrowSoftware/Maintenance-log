@@ -48,8 +48,8 @@ foreach (['open', 'assigned', 'in_progress', 'on_hold'] as $key) {
     <?php View::partial('filter-bar', [
         'action'  => 'workorders.php',
         'filters' => [
-            'q'           => ['label' => 'Search', 'type' => 'text', 'value' => $filters['q'], 'placeholder' => 'Title, number, asset…'],
-            'asset_id'    => ['label' => 'Asset', 'type' => 'select', 'value' => $filters['asset_id'], 'options' => $assets, 'empty' => 'All assets'],
+            'q'           => ['label' => 'Search', 'type' => 'text', 'value' => $filters['q'], 'placeholder' => 'Title, number, machine…'],
+            'asset_id'    => ['label' => 'Machine', 'type' => 'select', 'value' => $filters['asset_id'], 'options' => $assets, 'empty' => 'All machines'],
             'priority'    => ['label' => 'Priority', 'type' => 'select', 'value' => $filters['priority'], 'options' => Status::options('priority'), 'empty' => 'Any'],
             'assigned_to' => ['label' => 'Assigned to', 'type' => 'select', 'value' => $filters['assigned_to'], 'options' => $assignees, 'empty' => 'Anyone'],
         ],
@@ -74,7 +74,7 @@ foreach (['open', 'assigned', 'in_progress', 'on_hold'] as $key) {
                 <thead>
                     <tr>
                         <th><?= sort_link('title', 'Problem', $sort, $direction) ?></th>
-                        <th><?= sort_link('asset', 'Asset', $sort, $direction) ?></th>
+                        <th><?= sort_link('asset', 'Machine', $sort, $direction) ?></th>
                         <th><?= sort_link('priority', 'Priority', $sort, $direction) ?></th>
                         <th><?= sort_link('status', 'Status', $sort, $direction) ?></th>
                         <th><?= sort_link('assignee', 'Assigned', $sort, $direction) ?></th>
@@ -104,7 +104,7 @@ foreach (['open', 'assigned', 'in_progress', 'on_hold'] as $key) {
                                     <?php endif; ?>
                                 </span>
                             </td>
-                            <td data-label="Asset">
+                            <td data-label="Machine">
                                 <?php if (!empty($wo['asset_id'])): ?>
                                     <a href="<?= e(url('asset-view.php', ['id' => (int) $wo['asset_id']])) ?>">
                                         <?= e((string) $wo['asset_name']) ?>

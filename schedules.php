@@ -106,7 +106,7 @@ if (can('schedules.manage')) {
 }
 
 View::render('schedules/index', [
-    'title'       => 'PM Schedules',
+    'title'       => 'Scheduled Service',
     'subtitle'    => 'Planned servicing, by date or by meter',
     'activeNav'   => 'schedules.php',
     'pageActions' => $actions,

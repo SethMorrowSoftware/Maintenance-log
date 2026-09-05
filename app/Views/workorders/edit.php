@@ -15,7 +15,8 @@ use App\View;
 ?>
 
 <form method="post" action="<?= e(url('workorder-edit.php', $editing ? ['id' => (int) $workOrder['id']] : [])) ?>"
-      enctype="multipart/form-data" data-validate data-guard>
+      enctype="multipart/form-data" data-validate data-guard
+      data-draft="wo-<?= $editing ? (int) $workOrder['id'] : 'new' ?>">
     <?= csrf_field() ?>
 
     <div class="grid grid-sidebar">
@@ -39,12 +40,12 @@ use App\View;
 
                     <?php View::partial('asset-picker', [
                         'name'     => 'asset_id',
-                        'label'    => 'Which asset?',
+                        'label'    => 'Which machine?',
                         'value'    => $values['asset_id'],
                         'assets'   => $assets,
                         'required' => false,
                         'hint'     => 'Leave blank if it is not about a particular machine.',
-                        'emptyLabel' => 'Not about a specific asset',
+                        'emptyLabel' => 'Not about a specific machine',
                     ]); ?>
 
                     <?php View::partial('form-field', [
@@ -94,7 +95,7 @@ use App\View;
                                    <?= checked((int) $values['took_out_of_service']) ?>>
                             <span class="form-check-label">
                                 I have taken it out of service
-                                <small>Marks the asset unavailable to guests straight away.</small>
+                                <small>Marks the machine unavailable to guests straight away.</small>
                             </span>
                         </label>
                     <?php endif; ?>
@@ -150,8 +151,15 @@ use App\View;
                        href="<?= e($editing ? url('workorder-view.php', ['id' => (int) $workOrder['id']]) : url('workorders.php')) ?>">
                         Cancel
                     </a>
+                    <p class="form-hint text-center draft-status" data-draft-status hidden></p>
                 </div>
             </div>
+
+            <?php View::partial('asset-context', [
+                'asset'      => $asset ?? null,
+                'events'     => $assetHistory ?? [],
+                'selectName' => 'asset_id',
+            ]); ?>
 
             <div class="card">
                 <div class="card-header"><h3 class="card-title"><?= icon('camera', '', 17) ?> Photos</h3></div>

@@ -35,7 +35,7 @@ $hasQuery = mb_strlen($query) >= 2;
     <?php View::partial('empty-state', [
         'icon'    => 'search',
         'title'   => 'What are you looking for?',
-        'message' => 'Type at least two characters. Assets, maintenance logs, work orders, '
+        'message' => 'Type at least two characters. Machines, maintenance logs, work orders, '
                    . 'parts and inspections are all searched at once.',
     ]); ?>
 
@@ -48,12 +48,12 @@ $hasQuery = mb_strlen($query) >= 2;
     ]); ?>
 
 <?php else: ?>
-    <?php // ==================== Assets ==================== ?>
-    <?php if (!empty($results['Assets'])): ?>
+    <?php // ==================== Machines ==================== ?>
+    <?php if (!empty($results['Machines'])): ?>
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title"><?= icon('assets', '', 18) ?> Assets</h2>
-                <span class="badge badge-muted"><?= count($results['Assets']) ?></span>
+                <h2 class="card-title"><?= icon('assets', '', 18) ?> Machines</h2>
+                <span class="badge badge-muted"><?= count($results['Machines']) ?></span>
             </div>
             <div class="table-wrap">
                 <table class="table is-stacked">
@@ -61,7 +61,7 @@ $hasQuery = mb_strlen($query) >= 2;
                         <tr><th>Name</th><th>Tag</th><th>Category</th><th>Where</th><th>Status</th></tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($results['Assets'] as $row): ?>
+                        <?php foreach ($results['Machines'] as $row): ?>
                             <tr>
                                 <td data-label="Name">
                                     <a class="cell-primary"
@@ -100,7 +100,7 @@ $hasQuery = mb_strlen($query) >= 2;
             <div class="table-wrap">
                 <table class="table is-stacked">
                     <thead>
-                        <tr><th>Job</th><th>Asset</th><th>When</th><th>Who</th><th class="is-numeric">Cost</th></tr>
+                        <tr><th>Job</th><th>Machine</th><th>When</th><th>Who</th><?php if (costs_visible()): ?><th class="is-numeric">Cost</th><?php endif; ?></tr>
                     </thead>
                     <tbody>
                         <?php foreach ($results['Maintenance logs'] as $row): ?>
@@ -116,10 +116,12 @@ $hasQuery = mb_strlen($query) >= 2;
                                         </span>
                                     <?php endif; ?>
                                 </td>
-                                <td data-label="Asset"><?= e((string) $row['asset_name']) ?></td>
+                                <td data-label="Machine"><?= e((string) $row['asset_name']) ?></td>
                                 <td data-label="When"><?= e(Dates::date((string) $row['performed_at'])) ?></td>
                                 <td data-label="Who"><?= e((string) $row['technician']) ?></td>
-                                <td data-label="Cost" class="is-numeric"><?= e(money($row['total_cost'])) ?></td>
+                                <?php if (costs_visible()): ?>
+                                    <td data-label="Cost" class="is-numeric"><?= e(money($row['total_cost'])) ?></td>
+                                <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -138,7 +140,7 @@ $hasQuery = mb_strlen($query) >= 2;
             <div class="table-wrap">
                 <table class="table is-stacked">
                     <thead>
-                        <tr><th>Number</th><th>Title</th><th>Asset</th><th>Status</th><th>Raised</th></tr>
+                        <tr><th>Number</th><th>Title</th><th>Machine</th><th>Status</th><th>Raised</th></tr>
                     </thead>
                     <tbody>
                         <?php foreach ($results['Work orders'] as $row): ?>
@@ -151,7 +153,7 @@ $hasQuery = mb_strlen($query) >= 2;
                                 <td data-label="Title">
                                     <span class="cell-primary"><?= e((string) $row['title']) ?></span>
                                 </td>
-                                <td data-label="Asset"><?= e((string) ($row['asset_name'] ?? '')) ?></td>
+                                <td data-label="Machine"><?= e((string) ($row['asset_name'] ?? '')) ?></td>
                                 <td data-label="Status">
                                     <?php View::partial('status-badge', [
                                         'value' => (string) $row['status'], 'vocabulary' => 'work_order',
@@ -216,7 +218,7 @@ $hasQuery = mb_strlen($query) >= 2;
             <div class="table-wrap">
                 <table class="table is-stacked">
                     <thead>
-                        <tr><th>Checklist</th><th>Asset</th><th>When</th><th>Result</th></tr>
+                        <tr><th>Checklist</th><th>Machine</th><th>When</th><th>Result</th></tr>
                     </thead>
                     <tbody>
                         <?php foreach ($results['Inspections'] as $row): ?>
@@ -227,7 +229,7 @@ $hasQuery = mb_strlen($query) >= 2;
                                         <?= e((string) $row['checklist_name']) ?>
                                     </a>
                                 </td>
-                                <td data-label="Asset"><?= e((string) $row['asset_name']) ?></td>
+                                <td data-label="Machine"><?= e((string) $row['asset_name']) ?></td>
                                 <td data-label="When"><?= e(Dates::date((string) $row['started_at'])) ?></td>
                                 <td data-label="Result">
                                     <?php View::partial('status-badge', [

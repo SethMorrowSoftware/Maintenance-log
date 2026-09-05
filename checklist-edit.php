@@ -109,12 +109,12 @@ if (is_post()) {
         : null;
 
     if ((string) $data['applies_to'] === 'category' && $data['category_id'] === null) {
-        flash_errors(['category_id' => 'Choose which kind of asset this checklist is for.'], $_POST);
+        flash_errors(['category_id' => 'Choose which kind of machine this checklist is for.'], $_POST);
         redirect(url('checklist-edit.php', $editing ? ['id' => $id] : []));
     }
 
     if ((string) $data['applies_to'] === 'asset' && $data['asset_id'] === null) {
-        flash_errors(['asset_id' => 'Choose which asset this checklist is for.'], $_POST);
+        flash_errors(['asset_id' => 'Choose which machine this checklist is for.'], $_POST);
         redirect(url('checklist-edit.php', $editing ? ['id' => $id] : []));
     }
 
@@ -178,7 +178,7 @@ if (is_post()) {
 
         flash('success', $editing
             ? 'Checklist saved.'
-            : 'Checklist created. It will show up when somebody inspects a matching asset.');
+            : 'Checklist created. It will show up when somebody inspects a matching machine.');
 
         redirect(url('checklists.php'));
     } catch (Throwable $e) {

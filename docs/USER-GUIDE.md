@@ -30,10 +30,20 @@ want them:
   know.
 - **Parts used** — pick from the shelf and it comes off the count by itself. You
   can also type in something you bought specially.
-- **Time, cost and condition** — how long it took, the meter reading, how long
-  the machine was out of service, what it cost.
+- **Time and condition** — how long it took, the meter reading, how long the
+  machine was out of service. (Administrators also see and enter what it cost;
+  nobody else sees money anywhere.)
 - **Follow-up** — tick it and a work order opens automatically, so the thing you
   noticed does not get forgotten.
+
+While you type, the form is shown **About this machine** and its recent work
+down the side — so if you are about to log "brake squeal" you can see the pads
+were done a fortnight ago. Pick a different machine and the panel changes.
+
+> **You will not lose what you typed.** The form keeps a draft on the phone or
+> computer as you go. If the screen locks, the tab closes, or you get logged
+> out, come back and it offers the draft back to you. Photos have to be picked
+> again; everything else is kept.
 
 > **Meter readings only go up.** If you type a number lower than the one already
 > recorded, it will stop and ask you to check it. That is nearly always a typo,
@@ -125,7 +135,7 @@ order things get told.
 
 ## Scheduled maintenance
 
-**PM Schedules** is the work that comes round on its own: 50-hour services,
+**Scheduled Service** is the work that comes round on its own: 50-hour services,
 weekly greasing, the pre-season strip-down.
 
 A schedule can be by the calendar (*every 30 days*), by the meter (*every 50
@@ -149,6 +159,15 @@ name, part of a job title. Press `/` on a keyboard to jump straight into it.
 Every list also has filters along the top, and every list can be sorted by
 clicking a column heading.
 
+### What has happened to this machine?
+
+Open the machine and click **History**. It is one list of everything, newest
+first: every job, every daily check and what failed on it, every problem
+reported and when it was fixed, every status change and meter reading. The
+search box at the top searches just that machine — type *brake* and you see
+every time anybody touched the brakes on it. This is the page to open before
+you start pulling something apart.
+
 ---
 
 ## Reports
@@ -157,12 +176,16 @@ clicking a column heading.
 
 - **Maintenance history** — everything that happened, in a period
 - **What it cost** — spend per machine, split into parts, labour and the rest
+  (administrators only)
 - **Month by month** — the trend
 - **Downtime** — how long each machine was out of service, and how often
 - **Inspection record** — who checked what, how often, and what failed
-- **Asset list** — every machine with its meter, status and lifetime cost
-- **Parts used** — what came off the shelf and what it cost
+- **Machine list** — every machine with its meter and status
+- **Parts used** — what came off the shelf
 - **Who did the work** — jobs, hours and inspections per person
+
+Money — prices, costs, spend — appears on reports, lists and exports only for
+administrators. Everybody else sees the same reports without the money columns.
 
 Pick a period at the top. Every report exports to a spreadsheet with **Export**,
 and prints properly with **Print**.
@@ -199,8 +222,15 @@ follows you between the workshop tablet and the office computer.
 | Build checklists and schedules | | | ✓ | ✓ |
 | Export reports | | | ✓ | ✓ |
 | See the audit log | | | ✓ | ✓ |
+| See prices, costs and spend | | | | ✓ |
 | Add and remove people | | | | ✓ |
 | Change settings | | | | ✓ |
+| Download a copy of everything | | | | ✓ |
+
+Technicians also get a simpler home page: their own jobs, what is not running,
+which machines still need today's check, and three big buttons — log
+maintenance, run today's check, report a problem. Managers and administrators
+see the full dashboard with the charts.
 
 If you cannot do something you think you should be able to, that is the reason.
 Ask an administrator.

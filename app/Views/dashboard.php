@@ -33,7 +33,7 @@ $currency = Settings::currency();
     <?php endif; ?>
     <?php if (can('assets.create')): ?>
         <a class="btn btn-secondary" href="<?= e(url('asset-edit.php')) ?>">
-            <?= icon('assets', '', 17) ?> Add an asset
+            <?= icon('assets', '', 17) ?> Add a machine
         </a>
     <?php endif; ?>
 </div>
@@ -43,7 +43,7 @@ $currency = Settings::currency();
     <?php View::partial('stat-card', [
         'label' => 'In service',
         'value' => num($counts['assets_in_service']),
-        'sub'   => 'of ' . num($counts['assets_total']) . ' assets',
+        'sub'   => 'of ' . num($counts['assets_total']) . ' machines',
         'icon'  => 'check-circle',
         'tone'  => 'ok',
         'href'  => can('assets.view') ? url('assets.php', ['status' => 'in_service']) : '',
@@ -94,7 +94,7 @@ $currency = Settings::currency();
         'href'  => can('logs.view') ? url('logs.php', ['range' => 'last_30']) : '',
     ]); ?>
 
-    <?php if (can('reports.view')): ?>
+    <?php if (costs_visible()): ?>
         <?php
         $change = $costTrend['change_pct'];
         $trend  = $change === null ? '' : ($change > 2 ? 'up' : ($change < -2 ? 'down' : 'flat'));
@@ -118,7 +118,7 @@ $currency = Settings::currency();
     <?php // ========================== Main column ========================== ?>
     <div>
 
-        <?php // ---------- Assets down: the most urgent thing on the page ---------- ?>
+        <?php // ---------- Machines down: the most urgent thing on the page ---------- ?>
         <?php if ($assetsDown !== []): ?>
             <div class="card is-danger">
                 <div class="card-header">
@@ -133,7 +133,7 @@ $currency = Settings::currency();
                     <table class="table is-stacked">
                         <thead>
                             <tr>
-                                <th>Asset</th>
+                                <th>Machine</th>
                                 <th>Status</th>
                                 <th>Location</th>
                                 <th>Since</th>
@@ -142,7 +142,7 @@ $currency = Settings::currency();
                         <tbody>
                             <?php foreach ($assetsDown as $asset): ?>
                                 <tr data-row-href="<?= e(url('asset-view.php', ['id' => (int) $asset['id']])) ?>">
-                                    <td data-label="Asset" class="is-row-title">
+                                    <td data-label="Machine" class="is-row-title">
                                         <a href="<?= e(url('asset-view.php', ['id' => (int) $asset['id']])) ?>">
                                             <?= e((string) $asset['name']) ?>
                                         </a>
@@ -180,14 +180,14 @@ $currency = Settings::currency();
                     <?php View::partial('empty-state', [
                         'icon'    => 'check-circle',
                         'title'   => 'Nothing due',
-                        'message' => 'No preventive maintenance falls due in the next couple of weeks.',
+                        'message' => 'No scheduled service falls due in the next couple of weeks.',
                     ]); ?>
                 <?php else: ?>
                     <div class="table-wrap">
                         <table class="table is-stacked">
                             <thead>
                                 <tr>
-                                    <th>Asset</th>
+                                    <th>Machine</th>
                                     <th>Job</th>
                                     <th>Due</th>
                                     <th>Assigned</th>
@@ -198,7 +198,7 @@ $currency = Settings::currency();
                                 <?php foreach ($dueList as $due): ?>
                                     <?php $state = (string) $due['due_state']; ?>
                                     <tr class="<?= $state === 'overdue' ? 'is-danger' : '' ?>">
-                                        <td data-label="Asset" class="is-row-title">
+                                        <td data-label="Machine" class="is-row-title">
                                             <a href="<?= e(url('asset-view.php', ['id' => (int) $due['asset_id']])) ?>">
                                                 <?= e((string) $due['asset_name']) ?>
                                             </a>
@@ -246,7 +246,7 @@ $currency = Settings::currency();
                 <div class="card-header">
                     <div>
                         <h2 class="card-title"><?= icon('clipboard-check', '', 18) ?> Daily inspections outstanding</h2>
-                        <p class="card-subtitle">In-service assets with no completed check today</p>
+                        <p class="card-subtitle">In-service machines with no completed check today</p>
                     </div>
                 </div>
                 <div class="card-body is-tight">
@@ -289,7 +289,7 @@ $currency = Settings::currency();
                             <thead>
                                 <tr>
                                     <th>Work order</th>
-                                    <th>Asset</th>
+                                    <th>Machine</th>
                                     <th>Priority</th>
                                     <th>Status</th>
                                     <th>Assigned</th>
@@ -305,7 +305,7 @@ $currency = Settings::currency();
                                             </a>
                                             <span class="cell-secondary"><?= e((string) $wo['wo_number']) ?></span>
                                         </td>
-                                        <td data-label="Asset"><?= e((string) ($wo['asset_name'] ?? '—')) ?></td>
+                                        <td data-label="Machine"><?= e((string) ($wo['asset_name'] ?? '—')) ?></td>
                                         <td data-label="Priority">
                                             <?php View::partial('status-badge', ['value' => (string) $wo['priority'], 'vocabulary' => 'priority']); ?>
                                         </td>
@@ -355,7 +355,7 @@ $currency = Settings::currency();
         <?php endif; ?>
 
         <?php // ------------------------ Cost chart ------------------------ ?>
-        <?php if (can('reports.view') && $costChart['labels'] !== []): ?>
+        <?php if (costs_visible() && $costChart['labels'] !== []): ?>
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title"><?= icon('trending-up', '', 18) ?> Maintenance spend</h2>
@@ -392,7 +392,7 @@ $currency = Settings::currency();
                                     <?= e((string) $wo['title']) ?>
                                 </a>
                                 <div class="text-sm text-muted">
-                                    <?= e((string) ($wo['asset_name'] ?? 'No asset')) ?>
+                                    <?= e((string) ($wo['asset_name'] ?? 'No machine')) ?>
                                     <?php if (!empty($wo['due_date'])): ?>
                                         &middot; due <?= e(Dates::dateOnly((string) $wo['due_date'])) ?>
                                     <?php endif; ?>
@@ -418,7 +418,7 @@ $currency = Settings::currency();
                 </div>
                 <div class="card-body">
                     <div data-chart="donut" data-chart-src="chart-status" data-chart-size="190"
-                         data-chart-centre-label="Assets" data-chart-title="Assets by status"></div>
+                         data-chart-centre-label="Machines" data-chart-title="Machines by status"></div>
                     <script type="application/json" id="chart-status"><?= js(['slices' => $statusChart]) ?></script>
                 </div>
             </div>

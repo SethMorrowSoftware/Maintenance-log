@@ -61,11 +61,11 @@ $canManage = can('checklists.manage');
                             </td>
                             <td data-label="Covers">
                                 <?php if ((string) $row['applies_to'] === 'all'): ?>
-                                    Every asset
+                                    Every machine
                                 <?php elseif ((string) $row['applies_to'] === 'category'): ?>
                                     <?= e((string) ($row['category_name'] ?? 'a category')) ?>
                                 <?php else: ?>
-                                    <?= e((string) ($row['asset_name'] ?? 'one asset')) ?>
+                                    <?= e((string) ($row['asset_name'] ?? 'one machine')) ?>
                                 <?php endif; ?>
                             </td>
                             <td data-label="How often">

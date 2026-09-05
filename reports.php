@@ -21,9 +21,10 @@ Acl::requirePermission('reports.view');
 // Which report, over which period
 // -----------------------------------------------------------------------------
 
-$report = Request::string('report', 'history');
+$report    = Request::string('report', 'history');
+$catalogue = Reports::available();
 
-if (!isset(Reports::CATALOGUE[$report])) {
+if (!isset($catalogue[$report])) {
     $report = 'history';
 }
 
@@ -62,7 +63,7 @@ if (Request::string('export') === 'csv') {
     Acl::requirePermission('reports.export');
 
     audit('export', 'report', null,
-        'Exported the "' . Reports::CATALOGUE[$report]['label'] . '" report ('
+        'Exported the "' . $catalogue[$report]['label'] . '" report ('
         . count($result['rows']) . ' rows)');
 
     $columns = $result['columns'];
@@ -123,10 +124,10 @@ $usesState = $report === 'inventory';
 
 $data = [
     'title'       => 'Reports',
-    'subtitle'    => Reports::CATALOGUE[$report]['blurb'],
+    'subtitle'    => $catalogue[$report]['blurb'],
     'activeNav'   => 'reports.php',
     'report'      => $report,
-    'catalogue'   => Reports::CATALOGUE,
+    'catalogue'   => $catalogue,
     'result'      => $result,
     'filters'     => $filters,
     'preset'      => $preset,
@@ -145,7 +146,7 @@ $data = [
 ];
 
 if ($printing) {
-    $data['docTitle']  = Reports::CATALOGUE[$report]['label'];
+    $data['docTitle']  = $catalogue[$report]['label'];
     $data['printMeta'] = [
         'Period' => $from === '' && $to === ''
             ? 'All time'

@@ -49,12 +49,12 @@ $navigation = [
     'Maintenance' => [
         ['label' => 'Maintenance Logs', 'url' => 'logs.php',        'icon' => 'wrench',           'permission' => 'logs.view'],
         ['label' => 'Work Orders',      'url' => 'workorders.php',  'icon' => 'work-order',       'permission' => 'workorders.view'],
-        ['label' => 'PM Schedules',     'url' => 'schedules.php',   'icon' => 'calendar',         'permission' => 'schedules.view'],
+        ['label' => 'Scheduled Service','url' => 'schedules.php',   'icon' => 'calendar',         'permission' => 'schedules.view'],
         ['label' => 'Inspections',      'url' => 'inspections.php', 'icon' => 'clipboard-check',  'permission' => 'inspections.view'],
     ],
     'Equipment' => [
-        ['label' => 'Assets',          'url' => 'assets.php', 'icon' => 'assets',  'permission' => 'assets.view'],
-        ['label' => 'Parts Inventory', 'url' => 'parts.php',  'icon' => 'package', 'permission' => 'parts.view'],
+        ['label' => 'Machines',          'url' => 'assets.php', 'icon' => 'assets',  'permission' => 'assets.view'],
+        ['label' => 'Parts',           'url' => 'parts.php',  'icon' => 'package', 'permission' => 'parts.view'],
     ],
     'Insight' => [
         ['label' => 'Reports', 'url' => 'reports.php', 'icon' => 'chart-bar', 'permission' => 'reports.view'],
@@ -120,6 +120,7 @@ $currentNav = $navAliases[$activeNav] ?? $activeNav;
     'theme'      => $me === null ? 'system' : (string) ($me['theme'] ?? 'system'),
     'currency'   => Settings::currency(),
     'canNotify'  => $me !== null,
+    'clearDrafts' => \App\Flash::draftsToClear(),
 ]) ?></script>
 </head>
 
@@ -191,7 +192,7 @@ $currentNav = $navAliases[$activeNav] ?? $activeNav;
             <?php if ($me !== null): ?>
                 <div class="header-search" id="header-search">
                     <?= icon('search', '', 17) ?>
-                    <label class="sr-only" for="global-search">Search assets, logs and work orders</label>
+                    <label class="sr-only" for="global-search">Search machines, logs and work orders</label>
                     <input type="search" id="global-search" placeholder="Search…"
                            autocomplete="off" spellcheck="false" data-global-search>
                     <span class="kbd hide-sm" aria-hidden="true">/</span>

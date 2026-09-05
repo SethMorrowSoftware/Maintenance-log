@@ -10,8 +10,9 @@
 use App\Status;
 use App\View;
 
-$canAdjust = can('parts.adjust');
-$canManage = can('parts.manage');
+$canAdjust   = can('parts.adjust');
+$canManage   = can('parts.manage');
+$canSeeCosts = costs_visible();
 ?>
 
 <div class="stat-grid mb-5">
@@ -21,12 +22,14 @@ $canManage = can('parts.manage');
         'icon'  => 'package',
         'tone'  => 'info',
     ]); ?>
-    <?php View::partial('stat-card', [
-        'label' => 'Value on the shelf',
-        'value' => money($summary['value']),
-        'icon'  => 'dollar-sign',
-        'tone'  => 'muted',
-    ]); ?>
+    <?php if ($canSeeCosts): ?>
+        <?php View::partial('stat-card', [
+            'label' => 'Value on the shelf',
+            'value' => money($summary['value']),
+            'icon'  => 'dollar-sign',
+            'tone'  => 'muted',
+        ]); ?>
+    <?php endif; ?>
     <?php View::partial('stat-card', [
         'label' => 'Running low',
         'value' => num($summary['low']),
@@ -100,7 +103,9 @@ $canManage = can('parts.manage');
                         <th><?= sort_link('name', 'Part', $sort, $direction) ?></th>
                         <th><?= sort_link('number', 'Part number', $sort, $direction) ?></th>
                         <th class="is-numeric"><?= sort_link('stock', 'On hand', $sort, $direction) ?></th>
-                        <th class="is-numeric"><?= sort_link('cost', 'Each', $sort, $direction) ?></th>
+                        <?php if ($canSeeCosts): ?>
+                            <th class="is-numeric"><?= sort_link('cost', 'Each', $sort, $direction) ?></th>
+                        <?php endif; ?>
                         <th>Where</th>
                         <?php if ($canAdjust): ?>
                             <th class="is-actions">Took / put back</th>
@@ -147,7 +152,9 @@ $canManage = can('parts.manage');
                                     <span class="cell-secondary text-danger">none left</span>
                                 <?php endif; ?>
                             </td>
-                            <td data-label="Each" class="is-numeric"><?= e(money($part['unit_cost'])) ?></td>
+                            <?php if ($canSeeCosts): ?>
+                                <td data-label="Each" class="is-numeric"><?= e(money($part['unit_cost'])) ?></td>
+                            <?php endif; ?>
                             <td data-label="Where">
                                 <?= (string) $part['location_bin'] !== ''
                                     ? e((string) $part['location_bin'])

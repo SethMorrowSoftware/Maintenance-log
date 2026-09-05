@@ -12,8 +12,9 @@ use App\Settings;
 use App\Status;
 use App\View;
 
-$printing = $printing ?? false;
-$logId    = (int) $log['id'];
+$printing    = $printing ?? false;
+$logId       = (int) $log['id'];
+$canSeeCosts = costs_visible();
 ?>
 
 <div class="grid grid-sidebar">
@@ -30,7 +31,7 @@ $logId    = (int) $log['id'];
             </div>
             <div class="card-body">
                 <dl class="detail-list">
-                    <dt>Asset</dt>
+                    <dt>Machine</dt>
                     <dd>
                         <?php if ($printing): ?>
                             <?= e((string) $log['asset_name']) ?> (<?= e((string) $log['asset_tag']) ?>)
@@ -151,7 +152,9 @@ $logId    = (int) $log['id'];
                         <thead>
                             <tr>
                                 <th>Part</th><th class="is-numeric">Qty</th>
-                                <th class="is-numeric">Each</th><th class="is-numeric">Total</th>
+                                <?php if ($canSeeCosts): ?>
+                                    <th class="is-numeric">Each</th><th class="is-numeric">Total</th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
@@ -173,8 +176,10 @@ $logId    = (int) $log['id'];
                                         <?php endif; ?>
                                     </td>
                                     <td class="is-numeric"><?= e(decimal($part['quantity'])) ?></td>
-                                    <td class="is-numeric"><?= e(money($part['unit_cost'])) ?></td>
-                                    <td class="is-numeric"><?= e(money($part['total_cost'])) ?></td>
+                                    <?php if ($canSeeCosts): ?>
+                                        <td class="is-numeric"><?= e(money($part['unit_cost'])) ?></td>
+                                        <td class="is-numeric"><?= e(money($part['total_cost'])) ?></td>
+                                    <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -232,6 +237,7 @@ $logId    = (int) $log['id'];
 
     <?php if (!$printing): ?>
         <div>
+            <?php if ($canSeeCosts): ?>
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">Cost</h3>
@@ -254,6 +260,7 @@ $logId    = (int) $log['id'];
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
 
             <div class="card">
                 <div class="card-header"><h3 class="card-title">Record</h3></div>

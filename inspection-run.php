@@ -26,7 +26,7 @@ $checklistId  = Request::int('checklist_id');
 
 if ($inspectionId === 0) {
     if ($assetId === 0) {
-        // Nothing chosen yet: ask which asset.
+        // Nothing chosen yet: ask which machine.
         View::render('inspections/start', [
             'title'     => 'Run an inspection',
             'subtitle'  => 'Pick what you are checking',
@@ -39,7 +39,7 @@ if ($inspectionId === 0) {
     $asset = Asset::find($assetId);
 
     if ($asset === null) {
-        abort(404, 'That asset does not exist.');
+        abort(404, 'That machine does not exist.');
     }
 
     $checklists = Inspection::checklistsFor($assetId);

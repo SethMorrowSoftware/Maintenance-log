@@ -1,6 +1,7 @@
 <?php
 /**
- * One part: how many there are, where they went, and what they cost.
+ * One part: how many there are, where they went — and, for an administrator,
+ * what they cost.
  */
 
 use App\Dates;
@@ -12,7 +13,8 @@ $onHand    = (float) $part['quantity_on_hand'];
 $level     = (float) $part['reorder_level'];
 $state     = Status::stockState($part);
 $unit      = (string) $part['unit_of_measure'];
-$canAdjust = can('parts.adjust');
+$canAdjust   = can('parts.adjust');
+$canSeeCosts = costs_visible();
 ?>
 
 <div class="grid grid-sidebar">
@@ -86,24 +88,26 @@ $canAdjust = can('parts.adjust');
                         <thead>
                             <tr>
                                 <th>When</th>
-                                <th>Asset</th>
+                                <th>Machine</th>
                                 <th>Job</th>
                                 <th class="is-numeric">Used</th>
-                                <th class="is-numeric">Cost</th>
+                                <?php if ($canSeeCosts): ?><th class="is-numeric">Cost</th><?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($usage as $row): ?>
                                 <tr>
                                     <td data-label="When"><?= e(Dates::date((string) $row['performed_at'])) ?></td>
-                                    <td data-label="Asset"><?= e((string) $row['asset_name']) ?></td>
+                                    <td data-label="Machine"><?= e((string) $row['asset_name']) ?></td>
                                     <td data-label="Job">
                                         <a href="<?= e(url('log-view.php', ['id' => (int) $row['log_id']])) ?>">
                                             <?= e((string) $row['title']) ?>
                                         </a>
                                     </td>
                                     <td data-label="Used" class="is-numeric"><?= e(decimal($row['quantity'])) ?></td>
-                                    <td data-label="Cost" class="is-numeric"><?= e(money($row['total_cost'])) ?></td>
+                                    <?php if ($canSeeCosts): ?>
+                                        <td data-label="Cost" class="is-numeric"><?= e(money($row['total_cost'])) ?></td>
+                                    <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -202,11 +206,13 @@ $canAdjust = can('parts.adjust');
                         </dd>
                     <?php endif; ?>
 
-                    <dt>Cost each</dt>
-                    <dd class="tabular"><?= e(money($part['unit_cost'])) ?></dd>
+                    <?php if ($canSeeCosts): ?>
+                        <dt>Cost each</dt>
+                        <dd class="tabular"><?= e(money($part['unit_cost'])) ?></dd>
 
-                    <dt>Value on the shelf</dt>
-                    <dd class="tabular"><?= e(money($onHand * (float) $part['unit_cost'])) ?></dd>
+                        <dt>Value on the shelf</dt>
+                        <dd class="tabular"><?= e(money($onHand * (float) $part['unit_cost'])) ?></dd>
+                    <?php endif; ?>
 
                     <?php if ((string) $part['location_bin'] !== ''): ?>
                         <dt>Where it lives</dt>

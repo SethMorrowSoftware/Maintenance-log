@@ -100,20 +100,40 @@ if (Request::string('export') === 'csv') {
     $rows = Part::forExport($filters);
     audit('export', 'part', null, 'Exported ' . count($rows) . ' parts to CSV');
 
+    $columns = [
+        'Part number'          => static fn (array $r) => $r['part_number'],
+        'Name'                 => static fn (array $r) => $r['name'],
+        'Description'          => static fn (array $r) => $r['description'],
+        'Category'             => static fn (array $r) => $r['category'],
+        'Manufacturer'         => static fn (array $r) => $r['manufacturer'],
+        'Supplier'             => static fn (array $r) => $r['supplier'],
+        'Supplier part number' => static fn (array $r) => $r['supplier_part_number'],
+        'Unit cost'            => static fn (array $r) => $r['unit_cost'],
+        'Unit'                 => static fn (array $r) => $r['unit_of_measure'],
+        'On hand'              => static fn (array $r) => $r['quantity_on_hand'],
+        'Reorder at'           => static fn (array $r) => $r['reorder_level'],
+        'Reorder quantity'     => static fn (array $r) => $r['reorder_quantity'],
+        'Stock value'          => static fn (array $r) => $r['stock_value'],
+        'Bin'                  => static fn (array $r) => $r['location_bin'],
+        'Notes'                => static fn (array $r) => $r['notes'],
+    ];
+
+    if (!costs_visible()) {
+        unset($columns['Unit cost'], $columns['Stock value']);
+    }
+
     Csv::stream(
         Csv::filename('parts'),
-        ['Part number', 'Name', 'Description', 'Category', 'Manufacturer', 'Supplier',
-         'Supplier part number', 'Unit cost', 'Unit', 'On hand', 'Reorder at',
-         'Reorder quantity', 'Stock value', 'Bin', 'Notes'],
+        array_keys($columns),
         $rows,
-        static function (array $row): array {
-            return [
-                $row['part_number'], $row['name'], $row['description'], $row['category'],
-                $row['manufacturer'], $row['supplier'], $row['supplier_part_number'],
-                $row['unit_cost'], $row['unit_of_measure'], $row['quantity_on_hand'],
-                $row['reorder_level'], $row['reorder_quantity'], $row['stock_value'],
-                $row['location_bin'], $row['notes'],
-            ];
+        static function (array $row) use ($columns): array {
+            $out = [];
+
+            foreach ($columns as $cell) {
+                $out[] = $cell($row);
+            }
+
+            return $out;
         }
     );
 }
@@ -140,7 +160,7 @@ if (can('reports.export')) {
 }
 
 View::render('parts/index', [
-    'title'       => 'Parts Inventory',
+    'title'       => 'Parts',
     'subtitle'    => 'What is on the shelf, what is running out',
     'activeNav'   => 'parts.php',
     'pageActions' => $actions,

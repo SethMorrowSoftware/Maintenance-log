@@ -55,7 +55,7 @@ if (is_post()) {
     ], [
         'name.required' => 'Give the job a name, such as "50 hour service".',
     ], [
-        'asset_id'        => 'Asset',
+        'asset_id'        => 'Machine',
         'frequency_type'  => 'How often',
         'frequency_value' => 'Interval',
         'meter_interval'  => 'Meter interval',
@@ -145,7 +145,7 @@ View::render('schedules/edit', [
     'subtitle' => $asset === null ? 'Planned servicing' : (string) $asset['name'],
     'activeNav' => 'schedules.php',
     'breadcrumbs' => [
-        ['label' => 'PM Schedules', 'url' => url('schedules.php')],
+        ['label' => 'Scheduled Service', 'url' => url('schedules.php')],
         ['label' => $editing ? 'Edit' : 'New'],
     ],
     'editing'    => $editing,

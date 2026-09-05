@@ -27,7 +27,7 @@ $hasMeter  = $asset !== null && $meterUnit !== 'none';
                 <div class="card-body">
                     <?php View::partial('asset-picker', [
                         'name'     => 'asset_id',
-                        'label'    => 'Which asset?',
+                        'label'    => 'Which machine?',
                         'value'    => $values['asset_id'],
                         'assets'   => $assets,
                         'required' => true,
@@ -104,7 +104,7 @@ $hasMeter  = $asset !== null && $meterUnit !== 'none';
                         'hint'   => $hasMeter
                             ? 'For example 50 to service every 50 ' . $meterUnit . '. '
                               . 'Fill this in as well as a calendar interval and whichever comes first wins.'
-                            : 'This asset has no meter, so leave this blank.',
+                            : 'This machine has no meter, so leave this blank.',
                         'attrs'  => ['min' => '0', 'step' => '0.01'],
                     ]); ?>
 

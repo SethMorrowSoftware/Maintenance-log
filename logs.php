@@ -64,43 +64,53 @@ if (Request::string('export') === 'csv') {
     $rows = MaintenanceLog::forExport($filters);
     audit('export', 'maintenance_log', null, 'Exported ' . count($rows) . ' maintenance logs to CSV');
 
+    // One column per entry, so the money columns can be dropped for anybody who
+    // is not allowed to see them without two copies of the list.
+    $columns = [
+        'Date'            => static fn (array $r) => Dates::date((string) $r['performed_at'], ''),
+        'Time'            => static fn (array $r) => Dates::time((string) $r['performed_at'], ''),
+        'Machine tag'       => static fn (array $r) => $r['asset_tag'],
+        'Machine'           => static fn (array $r) => $r['asset_name'],
+        'Category'        => static fn (array $r) => $r['category'],
+        'Location'        => static fn (array $r) => $r['location'],
+        'Type'            => static fn (array $r) => Status::label((string) $r['log_type'], 'log_type'),
+        'Job'             => static fn (array $r) => $r['title'],
+        'Description'     => static fn (array $r) => $r['description'],
+        'Work performed'  => static fn (array $r) => $r['work_performed'],
+        'Technician'      => static fn (array $r) => trim((string) $r['technician']),
+        'Hours'           => static fn (array $r) => $r['labor_hours'],
+        'Labour cost'     => static fn (array $r) => $r['labor_cost'],
+        'Parts cost'      => static fn (array $r) => $r['parts_cost'],
+        'Other cost'      => static fn (array $r) => $r['other_cost'],
+        'Total cost'      => static fn (array $r) => $r['total_cost'],
+        'Parts used'      => static fn (array $r) => $r['parts_used'],
+        'Meter reading'   => static fn (array $r) => $r['meter_reading'],
+        'Downtime (min)'  => static fn (array $r) => $r['downtime_minutes'],
+        'Status after'    => static fn (array $r) => $r['status_after'] === null ? '' : Status::label((string) $r['status_after'], 'asset'),
+        'Follow-up needed' => static fn (array $r) => (int) $r['requires_followup'] === 1 ? 'Yes' : 'No',
+        'Follow-up notes' => static fn (array $r) => $r['followup_notes'],
+    ];
+
+    if (!costs_visible()) {
+        unset($columns['Labour cost'], $columns['Parts cost'], $columns['Other cost'], $columns['Total cost']);
+    }
+
     Csv::stream(
         Csv::filename('maintenance-logs'),
-        [
-            'Date', 'Time', 'Asset tag', 'Asset', 'Category', 'Location', 'Type', 'Job',
-            'Description', 'Work performed', 'Technician', 'Hours', 'Labour cost',
-            'Parts cost', 'Other cost', 'Total cost', 'Parts used', 'Meter reading',
-            'Downtime (min)', 'Status after', 'Follow-up needed', 'Follow-up notes',
-        ],
+        array_keys($columns),
         $rows,
-        static function (array $row): array {
-            return [
-                Dates::date((string) $row['performed_at'], ''),
-                Dates::time((string) $row['performed_at'], ''),
-                $row['asset_tag'],
-                $row['asset_name'],
-                $row['category'],
-                $row['location'],
-                Status::label((string) $row['log_type'], 'log_type'),
-                $row['title'],
-                $row['description'],
-                $row['work_performed'],
-                trim((string) $row['technician']),
-                $row['labor_hours'],
-                $row['labor_cost'],
-                $row['parts_cost'],
-                $row['other_cost'],
-                $row['total_cost'],
-                $row['parts_used'],
-                $row['meter_reading'],
-                $row['downtime_minutes'],
-                $row['status_after'] === null ? '' : Status::label((string) $row['status_after'], 'asset'),
-                (int) $row['requires_followup'] === 1 ? 'Yes' : 'No',
-                $row['followup_notes'],
-            ];
+        static function (array $row) use ($columns): array {
+            $out = [];
+
+            foreach ($columns as $cell) {
+                $out[] = $cell($row);
+            }
+
+            return $out;
         }
     );
 }
+
 
 $total     = MaintenanceLog::count($filters);
 $paginator = Paginator::fromRequest($total, null, 'logs.php');

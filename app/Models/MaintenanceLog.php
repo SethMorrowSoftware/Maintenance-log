@@ -18,7 +18,7 @@ use Throwable;
  * Maintenance logs: the record of who worked on what, when, and what they did.
  *
  * This is the table the whole application exists to fill in, so saving one is
- * deliberately forgiving. A technician can record a job with an asset, a title
+ * deliberately forgiving. A technician can record a job with a machine, a title
  * and a time; everything else is optional and can be added later.
  */
 final class MaintenanceLog
@@ -394,7 +394,7 @@ final class MaintenanceLog
             }
         }
 
-        // 2. Asset status
+        // 2. Machine status
         if ($statusAfter !== null && $statusAfter !== '') {
             try {
                 Asset::changeStatus($assetId, (string) $statusAfter, 'Set on a maintenance log');
@@ -544,10 +544,23 @@ final class MaintenanceLog
      * @param  mixed $input
      * @return list<array<string, mixed>>
      */
-    public static function normaliseParts($input): array
+    public static function normaliseParts($input, array $existing = []): array
     {
         if (!is_array($input)) {
             return [];
+        }
+
+        // Prices already on this log, so a line re-submitted by somebody who
+        // cannot see prices keeps the one an administrator gave it.
+        $knownById   = [];
+        $knownByName = [];
+
+        foreach ($existing as $line) {
+            if (!empty($line['part_id'])) {
+                $knownById[(int) $line['part_id']] = (float) $line['unit_cost'];
+            }
+
+            $knownByName[mb_strtolower(trim((string) $line['part_name']), 'UTF-8')] = (float) $line['unit_cost'];
         }
 
         $out = [];
@@ -563,11 +576,29 @@ final class MaintenanceLog
                 continue;   // an empty repeater row the user never filled in
             }
 
+            $partId   = empty($row['part_id']) ? null : (int) $row['part_id'];
             $quantity = (float) preg_replace('/[^0-9.\-]/', '', (string) ($row['quantity'] ?? '1'));
-            $unitCost = (float) preg_replace('/[^0-9.\-]/', '', (string) ($row['unit_cost'] ?? '0'));
+
+            // The price, in order of who knows best: whatever was typed; the
+            // price this line already had; the shelf price of the stock part;
+            // nothing. A form that hides prices sends none, and still ends up
+            // with the right figure on the record.
+            $typed = trim((string) ($row['unit_cost'] ?? ''));
+
+            if ($typed !== '') {
+                $unitCost = (float) preg_replace('/[^0-9.\-]/', '', $typed);
+            } elseif ($partId !== null && isset($knownById[$partId])) {
+                $unitCost = $knownById[$partId];
+            } elseif (isset($knownByName[mb_strtolower($name, 'UTF-8')])) {
+                $unitCost = $knownByName[mb_strtolower($name, 'UTF-8')];
+            } elseif ($partId !== null) {
+                $unitCost = (float) (db()->value('SELECT unit_cost FROM {parts} WHERE id = ?', [$partId]) ?? 0);
+            } else {
+                $unitCost = 0.0;
+            }
 
             $out[] = [
-                'part_id'     => empty($row['part_id']) ? null : (int) $row['part_id'],
+                'part_id'     => $partId,
                 'part_number' => mb_substr(trim((string) ($row['part_number'] ?? '')), 0, 100, 'UTF-8'),
                 'part_name'   => mb_substr($name, 0, 191, 'UTF-8'),
                 'quantity'    => max(0, $quantity),

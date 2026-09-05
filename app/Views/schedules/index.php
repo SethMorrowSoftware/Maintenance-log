@@ -41,9 +41,9 @@ foreach ($assets as $asset) {
 
         <form method="get" action="<?= e(url('schedules.php')) ?>" class="flex gap-2 items-center">
             <input type="hidden" name="due" value="<?= e($show) ?>">
-            <label class="sr-only" for="asset-filter">Filter by asset</label>
+            <label class="sr-only" for="asset-filter">Filter by machine</label>
             <select class="form-select" id="asset-filter" name="asset_id" data-autosubmit style="min-width:200px">
-                <option value="">All assets</option>
+                <option value="">All machines</option>
                 <?php foreach ($assetOptions as $value => $label): ?>
                     <option value="<?= (int) $value ?>"<?= selected($value, $assetId) ?>><?= e($label) ?></option>
                 <?php endforeach; ?>
@@ -66,14 +66,14 @@ foreach ($assets as $asset) {
             <table class="table is-stacked">
                 <thead>
                     <tr>
-                        <th>Asset</th><th>Job</th><th>Every</th><th>Last done</th>
+                        <th>Machine</th><th>Job</th><th>Every</th><th>Last done</th>
                         <th>Next due</th><th>Assigned</th><th class="is-actions no-print"></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($schedules as $schedule): ?>
                         <tr class="<?= $schedule['due_state'] === 'overdue' ? 'is-danger' : ($schedule['due_state'] === 'due_soon' || $schedule['due_state'] === 'due' ? 'is-warn' : '') ?>">
-                            <td data-label="Asset" class="is-row-title">
+                            <td data-label="Machine" class="is-row-title">
                                 <a href="<?= e(url('asset-view.php', ['id' => (int) $schedule['asset_id']])) ?>">
                                     <?= e((string) $schedule['asset_name']) ?>
                                 </a>

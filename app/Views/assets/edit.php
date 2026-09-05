@@ -1,6 +1,6 @@
 <?php
 /**
- * Add or edit an asset.
+ * Add or edit a machine.
  *
  * Six fields are all anyone needs to get a kart into the system. Everything
  * else — engine details, purchase records, notes — sits behind collapsed
@@ -41,7 +41,7 @@ use App\View;
                     <div class="form-row cols-2">
                         <?php View::partial('form-field', [
                             'name'     => 'asset_tag',
-                            'label'    => 'Asset tag',
+                            'label'    => 'Machine tag',
                             'type'     => 'text',
                             'value'    => $values['asset_tag'],
                             'required' => true,
@@ -210,7 +210,7 @@ use App\View;
             <?php // ================ Purchase and warranty (optional) ================ ?>
             <details class="card" <?= $editing && ($values['purchase_date'] || $values['purchase_cost']) ? 'open' : '' ?>>
                 <summary class="card-header" style="cursor:pointer;list-style:none">
-                    <h2 class="card-title"><?= icon('dollar-sign', '', 18) ?> Purchase and warranty</h2>
+                    <h2 class="card-title"><?= icon('calendar', '', 18) ?> Purchase and warranty</h2>
                     <span class="text-sm text-muted">Optional <?= icon('chevron-down', '', 15) ?></span>
                 </summary>
                 <div class="card-body">
@@ -219,11 +219,13 @@ use App\View;
                             'name' => 'purchase_date', 'label' => 'Purchased on', 'type' => 'date',
                             'value' => Dates::inputDateOnly((string) $values['purchase_date']),
                         ]); ?>
-                        <?php View::partial('form-field', [
-                            'name' => 'purchase_cost', 'label' => 'Purchase price', 'type' => 'money',
-                            'value' => $values['purchase_cost'], 'prefix' => (string) App\Settings::currency(),
-                            'attrs' => ['min' => '0'],
-                        ]); ?>
+                        <?php if (costs_visible()): ?>
+                            <?php View::partial('form-field', [
+                                'name' => 'purchase_cost', 'label' => 'Purchase price', 'type' => 'money',
+                                'value' => $values['purchase_cost'], 'prefix' => (string) App\Settings::currency(),
+                                'attrs' => ['min' => '0'],
+                            ]); ?>
+                        <?php endif; ?>
                     </div>
                     <div class="form-row cols-2">
                         <?php View::partial('form-field', [
@@ -289,7 +291,7 @@ use App\View;
                                style="display:none">
                     </label>
                     <p class="form-hint">
-                        A photo makes an asset easy to identify on a phone. Up to
+                        A photo makes a machine easy to identify on a phone. Up to
                         <?= (int) round(App\Settings::maxUploadBytes() / 1048576) ?> MB.
                     </p>
                 </div>
@@ -299,7 +301,7 @@ use App\View;
                 <div class="card-body">
                     <button type="submit" class="btn btn-primary btn-block btn-lg">
                         <?= icon('save', '', 18) ?>
-                        <?= $editing ? 'Save changes' : 'Add asset' ?>
+                        <?= $editing ? 'Save changes' : 'Add machine' ?>
                     </button>
 
                     <?php if (!$editing): ?>
@@ -322,13 +324,13 @@ use App\View;
                     </div>
                     <div class="card-body">
                         <p class="text-sm text-muted mb-3">
-                            Deleting hides the asset from every list. Its maintenance history is kept,
+                            Deleting hides the machine from every list. Its maintenance history is kept,
                             so past reports stay accurate.
                         </p>
                         <?php View::partial('confirm-delete', [
                             'url'         => url('assets.php'),
                             'id'          => (int) $asset['id'],
-                            'label'       => 'Delete this asset',
+                            'label'       => 'Delete this machine',
                             'message'     => 'Delete “' . (string) $asset['name'] . '”? It will disappear from lists, '
                                            . 'but its maintenance history will be kept.',
                             'buttonClass' => 'btn btn-danger-outline btn-block',

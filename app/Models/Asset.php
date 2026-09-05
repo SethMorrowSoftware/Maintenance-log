@@ -13,7 +13,8 @@ use App\Uploader;
 use Throwable;
 
 /**
- * Assets: the karts, rides and machines being maintained.
+ * The karts, rides and other machines being maintained. Called "assets" in
+ * the code and the database, "machines" everywhere a person sees them.
  */
 final class Asset
 {
@@ -35,7 +36,7 @@ final class Asset
     }
 
     /**
-     * One asset with its category and location names.
+     * One machine with its category and location names.
      *
      * @return array<string, mixed>|null
      */
@@ -58,7 +59,7 @@ final class Asset
     }
 
     /**
-     * Look an asset up by its tag, or by the slug in a QR code.
+     * Look a machine up by its tag, or by the slug in a QR code.
      *
      * @return array<string, mixed>|null
      */
@@ -123,7 +124,7 @@ final class Asset
     }
 
     /**
-     * Count assets matching the filters.
+     * Count machines matching the filters.
      *
      * @param array<string, mixed> $filters
      */
@@ -141,7 +142,7 @@ final class Asset
     }
 
     /**
-     * A page of assets, each with its last service date and open work order count.
+     * A page of machines, each with its last service date and open work order count.
      *
      * @param  array<string, mixed> $filters
      * @return list<array<string, mixed>>
@@ -172,7 +173,7 @@ final class Asset
     }
 
     /**
-     * Every asset, for a dropdown.
+     * Every machine, for a dropdown.
      *
      * @return list<array<string, mixed>>
      */
@@ -192,7 +193,7 @@ final class Asset
     }
 
     /**
-     * Create an asset.
+     * Create a machine.
      *
      * @param array<string, mixed> $data already validated
      */
@@ -211,7 +212,7 @@ final class Asset
 
         $id = db()->insert('assets', $data);
 
-        Audit::created('asset', $id, 'Added asset "' . (string) $data['name'] . '"', $data);
+        Audit::created('asset', $id, 'Added machine "' . (string) $data['name'] . '"', $data);
 
         // A first meter reading is history too.
         if (!empty($data['meter_reading']) && (float) $data['meter_reading'] > 0) {
@@ -222,7 +223,7 @@ final class Asset
     }
 
     /**
-     * Update an asset, auditing what changed.
+     * Update a machine, auditing what changed.
      *
      * @param array<string, mixed> $data
      */
@@ -238,7 +239,7 @@ final class Asset
 
         db()->update('assets', $data, ['id' => $id]);
 
-        Audit::updated('asset', $id, 'Updated asset "' . (string) $before['name'] . '"', $before, $data);
+        Audit::updated('asset', $id, 'Updated machine "' . (string) $before['name'] . '"', $before, $data);
 
         // A status change is the thing people most often want to look back on,
         // so it gets its own audit line in plain words.
@@ -255,7 +256,7 @@ final class Asset
     }
 
     /**
-     * Change status on its own, from a list row or the asset page.
+     * Change status on its own, from a list row or the machine page.
      */
     public static function changeStatus(int $id, string $status, string $reason = ''): bool
     {
@@ -311,7 +312,7 @@ final class Asset
             'updated_by' => Auth::id(),
         ], ['id' => $id]);
 
-        Audit::deleted('asset', $id, 'Deleted asset "' . (string) $asset['name'] . '"', [
+        Audit::deleted('asset', $id, 'Deleted machine "' . (string) $asset['name'] . '"', [
             'asset_tag' => $asset['asset_tag'],
             'name'      => $asset['name'],
         ]);
@@ -328,7 +329,7 @@ final class Asset
         }
 
         db()->update('assets', ['deleted_at' => null, 'updated_by' => Auth::id()], ['id' => $id]);
-        Audit::record('restore', 'asset', $id, 'Restored asset "' . (string) $asset['name'] . '"');
+        Audit::record('restore', 'asset', $id, 'Restored machine "' . (string) $asset['name'] . '"');
 
         return true;
     }
@@ -338,7 +339,7 @@ final class Asset
     // -------------------------------------------------------------------------
 
     /**
-     * Record a meter reading and move the asset's current value.
+     * Record a meter reading and move the machine's current value.
      *
      * @return array{ok: bool, error: string}
      */
@@ -353,11 +354,11 @@ final class Asset
         $asset = self::find($id);
 
         if ($asset === null) {
-            return ['ok' => false, 'error' => 'That asset does not exist.'];
+            return ['ok' => false, 'error' => 'That machine does not exist.'];
         }
 
         if ((string) $asset['meter_type'] === 'none') {
-            return ['ok' => false, 'error' => 'This asset does not have a meter.'];
+            return ['ok' => false, 'error' => 'This machine does not have a meter.'];
         }
 
         if ($reading < 0) {
@@ -369,13 +370,13 @@ final class Asset
         // Hours and miles only go up. A lower number is nearly always a typo,
         // and letting it through would rewind every meter-based service due
         // date on the machine. Correcting a replaced meter is a deliberate act,
-        // done on the asset itself.
+        // done on the machine itself.
         if (!$allowDecrease && $reading < $previous - 0.004) {
             return [
                 'ok'    => false,
                 'error' => 'That reading (' . decimal($reading) . ') is lower than the last one ('
                     . decimal($previous) . ' ' . (string) $asset['meter_type'] . '). '
-                    . 'Check the number. If the meter was replaced or reset, change it on the asset itself.',
+                    . 'Check the number. If the meter was replaced or reset, change it on the machine itself.',
             ];
         }
 
@@ -446,11 +447,268 @@ final class Asset
     }
 
     // -------------------------------------------------------------------------
+    // The full history of one machine
+    // -------------------------------------------------------------------------
+
+    /**
+     * Everything that has ever happened to a machine, newest first, as one list.
+     *
+     * This is the troubleshooting view. Somebody standing at a kart with a
+     * noise wants to see, in one place and in order: the last time it was in
+     * the workshop, what was replaced, the check that failed last month, the
+     * work order that closed, the day it went out of service and why. Five
+     * tables hold those; this puts them on one line each.
+     *
+     * A search phrase narrows every kind at once — "brake" finds the job that
+     * replaced the pads, the inspection line that failed, and the work order
+     * that reported the squeal.
+     *
+     * @return list<array{when: string, kind: string, tone: string, icon: string,
+     *                    title: string, detail: string, who: string, url: string}>
+     */
+    public static function timeline(int $assetId, string $search = '', int $limit = 300): array
+    {
+        $search = trim($search);
+        $like   = $search === '' ? null : Str::likeContains($search);
+        $events = [];
+
+        // Maintenance logs, with the parts that went on.
+        $sql = "SELECT l.id, l.title, l.log_type, l.performed_at, l.description, l.work_performed,
+                       l.labor_hours, l.downtime_minutes, l.status_after, l.requires_followup,
+                       TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) AS who,
+                       (SELECT GROUP_CONCAT(CONCAT(mp.quantity, ' × ', mp.part_name) SEPARATOR ', ')
+                          FROM {maintenance_log_parts} mp WHERE mp.log_id = l.id) AS parts_used
+                FROM {maintenance_logs} l
+                LEFT JOIN {users} u ON u.id = l.user_id
+                WHERE l.asset_id = ? AND l.deleted_at IS NULL";
+        $params = [$assetId];
+
+        if ($like !== null) {
+            $sql .= " AND (l.title LIKE ? OR l.description LIKE ? OR l.work_performed LIKE ?
+                          OR EXISTS (SELECT 1 FROM {maintenance_log_parts} mp
+                                      WHERE mp.log_id = l.id AND mp.part_name LIKE ?))";
+            array_push($params, $like, $like, $like, $like);
+        }
+
+        foreach (db()->all($sql . ' ORDER BY l.performed_at DESC LIMIT ' . (int) $limit, $params) as $row) {
+            $bits = [];
+
+            if ((string) ($row['work_performed'] ?? '') !== '') {
+                $bits[] = Str::limit((string) $row['work_performed'], 220);
+            } elseif ((string) ($row['description'] ?? '') !== '') {
+                $bits[] = Str::limit((string) $row['description'], 220);
+            }
+
+            if ((string) ($row['parts_used'] ?? '') !== '') {
+                $bits[] = 'Parts: ' . (string) $row['parts_used'];
+            }
+
+            $meta = [];
+
+            if ((float) $row['labor_hours'] > 0) {
+                $meta[] = Dates::humanHours((float) $row['labor_hours']);
+            }
+
+            if ((int) $row['downtime_minutes'] > 0) {
+                $meta[] = 'out of service ' . Dates::humanDuration((int) $row['downtime_minutes']);
+            }
+
+            $events[] = [
+                'when'   => (string) $row['performed_at'],
+                'kind'   => 'log',
+                'tone'   => \App\Status::tone((string) $row['log_type'], 'log_type'),
+                'icon'   => 'wrench',
+                'label'  => \App\Status::label((string) $row['log_type'], 'log_type'),
+                'title'  => (string) $row['title'],
+                'detail' => implode("\n", $bits),
+                'meta'   => implode(' · ', $meta),
+                'who'    => (string) $row['who'],
+                'url'    => url('log-view.php', ['id' => (int) $row['id']]),
+                'flag'   => (int) $row['requires_followup'] === 1 ? 'Needs follow-up' : '',
+            ];
+        }
+
+        // Inspections, with whatever failed.
+        $sql = "SELECT i.id, i.checklist_name, i.status, i.started_at, i.completed_at,
+                       i.passed_count, i.failed_count, i.critical_failed, i.notes,
+                       TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) AS who,
+                       (SELECT GROUP_CONCAT(ii.item_text SEPARATOR '; ')
+                          FROM {inspection_items} ii
+                         WHERE ii.inspection_id = i.id AND ii.response IN ('fail','no')) AS failed_items
+                FROM {inspections} i
+                LEFT JOIN {users} u ON u.id = i.user_id
+                WHERE i.asset_id = ? AND i.status <> 'in_progress'";
+        $params = [$assetId];
+
+        if ($like !== null) {
+            $sql .= " AND (i.checklist_name LIKE ? OR i.notes LIKE ?
+                          OR EXISTS (SELECT 1 FROM {inspection_items} ii
+                                      WHERE ii.inspection_id = i.id
+                                        AND (ii.item_text LIKE ? OR ii.notes LIKE ?)))";
+            array_push($params, $like, $like, $like, $like);
+        }
+
+        foreach (db()->all($sql . ' ORDER BY i.started_at DESC LIMIT ' . (int) $limit, $params) as $row) {
+            $failed = (int) $row['failed_count'];
+            $detail = $failed > 0 && (string) ($row['failed_items'] ?? '') !== ''
+                ? 'Failed: ' . Str::limit((string) $row['failed_items'], 240)
+                : '';
+
+            if ((string) ($row['notes'] ?? '') !== '') {
+                $detail .= ($detail === '' ? '' : "\n") . Str::limit((string) $row['notes'], 160);
+            }
+
+            $events[] = [
+                'when'   => (string) ($row['completed_at'] ?: $row['started_at']),
+                'kind'   => 'inspection',
+                'tone'   => $failed > 0 ? ((int) $row['critical_failed'] === 1 ? 'danger' : 'warn') : 'ok',
+                'icon'   => 'clipboard-check',
+                'label'  => $failed > 0 ? 'Inspection failed' : 'Inspection passed',
+                'title'  => (string) $row['checklist_name'],
+                'detail' => $detail,
+                'meta'   => (int) $row['passed_count'] . ' passed' . ($failed > 0 ? ', ' . $failed . ' failed' : ''),
+                'who'    => (string) $row['who'],
+                'url'    => url('inspection-view.php', ['id' => (int) $row['id']]),
+                'flag'   => (int) $row['critical_failed'] === 1 ? 'Safety-critical' : '',
+            ];
+        }
+
+        // Work orders: raised, and closed if they have been.
+        $sql = "SELECT w.id, w.wo_number, w.title, w.description, w.resolution, w.status, w.priority,
+                       w.created_at, w.completed_at, w.is_safety_issue,
+                       TRIM(CONCAT(COALESCE(r.first_name,''), ' ', COALESCE(r.last_name,''))) AS reporter,
+                       TRIM(CONCAT(COALESCE(c.first_name,''), ' ', COALESCE(c.last_name,''))) AS closer
+                FROM {work_orders} w
+                LEFT JOIN {users} r ON r.id = w.reported_by
+                LEFT JOIN {users} c ON c.id = w.closed_by
+                WHERE w.asset_id = ? AND w.deleted_at IS NULL";
+        $params = [$assetId];
+
+        if ($like !== null) {
+            $sql .= ' AND (w.title LIKE ? OR w.description LIKE ? OR w.resolution LIKE ? OR w.wo_number LIKE ?)';
+            array_push($params, $like, $like, $like, $like);
+        }
+
+        foreach (db()->all($sql . ' ORDER BY w.created_at DESC LIMIT ' . (int) $limit, $params) as $row) {
+            $url = url('workorder-view.php', ['id' => (int) $row['id']]);
+
+            $events[] = [
+                'when'   => (string) $row['created_at'],
+                'kind'   => 'workorder',
+                'tone'   => \App\Status::tone((string) $row['priority'], 'priority'),
+                'icon'   => 'work-order',
+                'label'  => 'Problem reported',
+                'title'  => (string) $row['wo_number'] . ' — ' . (string) $row['title'],
+                'detail' => Str::limit((string) ($row['description'] ?? ''), 220),
+                'meta'   => \App\Status::label((string) $row['priority'], 'priority') . ' priority'
+                    . (in_array((string) $row['status'], ['completed', 'cancelled'], true)
+                        ? '' : ' · still ' . strtolower(\App\Status::label((string) $row['status'], 'workorder'))),
+                'who'    => (string) $row['reporter'],
+                'url'    => $url,
+                'flag'   => (int) $row['is_safety_issue'] === 1 ? 'Safety' : '',
+            ];
+
+            if (!empty($row['completed_at'])) {
+                $events[] = [
+                    'when'   => (string) $row['completed_at'],
+                    'kind'   => 'workorder_done',
+                    'tone'   => 'ok',
+                    'icon'   => 'check-circle',
+                    'label'  => 'Problem ' . ((string) $row['status'] === 'cancelled' ? 'cancelled' : 'fixed'),
+                    'title'  => (string) $row['wo_number'] . ' — ' . (string) $row['title'],
+                    'detail' => Str::limit((string) ($row['resolution'] ?? ''), 220),
+                    'meta'   => '',
+                    'who'    => (string) $row['closer'],
+                    'url'    => $url,
+                    'flag'   => '',
+                ];
+            }
+        }
+
+        // Status changes come from the audit trail, which is the only place the
+        // reason ("Failed inspection on…") is written down.
+        $sql = "SELECT a.description, a.created_at, a.user_name
+                FROM {audit_log} a
+                WHERE a.entity_type = 'asset' AND a.entity_id = ? AND a.action = 'status.change'";
+        $params = [$assetId];
+
+        if ($like !== null) {
+            $sql     .= ' AND a.description LIKE ?';
+            $params[] = $like;
+        }
+
+        foreach (db()->all($sql . ' ORDER BY a.created_at DESC LIMIT ' . (int) $limit, $params) as $row) {
+            // "Go-Kart #2: In service to Out of service — Failed inspection…"
+            $text  = (string) $row['description'];
+            $colon = strpos($text, ': ');
+            $text  = $colon === false ? $text : substr($text, $colon + 2);
+            $parts = explode(' — ', $text, 2);
+
+            $events[] = [
+                'when'   => (string) $row['created_at'],
+                'kind'   => 'status',
+                'tone'   => stripos($parts[0], 'to in service') !== false ? 'ok' : 'warn',
+                'icon'   => 'activity',
+                'label'  => 'Status changed',
+                'title'  => $parts[0],
+                'detail' => $parts[1] ?? '',
+                'meta'   => '',
+                'who'    => (string) $row['user_name'],
+                'url'    => '',
+                'flag'   => '',
+            ];
+        }
+
+        // Meter readings typed in by hand. The ones taken on a job or a check
+        // already show against that job or check.
+        if ($like === null) {
+            $rows = db()->all(
+                "SELECT m.reading, m.previous_reading, m.recorded_at, m.notes,
+                        TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) AS who
+                 FROM {meter_readings} m
+                 LEFT JOIN {users} u ON u.id = m.user_id
+                 WHERE m.asset_id = ? AND m.source = 'manual'
+                 ORDER BY m.recorded_at DESC LIMIT " . (int) $limit,
+                [$assetId]
+            );
+
+            foreach ($rows as $row) {
+                $events[] = [
+                    'when'   => (string) $row['recorded_at'],
+                    'kind'   => 'meter',
+                    'tone'   => 'muted',
+                    'icon'   => 'gauge',
+                    'label'  => 'Meter reading',
+                    'title'  => decimal($row['reading'])
+                        . ($row['previous_reading'] !== null ? ' (was ' . decimal($row['previous_reading']) . ')' : ''),
+                    'detail' => (string) ($row['notes'] ?? ''),
+                    'meta'   => '',
+                    'who'    => (string) $row['who'],
+                    'url'    => '',
+                    'flag'   => '',
+                ];
+            }
+        }
+
+        usort($events, static function (array $a, array $b): int {
+            return strcmp($b['when'], $a['when']);
+        });
+
+        // Blank lines in a write-up would leave holes in the list.
+        foreach ($events as &$event) {
+            $event['detail'] = trim((string) preg_replace("/\n{2,}/", "\n", str_replace("\r", '', (string) $event['detail'])));
+        }
+        unset($event);
+
+        return array_slice($events, 0, $limit);
+    }
+
+    // -------------------------------------------------------------------------
     // Related records
     // -------------------------------------------------------------------------
 
     /**
-     * Everything shown on an asset's page, counted for the tab badges.
+     * Everything shown on a machine's page, counted for the tab badges.
      *
      * @return array<string, int>
      */
@@ -479,7 +737,7 @@ final class Asset
     }
 
     /**
-     * Headline numbers for one asset: what it has cost and how often it breaks.
+     * Headline numbers for one machine: what it has cost and how often it breaks.
      *
      * @return array<string, mixed>
      */
@@ -520,7 +778,7 @@ final class Asset
     // Helpers
     // -------------------------------------------------------------------------
 
-    /** A short random slug for the QR code, unique across assets. */
+    /** A short random slug for the QR code, unique across machines. */
     private static function uniqueSlug(): string
     {
         for ($attempt = 0; $attempt < 8; $attempt++) {
@@ -535,7 +793,7 @@ final class Asset
     }
 
     /**
-     * Suggest the next asset tag in a series, so adding kart nine after kart
+     * Suggest the next machine tag in a series, so adding kart nine after kart
      * eight does not mean typing GK-009 and getting it wrong.
      */
     public static function suggestTag(?int $categoryId): string

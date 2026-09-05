@@ -48,21 +48,28 @@ final class PartsController
             $params
         );
 
-        $out = [];
+        $out       = [];
+        $showMoney = costs_visible();
 
         foreach ($rows as $row) {
-            $out[] = [
+            $item = [
                 'id'          => (int) $row['id'],
                 'label'       => (string) $row['name'],
                 'part_number' => (string) $row['part_number'],
                 'meta'        => (string) $row['part_number'] . ' · '
                     . decimal($row['quantity_on_hand']) . ' ' . (string) $row['unit_of_measure']
                     . ' on hand',
-                'unit_cost'   => (float) $row['unit_cost'],
                 'on_hand'     => (float) $row['quantity_on_hand'],
                 'unit'        => (string) $row['unit_of_measure'],
                 'stock_state' => Status::stockState($row),
             ];
+
+            // The price is only in the response for somebody allowed to see it.
+            if ($showMoney) {
+                $item['unit_cost'] = (float) $row['unit_cost'];
+            }
+
+            $out[] = $item;
         }
 
         return ['parts' => $out];

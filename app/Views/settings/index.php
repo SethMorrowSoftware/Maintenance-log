@@ -12,6 +12,7 @@ use App\Str;
 use App\View;
 
 $logoUrl = Settings::logoUrl();
+$health  = $health ?? null;
 ?>
 
 <?php
@@ -26,6 +27,136 @@ foreach ($groups as $groupKey => $groupLabel) {
 
 View::partial('tabs', ['tabs' => $tabLinks, 'active' => $tab]);
 ?>
+
+<?php if ($tab === 'system' && $health !== null): ?>
+    <?php
+    // ==================== System: is it healthy? ====================
+    $worst = 'ok';
+
+    foreach ($health['checks'] as $check) {
+        if ($check['state'] === 'fail') {
+            $worst = 'fail';
+        } elseif ($check['state'] === 'warn' && $worst !== 'fail') {
+            $worst = 'warn';
+        }
+    }
+
+    $stateLabel = ['ok' => 'Fine', 'info' => 'Note', 'warn' => 'Check', 'fail' => 'Problem'];
+    $stateTone  = ['ok' => 'ok', 'info' => 'info', 'warn' => 'warn', 'fail' => 'danger'];
+    ?>
+
+    <div class="alert alert-<?= $worst === 'ok' ? 'success' : ($worst === 'fail' ? 'error' : 'warning') ?>">
+        <?= icon($worst === 'ok' ? 'check-circle' : 'alert-triangle', '', 18) ?>
+        <div class="alert-body">
+            <strong class="alert-title">
+                <?php if ($worst === 'ok'): ?>
+                    Everything looks healthy
+                <?php elseif ($worst === 'warn'): ?>
+                    Working, with a few things worth a look
+                <?php else: ?>
+                    Something needs fixing
+                <?php endif; ?>
+            </strong>
+            <p style="margin:4px 0 0">
+                Checked just now. Each line below says what it means and what to do about it.
+            </p>
+        </div>
+    </div>
+
+    <div class="stat-grid">
+        <?php foreach ($health['counts'] as $count): ?>
+            <?php View::partial('stat-card', [
+                'label' => $count['label'], 'value' => $count['value'],
+                'icon'  => $count['icon'], 'tone' => 'muted',
+            ]); ?>
+        <?php endforeach; ?>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title"><?= icon('activity', '', 18) ?> Health checks</h2>
+                <p class="card-subtitle">The things that go wrong on shared hosting, checked live</p>
+            </div>
+        </div>
+        <ul class="health-list">
+            <?php foreach ($health['checks'] as $check): ?>
+                <li class="health-item tone-<?= e($stateTone[$check['state']] ?? 'info') ?>">
+                    <span class="badge badge-<?= e($stateTone[$check['state']] ?? 'info') ?> health-state">
+                        <?= e($stateLabel[$check['state']] ?? 'Note') ?>
+                    </span>
+                    <div class="health-body">
+                        <div class="health-head">
+                            <strong><?= e($check['label']) ?></strong>
+                            <span class="health-value"><?= e($check['value']) ?></span>
+                        </div>
+                        <?php if ($check['hint'] !== ''): ?>
+                            <div class="health-hint"><?= e($check['hint']) ?></div>
+                        <?php endif; ?>
+                    </div>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+
+    <div class="grid grid-2">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title"><?= icon('download', '', 18) ?> Everything, in one file</h2>
+                    <p class="card-subtitle">A copy of every record, for backup or for moving elsewhere</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="text-sm text-muted">
+                    Machines, jobs, parts, work orders, inspections, schedules, people and the change log,
+                    as spreadsheet files<?= class_exists('ZipArchive') ? ' inside one ZIP' : '' ?>.
+                    Passwords and secret tokens are left out. Photos are not included: they live in
+                    <code>storage/uploads</code>, which cPanel's backup covers.
+                </p>
+                <a class="btn btn-primary" href="<?= e(url('export.php')) ?>" data-no-guard>
+                    <?= icon('download', '', 17) ?> Download everything
+                </a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title"><?= icon('clock', '', 18) ?> The nightly job</h2>
+                    <p class="card-subtitle">Run it by hand to check it works, or to catch up</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="text-sm text-muted">
+                    Works out what service is due, warns about parts running low and tidies old records.
+                    Normally cron runs it every morning; the command is under Security.
+                </p>
+                <a class="btn btn-secondary" href="<?= e(url('cron.php')) ?>" target="_blank" rel="noopener">
+                    <?= icon('play', '', 17) ?> Run it now
+                </a>
+                <a class="btn btn-ghost" href="<?= e(url('settings.php', ['tab' => 'security'])) ?>">
+                    Cron command
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title"><?= icon('info', '', 18) ?> About this installation</h2>
+        </div>
+        <div class="card-body">
+            <dl class="detail-list">
+                <?php foreach ($health['facts'] as $fact): ?>
+                    <dt><?= e($fact['label']) ?></dt>
+                    <dd><?= e($fact['value']) ?></dd>
+                <?php endforeach; ?>
+            </dl>
+        </div>
+    </div>
+
+<?php else: ?>
 
 <form method="post" action="<?= e(url('settings.php', ['tab' => $tab])) ?>" data-guard>
     <?= csrf_field() ?>
@@ -139,6 +270,8 @@ View::partial('tabs', ['tabs' => $tabLinks, 'active' => $tab]);
         </div>
     </div>
 </form>
+
+<?php endif; ?>
 
 <?php // ==================== Email: send a test ==================== ?>
 <?php if ($tab === 'email'): ?>

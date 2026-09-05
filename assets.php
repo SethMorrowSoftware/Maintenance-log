@@ -32,9 +32,9 @@ if (is_post()) {
         Acl::requirePermission('assets.delete');
 
         if (Asset::delete($id)) {
-            flash('success', 'Asset deleted. Its maintenance history has been kept.');
+            flash('success', 'Machine deleted. Its maintenance history has been kept.');
         } else {
-            flash('error', 'That asset could not be found.');
+            flash('error', 'That machine could not be found.');
         }
     }
 
@@ -82,41 +82,47 @@ if (Request::string('export') === 'csv') {
 
     $rows = Asset::forExport($filters);
 
-    audit('export', 'asset', null, 'Exported ' . count($rows) . ' assets to CSV');
+    audit('export', 'asset', null, 'Exported ' . count($rows) . ' machines to CSV');
+
+    $columns = [
+        'Machine tag'        => static fn (array $r) => $r['asset_tag'],
+        'Name'             => static fn (array $r) => $r['name'],
+        'Category'         => static fn (array $r) => $r['category'],
+        'Location'         => static fn (array $r) => $r['location'],
+        'Status'           => static fn (array $r) => Status::label((string) $r['status'], 'asset'),
+        'Criticality'      => static fn (array $r) => Status::label((string) $r['criticality'], 'criticality'),
+        'Manufacturer'     => static fn (array $r) => $r['manufacturer'],
+        'Model'            => static fn (array $r) => $r['model'],
+        'Serial number'    => static fn (array $r) => $r['serial_number'],
+        'VIN'              => static fn (array $r) => $r['vin'],
+        'Year'             => static fn (array $r) => $r['year_manufactured'],
+        'Purchase date'    => static fn (array $r) => $r['purchase_date'],
+        'Purchase cost'    => static fn (array $r) => $r['purchase_cost'],
+        'Warranty expires' => static fn (array $r) => $r['warranty_expires'],
+        'Meter type'       => static fn (array $r) => $r['meter_type'] === 'none' ? '' : $r['meter_type'],
+        'Meter reading'    => static fn (array $r) => $r['meter_type'] === 'none' ? '' : $r['meter_reading'],
+        'In service since' => static fn (array $r) => $r['in_service_date'],
+        'Last service'     => static fn (array $r) => $r['last_service'] === null ? '' : Dates::date((string) $r['last_service'], ''),
+        'Lifetime maintenance cost' => static fn (array $r) => $r['lifetime_cost'],
+        'Notes'            => static fn (array $r) => $r['notes'],
+    ];
+
+    if (!costs_visible()) {
+        unset($columns['Purchase cost'], $columns['Lifetime maintenance cost']);
+    }
 
     Csv::stream(
         Csv::filename('assets'),
-        [
-            'Asset tag', 'Name', 'Category', 'Location', 'Status', 'Criticality',
-            'Manufacturer', 'Model', 'Serial number', 'VIN', 'Year',
-            'Purchase date', 'Purchase cost', 'Warranty expires',
-            'Meter type', 'Meter reading', 'In service since',
-            'Last service', 'Lifetime maintenance cost', 'Notes',
-        ],
+        array_keys($columns),
         $rows,
-        static function (array $row): array {
-            return [
-                $row['asset_tag'],
-                $row['name'],
-                $row['category'],
-                $row['location'],
-                Status::label((string) $row['status'], 'asset'),
-                Status::label((string) $row['criticality'], 'criticality'),
-                $row['manufacturer'],
-                $row['model'],
-                $row['serial_number'],
-                $row['vin'],
-                $row['year_manufactured'],
-                $row['purchase_date'],
-                $row['purchase_cost'],
-                $row['warranty_expires'],
-                $row['meter_type'] === 'none' ? '' : $row['meter_type'],
-                $row['meter_type'] === 'none' ? '' : $row['meter_reading'],
-                $row['in_service_date'],
-                $row['last_service'] === null ? '' : Dates::date((string) $row['last_service'], ''),
-                $row['lifetime_cost'],
-                $row['notes'],
-            ];
+        static function (array $row) use ($columns): array {
+            $out = [];
+
+            foreach ($columns as $cell) {
+                $out[] = $cell($row);
+            }
+
+            return $out;
         }
     );
 }
@@ -148,7 +154,7 @@ $actions = '';
 
 if (can('assets.create')) {
     $actions .= '<a class="btn btn-primary" href="' . e(url('asset-edit.php')) . '">'
-        . icon('plus', '', 17) . ' Add asset</a>';
+        . icon('plus', '', 17) . ' Add machine</a>';
 }
 
 if (can('reports.export')) {
@@ -161,7 +167,7 @@ $actions .= '<a class="btn btn-secondary" href="' . e(url('labels.php')) . '">'
     . icon('qr-code', '', 17) . ' Print labels</a>';
 
 View::render('assets/index', [
-    'title'        => 'Assets',
+    'title'        => 'Machines',
     'subtitle'     => 'Every kart, ride and machine you look after',
     'activeNav'    => 'assets.php',
     'pageActions'  => $actions,

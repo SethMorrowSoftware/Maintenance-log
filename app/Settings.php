@@ -330,6 +330,7 @@ final class Settings
             'email'        => 'Email',
             'security'     => 'Security',
             'branding'     => 'Branding',
+            'system'       => 'System',
         ];
     }
 

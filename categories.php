@@ -40,7 +40,7 @@ if (is_post()) {
         );
 
         if ($inUse > 0) {
-            flash('error', 'That is still used by ' . $inUse . ' asset' . ($inUse === 1 ? '' : 's') . '. '
+            flash('error', 'That is still used by ' . $inUse . ' machine' . ($inUse === 1 ? '' : 's') . '. '
                 . 'Move them somewhere else first, or switch this off instead of deleting it.');
             redirect($back);
         }

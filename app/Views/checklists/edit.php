@@ -229,8 +229,8 @@ $canDelete = $editing && can('checklists.manage');
                         'type'    => 'select',
                         'value'   => $values['applies_to'],
                         'options' => [
-                            'category' => 'A kind of asset (all go-karts, all rides…)',
-                            'asset'    => 'One particular asset',
+                            'category' => 'A kind of machine (all go-karts, all rides…)',
+                            'asset'    => 'One particular machine',
                             'all'      => 'Everything',
                         ],
                         'hint'    => 'Decides when this list is offered during an inspection.',
@@ -251,7 +251,7 @@ $canDelete = $editing && can('checklists.manage');
                     <div data-reveal-for="scope" data-reveal-when="asset">
                         <?php View::partial('form-field', [
                             'name'    => 'asset_id',
-                            'label'   => 'Which asset',
+                            'label'   => 'Which machine',
                             'type'    => 'select',
                             'value'   => $values['asset_id'],
                             'options' => $assets,

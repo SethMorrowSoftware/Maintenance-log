@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Printable asset labels.
+ * Printable machine labels.
  *
  * A sheet of stickers with a QR code on each. Pointing a phone at one opens
  * that machine's page, which is the shortest path there is from "this kart is
@@ -32,7 +32,7 @@ if ($single > 0) {
     $ids = [$single];
 }
 
-// Which assets are on the sheet.
+// Which machines are on the sheet.
 $filters = [
     'category_id' => Request::int('category_id'),
     'location_id' => Request::int('location_id'),
@@ -111,12 +111,12 @@ if ($labels === []) {
     redirect(url('assets.php'));
 }
 
-audit('print', 'asset', null, 'Printed ' . count($labels) . ' asset label'
+audit('print', 'asset', null, 'Printed ' . count($labels) . ' machine label'
     . (count($labels) === 1 ? '' : 's'));
 
 View::render('assets/labels', [
-    'title'     => 'Asset labels',
-    'docTitle'  => 'Asset labels',
+    'title'     => 'Machine labels',
+    'docTitle'  => 'Machine labels',
     'printMeta' => [
         'Labels' => (string) count($labels),
         'Size'   => ucfirst($size),

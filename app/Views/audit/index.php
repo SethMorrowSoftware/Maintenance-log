@@ -24,6 +24,12 @@ $flat = static function ($value): string {
     return is_bool($value) ? ($value ? 'Yes' : 'No') : (string) $value;
 };
 
+// Field names that hold money. Somebody who may read the audit log but not
+// see prices gets the rest of the diff; these rows are simply not there.
+$moneyFields = ['unit_cost', 'labor_rate', 'labor_cost', 'parts_cost', 'other_cost',
+                'total_cost', 'purchase_cost', 'stock_value', 'default_labor_rate'];
+$canSeeCosts = costs_visible();
+
 $linkFor = static function (string $entityType, $entityId): ?string {
     if ($entityId === null || (int) $entityId <= 0) {
         return null;
@@ -131,6 +137,7 @@ $linkFor = static function (string $entityType, $entityId): ?string {
                                             </thead>
                                             <tbody>
                                                 <?php foreach (array_keys($after + $before) as $field): ?>
+                                                    <?php if (!$canSeeCosts && in_array((string) $field, $moneyFields, true)) { continue; } ?>
                                                     <tr>
                                                         <td><?= e(\App\Str::label((string) $field)) ?></td>
                                                         <td class="text-muted">

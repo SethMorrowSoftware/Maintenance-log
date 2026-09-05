@@ -1636,7 +1636,7 @@
             var searchInput = RL.el('input', {
                 type: 'search',
                 class: 'spotlight-input',
-                placeholder: 'Search assets, logs, work orders and parts…',
+                placeholder: 'Search machines, logs, work orders and parts…',
                 autocomplete: 'off',
                 autofocus: true,
                 'aria-label': 'Search'
@@ -2037,6 +2037,399 @@
         });
     }
 
+    /**
+     * "About this machine" beside the log and report forms. The server
+     * renders it for the machine the form opened with; when a different one
+     * is picked from the list, fetch its last few events and refill the panel.
+     */
+    function initAssetContext(root) {
+        RL.qsa('[data-asset-context]', root).forEach(function (panel) {
+            if (panel.dataset.bound === '1') {
+                return;
+            }
+
+            panel.dataset.bound = '1';
+
+            var form = panel.closest('form');
+            var select = form ? form.querySelector('select[name="' + (panel.dataset.assetContextFor || 'asset_id') + '"]') : null;
+
+            if (!select) {
+                return;
+            }
+
+            var current = select.value;
+            var pending = null;
+
+            function setText(selector, text) {
+                var node = panel.querySelector(selector);
+
+                if (node) {
+                    node.textContent = text;
+                }
+            }
+
+            function show(selector, visible) {
+                RL.qsa(selector, panel).forEach(function (node) {
+                    node.hidden = !visible;
+                });
+            }
+
+            function render(data) {
+                var asset = data.asset;
+                var events = data.events || [];
+
+                var name = panel.querySelector('[data-ctx-name]');
+
+                if (name) {
+                    name.textContent = asset.name;
+                    name.setAttribute('href', asset.url);
+                }
+
+                setText('[data-ctx-tag]', asset.asset_tag);
+
+                var status = panel.querySelector('[data-ctx-status]');
+
+                if (status) {
+                    status.className = 'badge badge-' + (asset.status_tone || 'muted');
+                    status.textContent = asset.status_label;
+                }
+
+                var hasMeter = asset.meter_type && asset.meter_type !== 'none';
+                show('[data-ctx-meter]', !!hasMeter);
+                setText('[data-ctx-meter-value]', hasMeter ? asset.meter_reading + ' ' + asset.meter_type : '');
+
+                var list = panel.querySelector('[data-ctx-list]');
+
+                if (list) {
+                    while (list.firstChild) {
+                        list.removeChild(list.firstChild);
+                    }
+
+                    events.forEach(function (event) {
+                        var body = RL.el('div', { 'class': 'context-body' }, [
+                            RL.el('span', { 'class': 'context-label', text: event.label }),
+                            event.url
+                                ? RL.el('a', { href: event.url, text: event.title })
+                                : document.createTextNode(event.title),
+                            event.detail ? RL.el('div', { 'class': 'context-detail', text: event.detail }) : null
+                        ]);
+
+                        list.appendChild(RL.el('li', { 'class': 'context-item tone-' + (event.tone || 'muted') }, [
+                            RL.el('div', { 'class': 'context-when', text: event.when }),
+                            body
+                        ]));
+                    });
+                }
+
+                show('[data-ctx-list]', events.length > 0);
+                show('[data-ctx-footer]', events.length > 0);
+                show('[data-ctx-empty]', events.length === 0);
+
+                var history = panel.querySelector('[data-ctx-history]');
+
+                if (history) {
+                    history.setAttribute('href', asset.history_url);
+                }
+
+                panel.hidden = false;
+            }
+
+            select.addEventListener('change', function () {
+                var id = select.value;
+
+                if (id === current) {
+                    return;
+                }
+
+                current = id;
+
+                if (!id) {
+                    panel.hidden = true;
+
+                    return;
+                }
+
+                var request = RL.api('assets.history', { params: { id: id } });
+                pending = request;
+
+                request.then(function (data) {
+                    // Only the latest pick counts if two changes are in flight.
+                    if (pending === request && data && data.asset) {
+                        render(data);
+                    }
+                }).catch(function () {
+                    // Not worth a toast: the form still works without the panel.
+                    if (pending === request) {
+                        panel.hidden = true;
+                    }
+                });
+            });
+        });
+    }
+
+    /* =====================================================================
+       17c. Drafts
+       ===================================================================== */
+
+    /**
+     * A form marked [data-draft="key"] keeps what is typed in local storage.
+     *
+     * A phone that locks, a tab that closes, a session that expires: none of
+     * them should cost a mechanic a paragraph. The draft is written a moment
+     * after each keystroke and again when the page is hidden. On the next
+     * visit the form offers it back; nothing is restored without a tap.
+     *
+     * Only the server knows a save succeeded, so it names the draft to drop in
+     * RL.config.clearDrafts on the page after the redirect. Photos cannot be
+     * kept: the browser does not let a page hold on to a chosen file.
+     */
+    function draftKey(name) {
+        return 'draft-' + (RL.config.userId || 'anon') + '-' + name;
+    }
+
+    function initDrafts(root) {
+        RL.qsa('form[data-draft]', root).forEach(function (form) {
+            if (form.dataset.draftBound === '1') {
+                return;
+            }
+
+            form.dataset.draftBound = '1';
+
+            var key = draftKey(form.dataset.draft);
+            var status = form.querySelector('[data-draft-status]');
+            var timer = null;
+            var initial = snapshot(form);
+            var saved = RL.storage.get(key, null);
+
+            // A week-old draft is more likely to confuse than help.
+            if (saved && (!saved.at || Date.now() - saved.at > 7 * 86400000)) {
+                RL.storage.remove(key);
+                saved = null;
+            }
+
+            if (saved && saved.fields && JSON.stringify(saved.fields) !== JSON.stringify(initial)) {
+                offer(saved);
+            }
+
+            function save() {
+                timer = null;
+
+                var now = snapshot(form);
+
+                if (JSON.stringify(now) === JSON.stringify(initial)) {
+                    RL.storage.remove(key);
+                    showStatus('');
+
+                    return;
+                }
+
+                if (RL.storage.set(key, { at: Date.now(), fields: now })) {
+                    showStatus('Draft kept on this device · '
+                        + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+                }
+            }
+
+            function scheduleSave() {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(save, 500);
+            }
+
+            function flush() {
+                if (timer !== null) {
+                    window.clearTimeout(timer);
+                    save();
+                }
+            }
+
+            function showStatus(text) {
+                if (!status) {
+                    return;
+                }
+
+                status.textContent = text;
+                status.hidden = text === '';
+            }
+
+            form.addEventListener('input', scheduleSave);
+            form.addEventListener('change', scheduleSave);
+            form.addEventListener('submit', flush);
+            window.addEventListener('pagehide', flush);
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden') {
+                    flush();
+                }
+            });
+
+            function offer(draft) {
+                var hasFiles = form.querySelector('input[type="file"]') !== null;
+                var restore = RL.el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Restore it' });
+                var discard = RL.el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Throw it away' });
+
+                var banner = RL.el('div', { class: 'alert alert-info draft-alert', role: 'status' }, [
+                    RL.el('div', { class: 'alert-body' }, [
+                        RL.el('strong', { class: 'alert-title', text: 'You have an unsaved draft' }),
+                        RL.el('p', {
+                            text: 'Typed ' + ago(draft.at) + ' on this device and never saved.'
+                                + (hasFiles ? ' Photos have to be added again.' : '')
+                        }),
+                        RL.el('div', { class: 'draft-actions' }, [restore, discard])
+                    ])
+                ]);
+
+                form.insertBefore(banner, form.firstElementChild);
+
+                restore.addEventListener('click', function () {
+                    apply(form, draft.fields);
+                    banner.parentNode.removeChild(banner);
+                    RL.toast('Draft restored. Check it over, then save.', 'success');
+                    scheduleSave();
+                });
+
+                discard.addEventListener('click', function () {
+                    RL.storage.remove(key);
+                    banner.parentNode.removeChild(banner);
+                });
+            }
+        });
+
+        /** Every value worth keeping, as [name, value] pairs in document order. */
+        function snapshot(form) {
+            var out = [];
+
+            RL.qsa('input, select, textarea', form).forEach(function (field) {
+                var type = (field.type || '').toLowerCase();
+
+                if (!field.name || field.disabled
+                    || type === 'file' || type === 'password' || type === 'hidden'
+                    || type === 'submit' || type === 'button') {
+                    return;
+                }
+
+                if (type === 'checkbox' || type === 'radio') {
+                    if (field.checked) {
+                        out.push([field.name, field.value, 1]);
+                    }
+
+                    return;
+                }
+
+                out.push([field.name, field.value]);
+            });
+
+            return out;
+        }
+
+        function fieldsNamed(form, name) {
+            var escaped = window.CSS && CSS.escape ? CSS.escape(name) : name.replace(/["\\]/g, '\\$&');
+
+            return RL.qsa('[name="' + escaped + '"]', form);
+        }
+
+        function apply(form, fields) {
+            var checked = {};
+
+            // Rows added on the page (parts used) do not exist yet on a fresh
+            // form: grow the repeater until every drafted name has a home.
+            fields.forEach(function (pair) {
+                var tries = 0;
+
+                while (fieldsNamed(form, pair[0]).length === 0 && tries < 40) {
+                    var container = form.querySelector('[data-repeater]');
+
+                    if (!container || !RL.repeater.add(container)) {
+                        break;
+                    }
+
+                    tries += 1;
+                }
+            });
+
+            // Choices first: a picker's change handler may fill in text fields,
+            // and the draft's own text must win over that.
+            fields.forEach(function (pair) {
+                fieldsNamed(form, pair[0]).forEach(function (field) {
+                    var type = (field.type || '').toLowerCase();
+
+                    if (type === 'checkbox' || type === 'radio') {
+                        checked[pair[0]] = checked[pair[0]] || {};
+
+                        if (pair[2] === 1) {
+                            checked[pair[0]][pair[1]] = true;
+                        }
+                    } else if (field.tagName === 'SELECT') {
+                        field.value = pair[1];
+                        field.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+            });
+
+            RL.qsa('input[type="checkbox"], input[type="radio"]', form).forEach(function (box) {
+                if (!box.name || !(box.name in checked)) {
+                    return;
+                }
+
+                var want = !!checked[box.name][box.value];
+
+                if (box.checked !== want) {
+                    box.checked = want;
+                    box.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+
+            fields.forEach(function (pair) {
+                fieldsNamed(form, pair[0]).forEach(function (field) {
+                    var type = (field.type || '').toLowerCase();
+
+                    if (field.tagName === 'SELECT' || type === 'checkbox' || type === 'radio') {
+                        return;
+                    }
+
+                    if (field.value !== pair[1]) {
+                        field.value = pair[1];
+                        field.dispatchEvent(new Event('input', { bubbles: true }));
+                        field.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+
+                    // A filled-in field inside a collapsed section should be seen.
+                    var details = pair[1] !== '' ? field.closest('details') : null;
+
+                    if (details) {
+                        details.open = true;
+                    }
+                });
+            });
+        }
+
+        function ago(timestamp) {
+            var minutes = Math.round((Date.now() - (timestamp || Date.now())) / 60000);
+
+            if (minutes < 1) {
+                return 'a moment ago';
+            }
+
+            if (minutes < 60) {
+                return minutes + (minutes === 1 ? ' minute ago' : ' minutes ago');
+            }
+
+            var hours = Math.round(minutes / 60);
+
+            if (hours < 24) {
+                return hours + (hours === 1 ? ' hour ago' : ' hours ago');
+            }
+
+            var days = Math.round(hours / 24);
+
+            return days + (days === 1 ? ' day ago' : ' days ago');
+        }
+    }
+
+    /** Forget the drafts the server says were saved. */
+    function clearSavedDrafts() {
+        (RL.config.clearDrafts || []).forEach(function (name) {
+            RL.storage.remove(draftKey(name));
+        });
+    }
+
     function initRepeaters(root) {
         RL.qsa('[data-repeater]', root).forEach(function (container) {
             if (!container.dataset.repeaterIndex) {
@@ -2079,7 +2472,7 @@
             var assetId = button.dataset.meterUpdate;
             var current = button.dataset.meterCurrent || '0';
             var unit = button.dataset.meterUnit || 'hours';
-            var assetName = button.dataset.meterAsset || 'this asset';
+            var assetName = button.dataset.meterAsset || 'this machine';
 
             var field = RL.el('input', {
                 type: 'number',
@@ -2464,6 +2857,8 @@
         initRepeaters(root);
         initReveals(root);
         initPartPickers(root);
+        initAssetContext(root);
+        initDrafts(root);
         initChecklistRunner(root);
         initMisc(root);
     };
@@ -2477,6 +2872,7 @@
         initNotifications();
         initMeterUpdate();
         initFlash();
+        clearSavedDrafts();
 
         RL.init(document);
 

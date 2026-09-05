@@ -1,6 +1,6 @@
 <?php
 /**
- * A searchable asset chooser.
+ * A searchable machine chooser.
  *
  * Renders a real <select> so the form works with JavaScript disabled; core.js
  * upgrades it into a type-ahead combobox when the list is long.
@@ -14,10 +14,10 @@ use App\View;
 $name           = $name           ?? 'asset_id';
 $value          = $value          ?? '';
 $required       = $required       ?? true;
-$label          = $label          ?? 'Asset';
+$label          = $label          ?? 'Machine';
 $hint           = $hint           ?? '';
 $includeRetired = $includeRetired ?? false;
-$emptyLabel     = $emptyLabel     ?? 'Choose an asset…';
+$emptyLabel     = $emptyLabel     ?? 'Choose a machine…';
 
 if (!isset($assets)) {
     $sql = "SELECT a.id, a.name, a.asset_tag, a.status, c.name AS category_name

@@ -483,7 +483,12 @@ final class Validator
                 return $this->compareDates($field, $rule, $value, $params, '<=');
 
             case 'not_future':
-                $utc = Dates::toUtc((string) $value) ?? Dates::toDate((string) $value);
+                // Always read what was typed: an earlier "datetime" rule has
+                // already turned $value into UTC, and converting that again as
+                // local time would push an afternoon job four hours into the
+                // future and reject it.
+                $typed = (string) $this->raw($field);
+                $utc   = Dates::toUtc($typed) ?? Dates::toDate($typed);
 
                 if ($utc === null) {
                     return ['ok' => true];
@@ -603,7 +608,11 @@ final class Validator
         // The parameter is either another field name or a literal date.
         $otherRaw = $this->has($target) ? (string) $this->raw($target) : $target;
 
-        $left  = Dates::toUtc((string) $value) ?? Dates::toDate((string) $value);
+        // Compare what was typed on both sides, never a value an earlier rule
+        // has already converted to UTC (see not_future).
+        $typed = (string) $this->raw($field);
+
+        $left  = Dates::toUtc($typed) ?? Dates::toDate($typed);
         $right = Dates::toUtc($otherRaw) ?? Dates::toDate($otherRaw);
 
         if ($left === null || $right === null) {

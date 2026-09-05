@@ -162,6 +162,20 @@ if (!function_exists('can')) {
     }
 }
 
+if (!function_exists('costs_visible')) {
+    /**
+     * May the current user see money — prices, costs, spend, stock value?
+     *
+     * Mechanics record hours and parts. What those cost is worked out in the
+     * background and shown only to people with the costs.view permission,
+     * which by default means administrators.
+     */
+    function costs_visible(): bool
+    {
+        return Acl::can('costs.view');
+    }
+}
+
 if (!function_exists('can_any')) {
     /**
      * @param list<string> $permissions

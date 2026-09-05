@@ -188,7 +188,7 @@ foreach ($sections as $sectionItems) {
                     'type'   => 'meter',
                     'value'  => $inspection['meter_reading'],
                     'suffix' => $meterUnit,
-                    'hint'   => 'Optional. Updates the asset if you fill it in.',
+                    'hint'   => 'Optional. Updates the machine if you fill it in.',
                     'noOld'  => true,
                     'attrs'  => ['min' => '0'],
                 ]); ?>
@@ -219,7 +219,7 @@ foreach ($sections as $sectionItems) {
             <label class="form-check" for="f_oos">
                 <input type="checkbox" id="f_oos" name="take_out_of_service" value="1">
                 <span class="form-check-label">
-                    Take this asset out of service
+                    Take this machine out of service
                     <small>
                         Tick if it is not safe to run. Anything that fails a safety-critical
                         item should almost certainly be ticked.

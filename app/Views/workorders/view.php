@@ -15,7 +15,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
         <?= icon('shield', '', 18) ?>
         <div class="alert-body">
             <strong class="alert-title">Reported as a safety issue</strong>
-            <p style="margin:4px 0 0">Deal with this before the asset carries guests again.</p>
+            <p style="margin:4px 0 0">Deal with this before the machine carries guests again.</p>
         </div>
     </div>
 <?php endif; ?>
@@ -35,7 +35,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
             </div>
             <div class="card-body">
                 <dl class="detail-list">
-                    <dt>Asset</dt>
+                    <dt>Machine</dt>
                     <dd>
                         <?php if (!empty($workOrder['asset_id'])): ?>
                             <a href="<?= e(url('asset-view.php', ['id' => (int) $workOrder['asset_id']])) ?>">
@@ -48,7 +48,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                                 </div>
                             <?php endif; ?>
                         <?php else: ?>
-                            <span class="text-subtle">Not linked to an asset</span>
+                            <span class="text-subtle">Not linked to a machine</span>
                         <?php endif; ?>
                     </dd>
 
@@ -116,7 +116,9 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                                 <a href="<?= e(url('log-view.php', ['id' => (int) $log['id']])) ?>"><?= e((string) $log['title']) ?></a>
                                 <div class="text-sm text-muted"><?= e(Dates::datetime((string) $log['performed_at'])) ?></div>
                             </span>
-                            <span class="tabular"><?= e(money($log['total_cost'], true)) ?></span>
+                            <?php if (costs_visible()): ?>
+                                <span class="tabular"><?= e(money($log['total_cost'], true)) ?></span>
+                            <?php endif; ?>
                         </li>
                     <?php endforeach; ?>
                 </ul>

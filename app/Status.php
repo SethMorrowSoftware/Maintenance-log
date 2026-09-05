@@ -69,7 +69,7 @@ final class Status
         'wo_source' => [
             'operator_report' => ['Operator report', 'info',  'user'],
             'inspection'      => ['Inspection',      'info',  'clipboard-check'],
-            'preventive'      => ['Scheduled PM',    'ok',    'calendar'],
+            'preventive'      => ['Scheduled service', 'ok',  'calendar'],
             'breakdown'       => ['Breakdown',       'danger', 'alert-triangle'],
             'other'           => ['Other',           'muted', 'more-vertical'],
         ],
@@ -144,7 +144,7 @@ final class Status
             'viewer'     => ['Viewer',              'muted',  'eye'],
         ],
         'entity' => [
-            'asset'           => ['Asset',           'info',  'assets'],
+            'asset'           => ['Machine',           'info',  'assets'],
             'maintenance_log' => ['Maintenance log', 'info',  'wrench'],
             'work_order'      => ['Work order',      'info',  'work-order'],
             'inspection'      => ['Inspection',      'info',  'clipboard-check'],
@@ -258,7 +258,7 @@ final class Status
      * Returns one of: overdue, due, due_soon, ok, inactive, none.
      *
      * @param array<string, mixed> $schedule a maintenance_schedules row
-     * @param float|null           $meter    the asset's current meter reading
+     * @param float|null           $meter    the machine's current meter reading
      */
     public static function dueState(array $schedule, ?float $meter = null): string
     {
@@ -390,14 +390,14 @@ final class Status
         return in_array($status, ['completed', 'cancelled'], true);
     }
 
-    /** Is this an asset status that means "not earning money"? */
+    /** Is this a machine status that means "not earning money"? */
     public static function isDownStatus(string $status): bool
     {
         return in_array($status, ['out_of_service', 'maintenance'], true);
     }
 
     /**
-     * Meter unit label for an asset, e.g. "hours" or "cycles".
+     * Meter unit label for a machine, e.g. "hours" or "cycles".
      *
      * @param array<string, mixed> $asset
      */

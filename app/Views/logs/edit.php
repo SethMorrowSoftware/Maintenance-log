@@ -4,7 +4,7 @@
  *
  * The form a mechanic fills in most often, so the shape of it matters.
  *
- * Four things are required: which asset, what kind of work, a short title, and
+ * Four things are required: which machine, what kind of work, a short title, and
  * when. The date and time default to now. Everything else — the write-up,
  * parts, costs, meter, downtime — is optional and collapsed by default, so the
  * quick case is genuinely quick and the thorough case is still possible.
@@ -17,13 +17,16 @@ use App\Status;
 use App\Uploader;
 use App\View;
 
-$meterUnit = $asset === null ? '' : (string) $asset['meter_type'];
-$hasMeter  = $meterUnit !== '' && $meterUnit !== 'none';
-$currency  = Settings::currency();
+$meterUnit   = $asset === null ? '' : (string) $asset['meter_type'];
+$hasMeter    = $meterUnit !== '' && $meterUnit !== 'none';
+$currency    = Settings::currency();
+$canSeeCosts = costs_visible();
+$partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
 ?>
 
 <form method="post" action="<?= e(url('log-edit.php', $editing ? ['id' => (int) $log['id']] : [])) ?>"
-      enctype="multipart/form-data" data-validate data-guard data-cost-scope>
+      enctype="multipart/form-data" data-validate data-guard data-cost-scope
+      data-draft="log-<?= $editing ? (int) $log['id'] : 'new' ?>">
     <?= csrf_field() ?>
 
     <?php if ($schedule !== null): ?>
@@ -61,7 +64,7 @@ $currency  = Settings::currency();
 
                     <?php View::partial('asset-picker', [
                         'name'     => 'asset_id',
-                        'label'    => 'Which asset?',
+                        'label'    => 'Which machine?',
                         'value'    => $values['asset_id'],
                         'assets'   => $assets,
                         'required' => true,
@@ -140,7 +143,7 @@ $currency  = Settings::currency();
                         <div data-repeater-rows>
                             <?php foreach ($logParts as $index => $part): ?>
                                 <div class="repeater-row" data-repeater-row data-line-total>
-                                    <div class="form-row cols-4">
+                                    <div class="form-row <?= e($partColumns) ?>">
                                         <div class="form-group">
                                             <label class="form-label">Part</label>
                                             <select class="form-select" name="parts[<?= (int) $index ?>][part_id]"
@@ -150,7 +153,7 @@ $currency  = Settings::currency();
                                                     <option value="<?= (int) $option['id'] ?>"
                                                             data-name="<?= attr((string) $option['name']) ?>"
                                                             data-number="<?= attr((string) $option['part_number']) ?>"
-                                                            data-cost="<?= attr((string) $option['unit_cost']) ?>"
+                                                            <?= $canSeeCosts ? 'data-cost="' . attr((string) $option['unit_cost']) . '"' : '' ?>
                                                             <?= selected($option['id'], $part['part_id']) ?>>
                                                         <?= e((string) $option['name']) ?>
                                                         (<?= e(decimal($option['quantity_on_hand'])) ?> in stock)
@@ -170,19 +173,23 @@ $currency  = Settings::currency();
                                                    name="parts[<?= (int) $index ?>][quantity]"
                                                    value="<?= attr((string) $part['quantity']) ?>">
                                         </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Each</label>
-                                            <div class="input-group">
-                                                <span class="input-addon"><?= e($currency) ?></span>
-                                                <input type="number" step="0.01" min="0" class="form-input" data-line-cost
-                                                       name="parts[<?= (int) $index ?>][unit_cost]"
-                                                       value="<?= attr((string) $part['unit_cost']) ?>">
+                                        <?php if ($canSeeCosts): ?>
+                                            <div class="form-group">
+                                                <label class="form-label">Each</label>
+                                                <div class="input-group">
+                                                    <span class="input-addon"><?= e($currency) ?></span>
+                                                    <input type="number" step="0.01" min="0" class="form-input" data-line-cost
+                                                           name="parts[<?= (int) $index ?>][unit_cost]"
+                                                           value="<?= attr((string) $part['unit_cost']) ?>">
+                                                </div>
                                             </div>
-                                        </div>
+                                        <?php endif; ?>
                                     </div>
                                     <div class="flex items-center justify-between gap-3">
                                         <span class="text-sm text-muted">
-                                            Line total: <strong data-line-out><?= e(money($part['total_cost'])) ?></strong>
+                                            <?php if ($canSeeCosts): ?>
+                                                Line total: <strong data-line-out><?= e(money($part['total_cost'])) ?></strong>
+                                            <?php endif; ?>
                                         </span>
                                         <button type="button" class="btn btn-ghost btn-sm repeater-remove"
                                                 data-repeater-remove>
@@ -194,7 +201,7 @@ $currency  = Settings::currency();
                         </div>
 
                         <template data-repeater-template>
-                            <div class="form-row cols-4">
+                            <div class="form-row <?= e($partColumns) ?>">
                                 <div class="form-group">
                                     <label class="form-label">Part</label>
                                     <select class="form-select" name="parts[__INDEX__][part_id]" data-part-select>
@@ -203,7 +210,7 @@ $currency  = Settings::currency();
                                             <option value="<?= (int) $option['id'] ?>"
                                                     data-name="<?= attr((string) $option['name']) ?>"
                                                     data-number="<?= attr((string) $option['part_number']) ?>"
-                                                    data-cost="<?= attr((string) $option['unit_cost']) ?>">
+                                                    <?= $canSeeCosts ? 'data-cost="' . attr((string) $option['unit_cost']) . '"' : '' ?>>
                                                 <?= e((string) $option['name']) ?>
                                                 (<?= e(decimal($option['quantity_on_hand'])) ?> in stock)
                                             </option>
@@ -220,17 +227,19 @@ $currency  = Settings::currency();
                                     <input type="number" step="0.01" min="0" class="form-input" data-line-qty
                                            name="parts[__INDEX__][quantity]" value="1">
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">Each</label>
-                                    <div class="input-group">
-                                        <span class="input-addon"><?= e($currency) ?></span>
-                                        <input type="number" step="0.01" min="0" class="form-input" data-line-cost
-                                               name="parts[__INDEX__][unit_cost]" value="0.00">
+                                <?php if ($canSeeCosts): ?>
+                                    <div class="form-group">
+                                        <label class="form-label">Each</label>
+                                        <div class="input-group">
+                                            <span class="input-addon"><?= e($currency) ?></span>
+                                            <input type="number" step="0.01" min="0" class="form-input" data-line-cost
+                                                   name="parts[__INDEX__][unit_cost]" value="">
+                                        </div>
                                     </div>
-                                </div>
+                                <?php endif; ?>
                             </div>
                             <div class="flex items-center justify-between gap-3">
-                                <span class="text-sm text-muted">Line total: <strong data-line-out>&mdash;</strong></span>
+                                <span class="text-sm text-muted"><?php if ($canSeeCosts): ?>Line total: <strong data-line-out>&mdash;</strong><?php endif; ?></span>
                                 <button type="button" class="btn btn-ghost btn-sm" data-repeater-remove>
                                     Remove
                                 </button>
@@ -248,7 +257,7 @@ $currency  = Settings::currency();
             <details class="card"
                 <?= ($values['labor_hours'] || $values['meter_reading'] || $values['downtime_minutes'] || $values['other_cost']) ? 'open' : '' ?>>
                 <summary class="card-header" style="cursor:pointer;list-style:none">
-                    <h2 class="card-title"><?= icon('clock', '', 18) ?> Time, cost and condition</h2>
+                    <h2 class="card-title"><?= icon('clock', '', 18) ?> <?= $canSeeCosts ? 'Time, cost and condition' : 'Time and condition' ?></h2>
                     <span class="text-sm text-muted">Optional <?= icon('chevron-down', '', 15) ?></span>
                 </summary>
                 <div class="card-body">
@@ -287,6 +296,7 @@ $currency  = Settings::currency();
                         <?php endif; ?>
                     </div>
 
+                    <?php if ($canSeeCosts): ?>
                     <div class="form-row cols-4">
                         <?php View::partial('form-field', [
                             'name'   => 'labor_rate',
@@ -335,16 +345,17 @@ $currency  = Settings::currency();
                     </div>
 
                     <hr>
+                    <?php endif; ?>
 
                     <?php View::partial('form-field', [
                         'name'    => 'status_after',
-                        'label'   => 'What state is the asset in now?',
+                        'label'   => 'What state is the machine in now?',
                         'type'    => 'select',
                         'value'   => $values['status_after'],
                         'options' => Status::options('asset'),
                         'empty'   => 'Leave it as it is'
                             . ($asset === null ? '' : ' (' . Status::label((string) $asset['status'], 'asset') . ')'),
-                        'hint'    => 'Choosing one changes the asset\'s status straight away.',
+                        'hint'    => 'Choosing one changes the machine\'s status straight away.',
                     ]); ?>
 
                     <?php if ($assetSchedules !== []): ?>
@@ -440,33 +451,14 @@ $currency  = Settings::currency();
                        href="<?= e($editing ? url('log-view.php', ['id' => (int) $log['id']]) : url('logs.php')) ?>">
                         Cancel
                     </a>
+                    <p class="form-hint text-center draft-status" data-draft-status hidden></p>
                 </div>
             </div>
 
-            <?php if ($asset !== null): ?>
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">About this asset</h3>
-                    </div>
-                    <div class="card-body">
-                        <dl class="detail-list">
-                            <dt>Asset</dt>
-                            <dd>
-                                <a href="<?= e(url('asset-view.php', ['id' => (int) $asset['id']])) ?>">
-                                    <?= e((string) $asset['name']) ?>
-                                </a>
-                                <div class="text-sm text-subtle"><?= e((string) $asset['asset_tag']) ?></div>
-                            </dd>
-                            <dt>Status</dt>
-                            <dd><?php View::partial('status-badge', ['value' => (string) $asset['status'], 'vocabulary' => 'asset']); ?></dd>
-                            <?php if ($hasMeter): ?>
-                                <dt>Meter</dt>
-                                <dd><?= e(decimal($asset['meter_reading'])) ?> <?= e($meterUnit) ?></dd>
-                            <?php endif; ?>
-                        </dl>
-                    </div>
-                </div>
-            <?php endif; ?>
+            <?php View::partial('asset-context', [
+                'asset'  => $asset,
+                'events' => $assetHistory,
+            ]); ?>
 
             <div class="card">
                 <div class="card-header">

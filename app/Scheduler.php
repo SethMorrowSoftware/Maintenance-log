@@ -166,7 +166,7 @@ final class Scheduler
      * Schedules that are overdue or coming due, ordered most urgent first.
      *
      * @param  int  $withinDays how far ahead to look
-     * @return list<array<string, mixed>> schedule rows joined to their asset,
+     * @return list<array<string, mixed>> schedule rows joined to their machine,
      *                                    each with a computed 'due_state' and
      *                                    'days_until'
      */
@@ -257,7 +257,7 @@ final class Scheduler
     }
 
     /**
-     * Every schedule for one asset, with its computed state.
+     * Every schedule for one machine, with its computed state.
      *
      * @return list<array<string, mixed>>
      */
@@ -389,7 +389,7 @@ final class Scheduler
     }
 
     /**
-     * When an asset's meter moves, any meter-based schedule may have crossed
+     * When a machine's meter moves, any meter-based schedule may have crossed
      * its threshold. Nothing to recompute — the due state is derived — but the
      * notification needs raising promptly rather than waiting for cron.
      */

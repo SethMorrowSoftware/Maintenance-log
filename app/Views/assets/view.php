@@ -1,6 +1,6 @@
 <?php
 /**
- * One asset: everything known about it, and everything that has happened to it.
+ * One machine: everything known about it, and everything that has happened to it.
  */
 
 use App\Dates;
@@ -8,11 +8,13 @@ use App\Settings;
 use App\Status;
 use App\View;
 
-$assetId = (int) $asset['id'];
+$assetId     = (int) $asset['id'];
+$canSeeCosts = costs_visible();
 
 $tabs = [
     'overview'    => ['label' => 'Overview',     'icon' => 'info',            'url' => url('asset-view.php', ['id' => $assetId])],
-    'logs'        => ['label' => 'History',      'icon' => 'wrench',          'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'logs']),        'count' => $counts['logs']],
+    'timeline'    => ['label' => 'History',      'icon' => 'history',         'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'timeline'])],
+    'logs'        => ['label' => 'Jobs',         'icon' => 'wrench',          'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'logs']),        'count' => $counts['logs']],
     'schedules'   => ['label' => 'Schedules',    'icon' => 'calendar',        'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'schedules']),   'count' => $counts['schedules']],
     'inspections' => ['label' => 'Inspections',  'icon' => 'clipboard-check', 'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'inspections']), 'count' => $counts['inspections']],
     'workorders'  => ['label' => 'Work orders',  'icon' => 'work-order',      'url' => url('asset-view.php', ['id' => $assetId, 'tab' => 'workorders']),  'count' => $counts['work_orders']],
@@ -34,7 +36,7 @@ if (can('audit.view')) {
         <?= icon('alert-triangle', '', 18) ?>
         <div class="alert-body">
             <strong class="alert-title">
-                This asset is <?= e(strtolower(Status::label((string) $asset['status'], 'asset'))) ?>
+                This machine is <?= e(strtolower(Status::label((string) $asset['status'], 'asset'))) ?>
             </strong>
             <p style="margin:4px 0 0">It is not available to guests. Change the status when it is back in service.</p>
         </div>
@@ -68,10 +70,18 @@ if (can('audit.view')) {
                     'href' => url('asset-view.php', ['id' => $assetId, 'tab' => 'logs']),
                 ]); ?>
                 <?php View::partial('stat-card', [
-                    'label' => 'Spent in 12 months', 'value' => money($summary['cost_12m']),
-                    'sub' => 'lifetime ' . money($summary['total_cost']),
-                    'icon' => 'dollar-sign', 'tone' => 'info',
+                    'label' => 'Last worked on',
+                    'value' => $summary['last_service'] === null ? 'Never' : Dates::ago((string) $summary['last_service']),
+                    'sub'   => $summary['last_service'] === null ? '' : Dates::date((string) $summary['last_service']),
+                    'icon'  => 'history', 'tone' => 'info',
                 ]); ?>
+                <?php if ($canSeeCosts): ?>
+                    <?php View::partial('stat-card', [
+                        'label' => 'Spent in 12 months', 'value' => money($summary['cost_12m']),
+                        'sub' => 'lifetime ' . money($summary['total_cost']),
+                        'icon' => 'dollar-sign', 'tone' => 'info',
+                    ]); ?>
+                <?php endif; ?>
                 <?php View::partial('stat-card', [
                     'label' => 'Labour hours', 'value' => decimal($summary['total_hours'], 1),
                     'icon' => 'clock', 'tone' => 'muted',
@@ -154,11 +164,11 @@ if (can('audit.view')) {
                             <dd><?= e(Dates::dateOnly((string) $asset['in_service_date'])) ?></dd>
                         <?php endif; ?>
 
-                        <?php if (!empty($asset['purchase_date']) || $asset['purchase_cost'] !== null): ?>
+                        <?php if (!empty($asset['purchase_date']) || ($canSeeCosts && $asset['purchase_cost'] !== null)): ?>
                             <dt>Purchased</dt>
                             <dd>
                                 <?= e(Dates::dateOnly((string) $asset['purchase_date'])) ?>
-                                <?php if ($asset['purchase_cost'] !== null): ?>
+                                <?php if ($canSeeCosts && $asset['purchase_cost'] !== null): ?>
                                     for <?= e(money($asset['purchase_cost'])) ?>
                                 <?php endif; ?>
                             </dd>
@@ -265,7 +275,7 @@ if (can('audit.view')) {
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title"><?= icon('history', '', 18) ?> Recent maintenance</h2>
-                    <a class="btn btn-ghost btn-sm" href="<?= e(url('asset-view.php', ['id' => $assetId, 'tab' => 'logs'])) ?>">
+                    <a class="btn btn-ghost btn-sm" href="<?= e(url('asset-view.php', ['id' => $assetId, 'tab' => 'timeline'])) ?>">
                         Full history <?= icon('chevron-right', '', 14) ?>
                     </a>
                 </div>
@@ -290,7 +300,7 @@ if (can('audit.view')) {
                                         <?= e(Dates::datetime((string) $log['performed_at'])) ?>
                                     </div>
                                 </span>
-                                <?php if ((float) $log['total_cost'] > 0): ?>
+                                <?php if ($canSeeCosts && (float) $log['total_cost'] > 0): ?>
                                     <span class="text-sm tabular"><?= e(money($log['total_cost'])) ?></span>
                                 <?php endif; ?>
                             </li>
@@ -299,12 +309,111 @@ if (can('audit.view')) {
                 <?php endif; ?>
             </div>
 
+        <?php // ======================== TIMELINE ======================== ?>
+        <?php elseif ($tab === 'timeline'): ?>
+
+            <?php
+            $events    = $data['events'];
+            $searching = $q !== '';
+            ?>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Everything that has happened to it</h2>
+                        <p class="card-subtitle">Jobs, checks, problems, status changes and meter readings, newest first</p>
+                    </div>
+                    <?php if (can('logs.create')): ?>
+                        <a class="btn btn-primary btn-sm" href="<?= e(url('log-edit.php', ['asset_id' => $assetId])) ?>">
+                            <?= icon('plus', '', 15) ?> Log maintenance
+                        </a>
+                    <?php endif; ?>
+                </div>
+                <div class="card-body timeline-search">
+                    <form method="get" action="<?= e(url('asset-view.php')) ?>" class="search-row" role="search">
+                        <input type="hidden" name="id" value="<?= $assetId ?>">
+                        <input type="hidden" name="tab" value="timeline">
+                        <div class="input-group">
+                            <span class="input-addon"><?= icon('search', '', 16) ?></span>
+                            <input type="search" name="q" class="form-input" value="<?= attr($q) ?>"
+                                   placeholder="Search this machine's history — “brake”, “chain”, “won't start”"
+                                   aria-label="Search this machine's history" autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn btn-secondary">Search</button>
+                        <?php if ($searching): ?>
+                            <a class="btn btn-ghost" href="<?= e(url('asset-view.php', ['id' => $assetId, 'tab' => 'timeline'])) ?>">
+                                <?= icon('x', '', 15) ?> Clear
+                            </a>
+                        <?php endif; ?>
+                    </form>
+                    <?php if ($searching): ?>
+                        <p class="form-hint">
+                            <?= count($events) === 0 ? 'Nothing' : num(count($events)) . ' thing' . (count($events) === 1 ? '' : 's') ?>
+                            matching “<?= e($q) ?>” in this machine's jobs, checks and problems.
+                        </p>
+                    <?php endif; ?>
+                </div>
+
+                <?php if ($events === []): ?>
+                    <?php View::partial('empty-state', [
+                        'icon'        => 'history',
+                        'title'       => $searching ? 'No matches' : 'Nothing recorded yet',
+                        'message'     => $searching
+                            ? 'Try a different word, or clear the search to see everything.'
+                            : 'Jobs, checks and reported problems will all show up here once there are some.',
+                        'actionLabel' => !$searching && can('logs.create') ? 'Log maintenance' : '',
+                        'actionUrl'   => !$searching && can('logs.create') ? url('log-edit.php', ['asset_id' => $assetId]) : '',
+                        'actionIcon'  => 'wrench',
+                    ]); ?>
+                <?php else: ?>
+                    <div class="card-body">
+                        <?php $month = ''; ?>
+                        <ol class="timeline history-timeline">
+                            <?php foreach ($events as $event): ?>
+                                <?php $eventMonth = Dates::format((string) $event['when'], 'F Y'); ?>
+                                <?php if ($eventMonth !== $month): ?>
+                                    <?php $month = $eventMonth; ?>
+                                    <li class="timeline-month"><?= e($month) ?></li>
+                                <?php endif; ?>
+                                <li class="timeline-item tone-<?= e((string) $event['tone']) ?>">
+                                    <div class="timeline-head">
+                                        <span class="timeline-kind tone-<?= e((string) $event['tone']) ?>">
+                                            <?= icon((string) $event['icon'], '', 14) ?> <?= e((string) $event['label']) ?>
+                                        </span>
+                                        <?php if ((string) $event['flag'] !== ''): ?>
+                                            <span class="badge badge-<?= (string) $event['tone'] === 'danger' ? 'danger' : 'warn' ?>"><?= e((string) $event['flag']) ?></span>
+                                        <?php endif; ?>
+                                        <span class="timeline-when" title="<?= attr(Dates::datetime((string) $event['when'])) ?>">
+                                            <?= e(Dates::datetime((string) $event['when'])) ?>
+                                        </span>
+                                    </div>
+                                    <div class="timeline-title">
+                                        <?php if ((string) $event['url'] !== ''): ?>
+                                            <a href="<?= e((string) $event['url']) ?>"><?= e((string) $event['title']) ?></a>
+                                        <?php else: ?>
+                                            <?= e((string) $event['title']) ?>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if ((string) $event['detail'] !== ''): ?>
+                                        <div class="timeline-detail"><?= nl2br_e((string) $event['detail']) ?></div>
+                                    <?php endif; ?>
+                                    <div class="timeline-meta">
+                                        <?php if ((string) $event['who'] !== ''): ?><?= e((string) $event['who']) ?><?php endif; ?>
+                                        <?php if ((string) $event['who'] !== '' && (string) $event['meta'] !== ''): ?> &middot; <?php endif; ?>
+                                        <?php if ((string) $event['meta'] !== ''): ?><?= e((string) $event['meta']) ?><?php endif; ?>
+                                    </div>
+                                </li>
+                            <?php endforeach; ?>
+                        </ol>
+                    </div>
+                <?php endif; ?>
+            </div>
+
         <?php // ========================== LOGS ========================== ?>
         <?php elseif ($tab === 'logs'): ?>
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Maintenance history</h2>
+                    <h2 class="card-title">Jobs logged</h2>
                     <?php if (can('logs.create')): ?>
                         <a class="btn btn-primary btn-sm" href="<?= e(url('log-edit.php', ['asset_id' => $assetId])) ?>">
                             <?= icon('plus', '', 15) ?> Log maintenance
@@ -319,7 +428,8 @@ if (can('audit.view')) {
                             <thead>
                                 <tr>
                                     <th data-sort>When</th><th data-sort>What</th><th data-sort>Type</th>
-                                    <th data-sort>Who</th><th class="is-numeric" data-sort>Cost</th>
+                                    <th data-sort>Who</th>
+                                    <?php if ($canSeeCosts): ?><th class="is-numeric" data-sort>Cost</th><?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody>
@@ -336,9 +446,11 @@ if (can('audit.view')) {
                                             <?php View::partial('status-badge', ['value' => (string) $log['log_type'], 'vocabulary' => 'log_type']); ?>
                                         </td>
                                         <td data-label="Who"><?php View::partial('user-chip', ['user' => $log]); ?></td>
-                                        <td data-label="Cost" class="is-numeric" data-value="<?= e((string) $log['total_cost']) ?>">
-                                            <?= e(money($log['total_cost'], true)) ?>
-                                        </td>
+                                        <?php if ($canSeeCosts): ?>
+                                            <td data-label="Cost" class="is-numeric" data-value="<?= e((string) $log['total_cost']) ?>">
+                                                <?= e(money($log['total_cost'], true)) ?>
+                                            </td>
+                                        <?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -352,7 +464,7 @@ if (can('audit.view')) {
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Preventive maintenance</h2>
+                    <h2 class="card-title">Scheduled service</h2>
                     <?php if (can('schedules.manage')): ?>
                         <a class="btn btn-primary btn-sm" href="<?= e(url('schedule-edit.php', ['asset_id' => $assetId])) ?>">
                             <?= icon('plus', '', 15) ?> Add a schedule
@@ -363,7 +475,7 @@ if (can('audit.view')) {
                     <?php View::partial('empty-state', [
                         'icon'        => 'calendar',
                         'title'       => 'No scheduled maintenance',
-                        'message'     => 'Set up a schedule and this asset will appear on the dashboard when a service falls due.',
+                        'message'     => 'Set up a schedule and this machine will appear on the dashboard when a service falls due.',
                         'actionLabel' => can('schedules.manage') ? 'Add a schedule' : '',
                         'actionUrl'   => can('schedules.manage') ? url('schedule-edit.php', ['asset_id' => $assetId]) : '',
                     ]); ?>
@@ -661,12 +773,12 @@ if (can('audit.view')) {
             </div>
             <div class="card-body">
                 <dl class="detail-list">
-                    <dt>Asset tag</dt>
+                    <dt>Machine tag</dt>
                     <dd>
                         <code><?= e((string) $asset['asset_tag']) ?></code>
                         <button type="button" class="btn btn-ghost btn-sm btn-icon no-print"
                                 data-copy="<?= attr((string) $asset['asset_tag']) ?>"
-                                aria-label="Copy asset tag" title="Copy"><?= icon('copy', '', 14) ?></button>
+                                aria-label="Copy machine tag" title="Copy"><?= icon('copy', '', 14) ?></button>
                     </dd>
                     <dt>Added</dt>
                     <dd><?= e(Dates::date((string) $asset['created_at'])) ?></dd>

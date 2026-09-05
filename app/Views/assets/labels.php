@@ -1,6 +1,6 @@
 <?php
 /**
- * A sheet of asset labels.
+ * A sheet of machine labels.
  *
  * Sized for ordinary self-adhesive label stock. The controls at the top do not
  * print, so what comes out of the printer is stickers and nothing else.

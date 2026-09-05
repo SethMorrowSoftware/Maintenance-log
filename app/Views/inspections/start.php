@@ -10,7 +10,7 @@ use App\View;
         <div class="card-body">
             <?php View::partial('asset-picker', [
                 'name'     => 'asset_id',
-                'label'    => 'Asset',
+                'label'    => 'Machine',
                 'value'    => '',
                 'assets'   => $assets,
                 'required' => true,

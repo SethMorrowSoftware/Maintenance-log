@@ -25,9 +25,13 @@ final class Flash
     private const KEY_MESSAGES = '_flash_messages';
     private const KEY_ERRORS   = '_flash_errors';
     private const KEY_OLD      = '_flash_old';
+    private const KEY_DRAFTS   = '_flash_drafts';
 
     /** @var list<array{type: string, message: string}>|null read-once buffer */
     private static ?array $readMessages = null;
+
+    /** @var list<string>|null */
+    private static ?array $readDrafts = null;
 
     /** @var array<string, string>|null */
     private static ?array $readErrors = null;
@@ -282,6 +286,56 @@ final class Flash
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Browser drafts
+    // -------------------------------------------------------------------------
+
+    /**
+     * The long forms keep a draft in the browser as they are typed (core.js,
+     * initDrafts). Only the server knows when a save actually succeeded, so
+     * it names the draft here and the next page tells the browser to drop it.
+     */
+    public static function clearDraft(string $key): void
+    {
+        if (!self::active() || $key === '') {
+            return;
+        }
+
+        if (!isset($_SESSION[self::KEY_DRAFTS]) || !is_array($_SESSION[self::KEY_DRAFTS])) {
+            $_SESSION[self::KEY_DRAFTS] = [];
+        }
+
+        $_SESSION[self::KEY_DRAFTS][] = $key;
+    }
+
+    /**
+     * Draft keys the browser should forget, consumed.
+     *
+     * @return list<string>
+     */
+    public static function draftsToClear(): array
+    {
+        if (self::$readDrafts !== null) {
+            return self::$readDrafts;
+        }
+
+        $keys = [];
+
+        if (self::active() && isset($_SESSION[self::KEY_DRAFTS]) && is_array($_SESSION[self::KEY_DRAFTS])) {
+            foreach ($_SESSION[self::KEY_DRAFTS] as $key) {
+                if (is_string($key) && $key !== '') {
+                    $keys[] = $key;
+                }
+            }
+
+            unset($_SESSION[self::KEY_DRAFTS]);
+        }
+
+        self::$readDrafts = array_values(array_unique($keys));
+
+        return self::$readDrafts;
+    }
+
     /** Drop everything. Used on logout. */
     public static function clear(): void
     {
@@ -289,10 +343,16 @@ final class Flash
             return;
         }
 
-        unset($_SESSION[self::KEY_MESSAGES], $_SESSION[self::KEY_ERRORS], $_SESSION[self::KEY_OLD]);
+        unset(
+            $_SESSION[self::KEY_MESSAGES],
+            $_SESSION[self::KEY_ERRORS],
+            $_SESSION[self::KEY_OLD],
+            $_SESSION[self::KEY_DRAFTS]
+        );
 
         self::$readMessages = null;
         self::$readErrors   = null;
         self::$readOld      = null;
+        self::$readDrafts   = null;
     }
 }
