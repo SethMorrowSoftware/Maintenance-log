@@ -140,6 +140,49 @@ View::partial('tabs', ['tabs' => $tabLinks, 'active' => $tab]);
                 </a>
             </div>
         </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title"><?= icon('kart', '', 18) ?> The starting fleet</h2>
+                    <p class="card-subtitle">The Castle Fun Center <?= e(asset_word(true)) ?>, ready to rename</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <?php if (\App\Fleet::present()): ?>
+                    <p class="text-sm text-muted">
+                        Loaded. Twenty go-karts, the Freefall, Dragon Coaster and Swings, the zip line, twelve
+                        bowling lanes, six axe-throw lanes and the indoor attractions, each with its checklist and
+                        service schedule. Rename, re-tag or delete any of them from the
+                        <a href="<?= e(url('assets.php')) ?>"><?= e(asset_word(true)) ?></a> screen.
+                    </p>
+                <?php elseif (\App\Fleet::available()): ?>
+                    <p class="text-sm text-muted">
+                        Not loaded. This adds twenty go-karts, the Freefall, Dragon Coaster and Swings, the zip
+                        line, twelve bowling lanes, six axe-throw lanes and the indoor attractions — forty-eight
+                        <?= e(asset_word(true)) ?> — each with its checklist and service schedule, and no made-up
+                        history. Anything you already have is left exactly as it is: <?= e(an_asset()) ?> with the
+                        same tag as one of these is kept as yours.
+                    </p>
+                    <form method="post" action="<?= e(url('settings.php', ['tab' => 'system'])) ?>">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="load_fleet">
+                        <button type="submit" class="btn btn-primary"
+                                data-confirm="Add the Castle Fun Center starting fleet to this site? Nothing you already have is changed, and you can rename or delete any of it afterwards."
+                                data-confirm-title="Load the starting fleet"
+                                data-confirm-text="Load the fleet">
+                            <?= icon('plus', '', 17) ?> Load the starting fleet
+                        </button>
+                    </form>
+                <?php else: ?>
+                    <p class="text-sm text-muted">
+                        Not loaded, and the file it comes from (<code>install/fleet.sql</code>) is not on the
+                        server — the <code>install</code> folder is usually deleted after setting up. Upload that
+                        folder from the release, come back here to load the fleet, then delete the folder again.
+                    </p>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 
     <div class="card">

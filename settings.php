@@ -90,6 +90,23 @@ if (is_post()) {
         redirect(url('settings.php', ['tab' => 'fields']));
     }
 
+    // ----------------------------------------------------------- starting fleet
+    if ($action === 'load_fleet') {
+        $result = \App\Fleet::load();
+
+        if ($result['ok'] && $result['machines'] + $result['checklists'] + $result['schedules'] === 0) {
+            flash('info', 'The starting fleet was already here. Nothing was added.');
+        } elseif ($result['ok']) {
+            flash('success', 'The starting fleet is in: ' . $result['machines'] . ' ' . asset_word(true) . ', '
+                . $result['checklists'] . ' checklists and ' . $result['schedules']
+                . ' service schedules added. Nothing you already had was changed.');
+        } else {
+            flash('error', 'The fleet was only partly loaded: ' . implode(' ', array_slice($result['errors'], 0, 2)));
+        }
+
+        redirect(url('settings.php', ['tab' => 'system']));
+    }
+
     // ----------------------------------------------------------- new cron token
     if ($action === 'new_cron_token') {
         Settings::set('cron_token', Str::random(48));

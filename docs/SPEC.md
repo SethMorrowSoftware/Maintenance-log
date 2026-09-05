@@ -671,7 +671,13 @@ generates a random `cron_token` and app key, records every file in `install/migr
 as already applied (schema.sql is always current), and shows post-install security advice
 (delete `install/`, chmod, HTTPS). `install/upgrade.php` re-applies schema.sql and
 seed.sql, runs the migration files not yet listed in the `applied_migrations` setting,
-and updates the `schema_version` setting.
+and updates the `schema_version` setting. It also compares the setting keys in
+`seed.sql` with the database, so a release that adds settings without a migration
+still shows as work to do. `install/fleet.sql` never names a row id — machines by
+tag, categories by slug, locations and checklists by name, every reference a
+subselect, every insert guarded — so `App\Fleet::load()` (Settings → System →
+The starting fleet) can add the same fleet to an existing site without touching
+what it has, and a second load adds nothing.
 
 ### Cron (`cron.php?token=…`)
 Recompute PM due dates, raise due/overdue notifications, expire old sessions & reset tokens,

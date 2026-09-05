@@ -177,6 +177,26 @@ messages.
 
 ---
 
+## Adding the starting fleet to a site you already have
+
+The installer offers the Castle Fun Center fleet only on a fresh install. If
+your site was set up before that existed, or you chose to start empty, you can
+add it later: **Settings → System → The starting fleet → Load the starting
+fleet**. It adds the twenty go-karts, the rides, the zip line, twelve bowling
+lanes, six axe-throw lanes and the indoor attractions, each with its checklist
+and service schedule. Nothing you already have is changed — a machine that
+already carries one of the fleet's tags is kept exactly as it is — and pressing
+the button twice adds nothing the second time.
+
+The fleet comes from `install/fleet.sql`, so the `install` folder has to be on
+the server when you press the button. If you deleted it after setting up,
+upload it again from the release, load the fleet, then delete it again.
+
+An upgrade never adds machines, so running `install/upgrade.php` on its own
+will not bring the fleet in.
+
+---
+
 ## Clearing out the demonstration data
 
 If you installed it to have a look and now want to start properly:

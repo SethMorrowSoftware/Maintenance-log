@@ -279,6 +279,21 @@ ob_start();
             </div>
         <?php endif; ?>
 
+        <?php if (!App\Fleet::present() && App\Fleet::available()): ?>
+            <div class="alert alert-info">
+                <?= icon('kart', '', 18) ?>
+                <div class="alert-body">
+                    <strong class="alert-title"><?= e(asset_word(true, true)) ?> are not part of an upgrade</strong>
+                    <p style="margin:4px 0 0">
+                        An upgrade only changes the database structure and reference settings; it never adds
+                        or removes <?= e(asset_word(true)) ?>. To add the Castle Fun Center starting fleet to this
+                        site, use <a href="<?= e(url('settings.php', ['tab' => 'system'])) ?>">Settings → System →
+                        The starting fleet</a>.
+                    </p>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <?php if ($upToDate && !$ran): ?>
             <div class="alert alert-success">
                 <?= icon('check-circle', '', 18) ?>

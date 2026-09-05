@@ -102,9 +102,10 @@ urgent and safety messages.
 **It starts with the real fleet.** The installer offers the Castle Fun Center
 fleet — twenty go-karts, the Freefall, Dragon Coaster and Swings, the zip line,
 bowling lanes, axe-throwing lanes and the indoor attractions — each with its
-daily checklist and service schedule. Everything is renamable, and the word
-"machines" itself is a setting: call them rides, assets or appliances and every
-label follows.
+daily checklist and service schedule. A site that started empty can add the
+same fleet later from Settings → System, without touching what it already
+has. Everything is renamable, and the word "machines" itself is a setting: call
+them rides, assets or appliances and every label follows.
 
 ---
 
