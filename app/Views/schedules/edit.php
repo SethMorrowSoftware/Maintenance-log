@@ -111,6 +111,28 @@ $hasMeter  = $asset !== null && $meterUnit !== 'none';
 
                     <div class="form-row cols-2">
                         <?php View::partial('form-field', [
+                            'name'  => 'next_due_date',
+                            'label' => $editing ? 'Next due on' : 'First due on',
+                            'type'  => 'date',
+                            'value' => (string) ($values['next_due_date'] ?? ''),
+                            'hint'  => 'Optional. Blank means one interval from today, or from the last job.',
+                        ]); ?>
+
+                        <?php if (feature_on('meters') && $hasMeter): ?>
+                            <?php View::partial('form-field', [
+                                'name'   => 'next_due_meter',
+                                'label'  => $editing ? 'Next due at' : 'First due at',
+                                'type'   => 'decimal',
+                                'value'  => (string) ($values['next_due_meter'] ?? ''),
+                                'suffix' => $meterUnit,
+                                'hint'   => 'Optional. The meter reading it next falls due at.',
+                                'attrs'  => ['min' => '0', 'step' => '0.01'],
+                            ]); ?>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="form-row cols-2">
+                        <?php View::partial('form-field', [
                             'name'   => 'lead_time_days',
                             'label'  => 'Warn me this far ahead',
                             'type'   => 'number',

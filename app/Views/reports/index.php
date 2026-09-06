@@ -101,6 +101,25 @@ $render = static function ($value, string $format): string {
             </div>
         <?php endif; ?>
 
+        <?php
+        $assetPairs = [];
+
+        foreach (($assets ?? []) as $assetRow) {
+            $assetPairs[(int) $assetRow['id']] = (string) $assetRow['name'] . ' — ' . (string) $assetRow['asset_tag'];
+        }
+        ?>
+        <?php if ($assetPairs !== []): ?>
+            <?php View::partial('form-field', [
+                'name'    => 'asset_id',
+                'label'   => asset_word(false, true),
+                'type'    => 'select',
+                'value'   => $filters['asset_id'],
+                'options' => $assetPairs,
+                'empty'   => 'All ' . asset_word(true),
+                'noOld'   => true,
+            ]); ?>
+        <?php endif; ?>
+
         <?php View::partial('form-field', [
             'name'    => 'category_id',
             'label'   => 'Category',

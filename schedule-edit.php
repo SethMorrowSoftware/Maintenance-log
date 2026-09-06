@@ -52,6 +52,8 @@ if (is_post()) {
         'checklist_id'    => 'nullable|int|exists:checklists,id',
         'priority'        => 'required|' . Status::rule('priority'),
         'instructions'    => 'nullable|text|max:5000',
+        'next_due_date'   => 'nullable|date',
+        'next_due_meter'  => 'nullable|decimal|min:0',
     ], [
         'name.required' => 'Give the job a name, such as "50 hour service".',
     ], [
@@ -95,6 +97,11 @@ if (is_post()) {
         $data['meter_interval'] = empty($data['meter_interval']) ? null : (float) $data['meter_interval'];
     }
 
+    // "First due on": an annual inspection last done ten months ago should
+    // fall due in two, not in twelve. Blank means one interval from today.
+    $data['next_due_date']  = empty($data['next_due_date']) ? null : (string) $data['next_due_date'];
+    $data['next_due_meter'] = empty($data['next_due_meter']) ? null : (float) $data['next_due_meter'];
+
     $data['frequency_value'] = max(1, (int) ($data['frequency_value'] ?: 1));
     $data['lead_time_days']  = (int) ($data['lead_time_days'] ?? 7);
     $data['is_active']       = Request::bool('is_active') ? 1 : 0;
@@ -119,7 +126,9 @@ if (is_post()) {
                     || (int) $data['frequency_value'] !== (int) ($before['frequency_value'] ?? 0)
                     || abs((float) ($data['meter_interval'] ?? 0) - (float) ($before['meter_interval'] ?? 0)) > 0.004;
 
-                if ($changed) {
+                // A date typed on this save wins; otherwise a changed interval
+                // starts the schedule afresh from today.
+                if ($changed && empty($data['next_due_date'])) {
                     $data['next_due_date']  = null;
                     $data['next_due_meter'] = null;
                 }
@@ -166,6 +175,8 @@ $defaults = [
     'priority'        => 'normal',
     'instructions'    => '',
     'is_active'       => 1,
+    'next_due_date'   => '',
+    'next_due_meter'  => '',
 ];
 
 $values = $editing ? array_merge($defaults, $schedule) : $defaults;
