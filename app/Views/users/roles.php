@@ -86,12 +86,15 @@ $total    = count(Acl::allPermissions());
                                     $fixed     = $roleKey === Acl::ROLE_ADMIN;
                                     ?>
                                     <td class="is-role<?= $isDefault ? '' : ' is-changed' ?>">
-                                        <input type="checkbox"
-                                               name="perm[<?= e((string) $roleKey) ?>][]"
-                                               value="<?= attr((string) $permission) ?>"
-                                               aria-label="<?= attr((string) $label . ' — ' . $roles[$roleKey]) ?>"
-                                               <?= $has ? 'checked' : '' ?>
-                                               <?= $fixed ? 'disabled' : '' ?>>
+                                        <?php // The whole cell is the tap target, not just the box. ?>
+                                        <label class="roles-cell">
+                                            <input type="checkbox"
+                                                   name="perm[<?= e((string) $roleKey) ?>][]"
+                                                   value="<?= attr((string) $permission) ?>"
+                                                   aria-label="<?= attr((string) $label . ' — ' . $roles[$roleKey]) ?>"
+                                                   <?= $has ? 'checked' : '' ?>
+                                                   <?= $fixed ? 'disabled' : '' ?>>
+                                        </label>
                                     </td>
                                 <?php endforeach; ?>
                             </tr>

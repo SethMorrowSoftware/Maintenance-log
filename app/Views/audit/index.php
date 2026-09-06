@@ -137,7 +137,7 @@ $linkFor = static function (string $entityType, $entityId): ?string {
                                 <?php if ($before !== [] || $after !== []): ?>
                                     <details class="audit-detail">
                                         <summary>Exactly what changed</summary>
-                                        <table class="table table-compact audit-diff">
+                                        <table class="table table-compact audit-diff is-stacked">
                                             <thead>
                                                 <tr><th>Field</th><th>Was</th><th>Now</th></tr>
                                             </thead>
@@ -145,11 +145,11 @@ $linkFor = static function (string $entityType, $entityId): ?string {
                                                 <?php foreach (array_keys($after + $before) as $field): ?>
                                                     <?php if (!$canSeeCosts && in_array((string) $field, $moneyFields, true)) { continue; } ?>
                                                     <tr>
-                                                        <td><?= e(\App\Str::label((string) $field)) ?></td>
-                                                        <td class="text-muted">
+                                                        <td class="is-row-title" data-label="Field"><?= e(\App\Str::label((string) $field)) ?></td>
+                                                        <td class="text-muted" data-label="Was">
                                                             <?= e(str_limit($flat($before[$field] ?? null), 120)) ?: '<span class="text-subtle">&mdash;</span>' ?>
                                                         </td>
-                                                        <td>
+                                                        <td data-label="Now">
                                                             <?= e(str_limit($flat($after[$field] ?? null), 120)) ?: '<span class="text-subtle">&mdash;</span>' ?>
                                                         </td>
                                                     </tr>

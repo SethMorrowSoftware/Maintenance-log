@@ -66,7 +66,17 @@ $render = static function ($value, string $format): string {
     </nav>
 
     <?php // ==================== Filters ==================== ?>
-    <form method="get" action="<?= e(url('reports.php')) ?>" class="filter-bar no-print">
+    <?php
+    // On a phone the filters fold away unless one is in use.
+    $reportFiltered = (int) $filters['asset_id'] > 0 || (int) $filters['category_id'] > 0 || (int) $filters['location_id'] > 0
+        || (string) $filters['log_type'] !== '' || (int) $filters['user_id'] > 0 || (string) $filters['status'] !== '';
+    ?>
+    <form method="get" action="<?= e(url('reports.php')) ?>" class="filter-bar no-print<?= $reportFiltered ? '' : ' is-collapsed' ?>">
+        <button type="button" class="btn btn-secondary btn-sm filter-toggle" data-filter-toggle
+                aria-expanded="<?= $reportFiltered ? 'true' : 'false' ?>">
+            <span><?= icon('filter', '', 15) ?> Filters<?= $reportFiltered ? ' (on)' : '' ?></span>
+            <?= icon('chevron-down', '', 15) ?>
+        </button>
         <input type="hidden" name="report" value="<?= e($report) ?>">
 
         <?php if ($usesDates): ?>

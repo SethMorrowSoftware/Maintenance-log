@@ -27,6 +27,14 @@
        Helpers
        --------------------------------------------------------------------- */
 
+    /** Shorten a label to the pixels it has (about 6.5px per character). */
+    function fitLabel(text, px) {
+        var chars = Math.max(3, Math.floor(px / 6.5));
+        text = String(text);
+
+        return text.length > chars ? text.slice(0, chars - 1).replace(/\s+$/, '') + '…' : text;
+    }
+
     function svgEl(name, attrs) {
         var node = document.createElementNS(SVG_NS, name);
 
@@ -383,7 +391,8 @@
                 bars.appendChild(rect);
             });
 
-            // X label, thinned out when there is no room for all of them.
+            // X label, thinned out when there is no room for all of them, and
+            // shortened to the room each one has so neighbours never overprint.
             var everyNth = Math.ceil(labels.length / Math.max(1, Math.floor(plotWidth / 46)));
 
             if (index % everyNth === 0) {
@@ -392,7 +401,14 @@
                     y: height - 12,
                     'text-anchor': 'middle'
                 });
-                xText.textContent = label;
+                xText.textContent = fitLabel(label, groupWidth * everyNth);
+
+                if (xText.textContent !== label) {
+                    var full = svgEl('title', {});
+                    full.textContent = label;
+                    xText.appendChild(full);
+                }
+
                 axis.appendChild(xText);
             }
         });
@@ -552,8 +568,15 @@
             }
 
             var x = padLeft + (labels.length > 1 ? index * stepX : plotWidth / 2);
-            var text = svgEl('text', { x: x, y: height - 12, 'text-anchor': 'middle' });
-            text.textContent = label;
+            var last = index === labels.length - 1;
+            var first = index === 0;
+            var text = svgEl('text', {
+                x: x,
+                y: height - 12,
+                // The end labels hang inwards so they are never clipped.
+                'text-anchor': last && labels.length > 1 ? 'end' : (first && labels.length > 1 ? 'start' : 'middle')
+            });
+            text.textContent = fitLabel(label, Math.max(stepX * everyNth, 60));
             axis.appendChild(text);
         });
 

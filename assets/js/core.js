@@ -2952,18 +2952,26 @@
 
         refreshProgress();
 
-        // Toasts sit at the bottom of a phone screen, where the sticky bar is.
-        // Tell the stylesheet how tall the bar is so they stack above it.
-        var bar = RL.qs('.checklist-progress');
+        // Answering a line scrolls the next unanswered one into reach, so a
+        // long list is a rhythm of taps rather than taps and scrolls. A fail
+        // opens its note box instead, and that gets the focus.
+        items.forEach(function (item, index) {
+            RL.qsa('[data-response-input]', item).forEach(function (input) {
+                input.addEventListener('change', function () {
+                    if (input.value === 'fail' || input.value === 'no') {
+                        return;
+                    }
 
-        if (bar) {
-            var lift = function () {
-                document.documentElement.style.setProperty('--toast-offset', bar.offsetHeight + 'px');
-            };
+                    var next = items.slice(index + 1).find(function (candidate) {
+                        return candidate.classList.contains('is-unanswered');
+                    });
 
-            lift();
-            window.addEventListener('resize', RL.debounce(lift, 150));
-        }
+                    if (next && next.getBoundingClientRect().top > window.innerHeight * 0.6) {
+                        next.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    }
+                });
+            });
+        });
 
         // Warn before finishing with unanswered items, rather than letting the
         // server bounce it back after a scroll to the bottom.
@@ -3081,6 +3089,49 @@
         });
     }
 
+    /**
+     * Toasts sit at the bottom of a phone screen, where a sticky bar (the
+     * checklist progress, the form's Save bar) also sits. Tell the stylesheet
+     * how tall the bar is so the toasts stack above it.
+     */
+    function initStickyBars() {
+        var bar = RL.qs('.checklist-progress, .form-sticky');
+
+        if (!bar) {
+            return;
+        }
+
+        var lift = function () {
+            var visible = bar.offsetParent !== null && getComputedStyle(bar).display !== 'none';
+            document.documentElement.style.setProperty('--toast-offset', (visible ? bar.offsetHeight : 0) + 'px');
+        };
+
+        lift();
+        window.addEventListener('resize', RL.debounce(lift, 150));
+    }
+
+    /**
+     * A row of tabs wider than the screen scrolls sideways. Bring the active
+     * one into view, and say (with a fade) that there is more to the right.
+     */
+    function initTabStrips() {
+        RL.qsa('.tabs, .report-tabs').forEach(function (strip) {
+            var mark = function () {
+                strip.classList.toggle('is-scrollable', strip.scrollWidth > strip.clientWidth + 2);
+            };
+
+            mark();
+            window.addEventListener('resize', RL.debounce(mark, 150));
+
+            var active = strip.querySelector('.is-active');
+
+            if (active && strip.scrollWidth > strip.clientWidth + 2) {
+                active.scrollIntoView({ inline: 'center', block: 'nearest' });
+                window.scrollTo(0, 0);
+            }
+        });
+    }
+
     /** Raise server-side flash messages as toasts, and hide the fallback. */
     function initFlash() {
         var node = document.getElementById('rl-flash');
@@ -3164,6 +3215,8 @@
         initGlobalSearch();
         initNotifications();
         initMeterUpdate();
+        initStickyBars();
+        initTabStrips();
         initFlash();
         clearSavedDrafts();
 

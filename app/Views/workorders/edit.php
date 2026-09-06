@@ -179,4 +179,11 @@ use App\View;
             <?php endif; ?>
         </div>
     </div>
+
+    <?php // On a phone the sidebar lands below the form, so the button travels with the thumb. ?>
+    <div class="form-sticky no-print">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <?= icon('save', '', 18) ?> <?= $editing ? 'Save changes' : 'Report it' ?>
+        </button>
+    </div>
 </form>

@@ -78,7 +78,7 @@ final class AssetsController
             $out[] = [
                 'id'            => (int) $row['id'],
                 'label'         => (string) $row['name'],
-                'meta'          => trim((string) $row['asset_tag'] . ' · ' . (string) ($row['category'] ?? '')),
+                'meta'          => implode(' · ', array_filter([(string) $row['asset_tag'], (string) ($row['category'] ?? '')])),
                 'url'           => 'asset-view.php?id=' . (int) $row['id'],
                 'status'        => (string) $row['status'],
                 'status_label'  => Status::label((string) $row['status'], 'asset'),

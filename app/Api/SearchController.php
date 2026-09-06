@@ -53,7 +53,7 @@ final class SearchController
             foreach ($rows as $row) {
                 $out[asset_word(true, true)][] = [
                     'label' => (string) $row['name'],
-                    'meta'  => trim((string) $row['asset_tag'] . ' · ' . (string) ($row['category'] ?? '')),
+                    'meta'  => implode(' · ', array_filter([(string) $row['asset_tag'], (string) ($row['category'] ?? '')])),
                     'url'   => 'asset-view.php?id=' . (int) $row['id'],
                 ];
             }
