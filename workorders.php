@@ -22,6 +22,10 @@ Acl::requirePermission('workorders.view');
 if (is_post()) {
     Csrf::verify();
 
+    // Pick it up, hand it back, mark it done — the same buttons as on the work
+    // order itself, so a mechanic can clear a job without opening it.
+    \App\WorkOrderActions::handle();
+
     if (Request::string('action') === 'delete') {
         Acl::requirePermission('workorders.delete');
         WorkOrder::delete(Request::int('id'))

@@ -191,12 +191,15 @@ if (is_post()) {
         }
     }
 
-    // Closing the work order from here needs the same right as closing it
-    // on its own page.
-    $data['close_work_order'] = Request::bool('close_work_order')
-        && $linkedWorkOrder !== null
-        && can('workorders.close')
-        && Acl::canEditWorkOrder($linkedWorkOrder);
+    // Which button they pressed: "Save and finish WO-000014" or "Save, still
+    // more to do". Closing needs the same right as closing on its own page;
+    // when they may not, the job is handed over for sign-off instead of the
+    // request being silently dropped.
+    $wantsClose = Request::bool('close_work_order') && $linkedWorkOrder !== null;
+
+    $data['close_work_order'] = $wantsClose && Acl::canCloseWorkOrder($linkedWorkOrder);
+    $data['handover_work_order'] = $wantsClose && !$data['close_work_order']
+        && Acl::canWorkOnWorkOrder($linkedWorkOrder);
 
     if (!$data['requires_followup']) {
         $data['followup_notes'] = null;

@@ -59,26 +59,15 @@ use App\View;
                         'attrs'       => ['maxlength' => 5000, 'data-autogrow' => true],
                     ]); ?>
 
-                    <div class="form-row cols-2">
-                        <?php View::partial('form-field', [
-                            'name'     => 'priority',
-                            'label'    => 'How urgent is it?',
-                            'type'     => 'select',
-                            'value'    => $values['priority'],
-                            'options'  => Status::options('priority'),
-                            'required' => true,
-                            'hint'     => 'Urgent means guests are at risk or a ride is closed.',
-                        ]); ?>
-
-                        <?php View::partial('form-field', [
-                            'name'     => 'source',
-                            'label'    => 'How was it spotted?',
-                            'type'     => 'select',
-                            'value'    => $values['source'],
-                            'options'  => Status::options('wo_source'),
-                            'required' => true,
-                        ]); ?>
-                    </div>
+                    <?php View::partial('form-field', [
+                        'name'     => 'priority',
+                        'label'    => 'How urgent is it?',
+                        'type'     => 'select',
+                        'value'    => $values['priority'],
+                        'options'  => Status::options('priority'),
+                        'required' => true,
+                        'hint'     => 'Urgent means guests are at risk or a ride is closed.',
+                    ]); ?>
 
                     <label class="form-check" for="f_safety">
                         <input type="checkbox" id="f_safety" name="is_safety_issue" value="1"
@@ -98,9 +87,43 @@ use App\View;
                                 <small>Marks the <?= e(asset_word()) ?> unavailable to guests straight away.</small>
                             </span>
                         </label>
+
+                        <?php // The mechanic who reports the fault is very often the one
+                              // already under the kart. One tick puts their name on it and
+                              // starts the clock, instead of a second trip through the job. ?>
+                        <?php if (can('workorders.edit')): ?>
+                            <label class="form-check" for="f_fixing">
+                                <input type="checkbox" id="f_fixing" name="fixing_now" value="1"
+                                       <?= checked((int) ($values['fixing_now'] ?? 0)) ?>>
+                                <span class="form-check-label">
+                                    I am fixing this now
+                                    <small>Puts your name on it and marks it in progress.</small>
+                                </span>
+                            </label>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
             </div>
+
+            <?php // "How was it spotted?" matters to whoever reads the reports at the
+                  // end of the month; it does not matter to the operator standing at a
+                  // broken kart. It keeps its sensible default out of sight. ?>
+            <details class="card" <?= $editing ? 'open' : '' ?>>
+                <summary class="card-header" style="cursor:pointer;list-style:none">
+                    <h2 class="card-title"><?= icon('info', '', 18) ?> More detail</h2>
+                    <span class="text-sm text-muted">Optional <?= icon('chevron-down', '', 15) ?></span>
+                </summary>
+                <div class="card-body">
+                    <?php View::partial('form-field', [
+                        'name'    => 'source',
+                        'label'   => 'How was it spotted?',
+                        'type'    => 'select',
+                        'value'   => $values['source'],
+                        'options' => Status::options('wo_source'),
+                        'hint'    => 'Used by the reports. Leave it as it is if you are not sure.',
+                    ]); ?>
+                </div>
+            </details>
 
             <?php if (can('workorders.assign')): ?>
                 <details class="card" <?= $editing ? 'open' : '' ?>>

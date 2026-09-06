@@ -23,6 +23,14 @@ Auth::requireLogin();
  */
 run_hourly_tasks();
 
+// The Done and "I'm on it" buttons on the dashboard's work order rows post
+// back here, so a mechanic can clear a job from the page they land on.
+if (is_post()) {
+    \App\Csrf::verify();
+    \App\WorkOrderActions::handle();
+    redirect(url('index.php'));
+}
+
 // Staff who only run checks get today's checks as their home page: nothing
 // about the fleet, just what needs doing and what has been done.
 if (\App\Acl::isStaff()) {

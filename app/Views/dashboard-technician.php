@@ -88,12 +88,7 @@ foreach ($dueList as $due) {
                             <?php endif; ?>
                         </div>
                     </span>
-                    <?php if (can('logs.create')): ?>
-                        <a class="btn btn-secondary btn-sm"
-                           href="<?= e(url('log-edit.php', ['work_order_id' => (int) $wo['id']])) ?>">
-                            Log the work
-                        </a>
-                    <?php endif; ?>
+                    <?php View::partial('wo-row-actions', ['workOrder' => $wo]); ?>
                 </li>
             <?php endforeach; ?>
         </ul>
@@ -279,6 +274,7 @@ foreach ($dueList as $due) {
                                     <?php endif; ?>
                                 </div>
                             </span>
+                            <?php View::partial('wo-row-actions', ['workOrder' => $wo, 'showLog' => false]); ?>
                         </li>
                     <?php endforeach; ?>
                 </ul>

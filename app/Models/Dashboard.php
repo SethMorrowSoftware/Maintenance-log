@@ -249,7 +249,13 @@ final class Dashboard
     public static function openWorkOrders(int $limit = 8, ?int $assignedTo = null): array
     {
         $params = [];
+        // assigned_to, reported_by, asset_id, took_out_of_service and
+        // is_safety_issue are here for the Done and "I'm on it" buttons on the
+        // row: without them App\Acl would fail closed and the buttons would
+        // never appear.
         $sql = "SELECT w.id, w.wo_number, w.title, w.status, w.priority, w.due_date, w.created_at,
+                       w.assigned_to, w.reported_by, w.asset_id,
+                       w.took_out_of_service, w.is_safety_issue,
                        a.name AS asset_name, a.asset_tag,
                        u.first_name, u.last_name, u.username, u.avatar_path, u.id AS assignee_id
                 FROM {work_orders} w

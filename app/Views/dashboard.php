@@ -309,6 +309,7 @@ $currency = Settings::currency();
                                     <th>Priority</th>
                                     <th>Status</th>
                                     <th>Assigned</th>
+                                    <th><span class="sr-only">Actions</span></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -340,6 +341,9 @@ $currency = Settings::currency();
                                             <?php else: ?>
                                                 <span class="text-subtle">Unassigned</span>
                                             <?php endif; ?>
+                                        </td>
+                                        <td data-label="" class="is-actions">
+                                            <?php View::partial('wo-row-actions', ['workOrder' => $wo, 'showLog' => false]); ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -414,6 +418,7 @@ $currency = Settings::currency();
                                     <?php endif; ?>
                                 </div>
                             </span>
+                            <?php View::partial('wo-row-actions', ['workOrder' => $wo]); ?>
                         </li>
                     <?php endforeach; ?>
                 </ul>

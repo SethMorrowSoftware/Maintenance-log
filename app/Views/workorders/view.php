@@ -5,9 +5,21 @@ use App\Dates;
 use App\Status;
 use App\View;
 
+use App\Models\WorkOrder;
+
 $woId     = (int) $workOrder['id'];
 $isClosed = Status::isClosedWorkOrder((string) $workOrder['status']);
 $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder['due_date']) && !$isClosed;
+
+$canWork  = Acl::canWorkOnWorkOrder($workOrder);
+$canClose = Acl::canCloseWorkOrder($workOrder);
+$mine     = (int) ($workOrder['assigned_to'] ?? 0) === (int) (user()['id'] ?? 0);
+
+// Offer to put the machine back on the track only when this job is what took
+// it off and nothing else is holding it there. Never pre-ticked on a safety
+// issue: that one gets a deliberate decision.
+$mayReturn   = !$isClosed && WorkOrder::mayReturnToService($workOrder);
+$returnTicked = $mayReturn && (int) ($workOrder['is_safety_issue'] ?? 0) !== 1;
 ?>
 
 <?php if ((int) $workOrder['is_safety_issue'] === 1 && !$isClosed): ?>
@@ -20,7 +32,93 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
     </div>
 <?php endif; ?>
 
-<div class="grid grid-sidebar is-actions-first">
+<?php // ==================== Is it done? ====================
+      // The one question a mechanic standing at the machine needs to answer,
+      // at the top of the page, with the answer as a button and not a form. ?>
+<?php if ($canWork && !$isClosed): ?>
+    <form method="post" action="<?= e(url('workorder-view.php', ['id' => $woId])) ?>" class="card is-accent wo-finish">
+        <?= csrf_field() ?>
+        <input type="hidden" name="id" value="<?= $woId ?>">
+        <div class="card-body">
+            <?php View::partial('form-field', [
+                'name'        => 'resolution',
+                'label'       => 'What did you do?',
+                'type'        => 'text',
+                'value'       => (string) ($workOrder['resolution'] ?? ''),
+                'placeholder' => 'Fitted a new set of front pads',
+                'hint'        => 'Optional. One line is plenty.',
+                'noOld'       => true,
+                'attrs'       => ['maxlength' => 191],
+            ]); ?>
+
+            <?php if ($mayReturn): ?>
+                <label class="form-check" for="f_back_in_service">
+                    <input type="checkbox" id="f_back_in_service" name="back_in_service" value="1"
+                           <?= $returnTicked ? 'checked' : '' ?>>
+                    <span class="form-check-label">
+                        Put <?= e((string) $workOrder['asset_name']) ?> back in service
+                        <small>
+                            <?php if ((int) ($workOrder['is_safety_issue'] ?? 0) === 1): ?>
+                                This was reported as a safety issue, so tick it only if it is genuinely safe to run.
+                            <?php else: ?>
+                                It went out of service when this was reported.
+                            <?php endif; ?>
+                        </small>
+                    </span>
+                </label>
+            <?php endif; ?>
+
+            <button type="submit" name="action" value="done" class="btn btn-primary btn-block btn-lg">
+                <?= icon('check-circle', '', 20) ?>
+                <?= $canClose ? 'Done — it is fixed' : 'Done — hand it over for sign-off' ?>
+            </button>
+
+            <?php if (!$canClose): ?>
+                <p class="form-hint">
+                    This site asks a manager to sign work off. They are told as soon as you tap it.
+                </p>
+            <?php endif; ?>
+
+            <div class="wo-finish-more">
+                <?php if (Acl::canClaimWorkOrder($workOrder)): ?>
+                    <button type="submit" name="action" value="claim" class="btn btn-secondary">
+                        <?= icon('user', '', 16) ?>
+                        <?= empty($workOrder['assigned_to']) ? "I'm on it" : 'Take it over' ?>
+                    </button>
+                <?php elseif ($mine): ?>
+                    <button type="submit" name="action" value="hand_back" class="btn btn-ghost">
+                        <?= icon('refresh', '', 16) ?> Hand it back
+                    </button>
+                <?php endif; ?>
+
+                <?php if (can('logs.create')): ?>
+                    <a class="btn btn-secondary" data-no-guard
+                       href="<?= e(url('log-edit.php', ['work_order_id' => $woId, 'asset_id' => (int) ($workOrder['asset_id'] ?? 0)])) ?>">
+                        <?= icon('wrench', '', 16) ?> Log parts and time
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </form>
+<?php elseif ($isClosed && $canWork): ?>
+    <form method="post" action="<?= e(url('workorder-view.php', ['id' => $woId])) ?>" class="card wo-finish">
+        <?= csrf_field() ?>
+        <input type="hidden" name="id" value="<?= $woId ?>">
+        <div class="card-body flex items-center justify-between gap-3 flex-wrap">
+            <span>
+                <strong><?= e(Status::label((string) $workOrder['status'], 'workorder')) ?></strong>
+                <?php if (!empty($workOrder['completed_at'])): ?>
+                    <span class="text-muted"><?= e(Dates::ago((string) $workOrder['completed_at'])) ?></span>
+                <?php endif; ?>
+            </span>
+            <button type="submit" name="action" value="reopen" class="btn btn-secondary">
+                <?= icon('refresh', '', 16) ?> Not fixed after all — reopen it
+            </button>
+        </div>
+    </form>
+<?php endif; ?>
+
+<div class="grid grid-sidebar">
     <div>
         <div class="card">
             <div class="card-header">
@@ -135,8 +233,8 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                     'attachments' => $attachments,
                     'entityType'  => 'work_order',
                     'entityId'    => $woId,
-                    'canUpload'   => Acl::canEditWorkOrder($workOrder),
-                    'canDelete'   => Acl::canEditWorkOrder($workOrder),
+                    'canUpload'   => Acl::canWorkOnWorkOrder($workOrder),
+                    'canDelete'   => Acl::canWorkOnWorkOrder($workOrder),
                     'uploadUrl'   => url('workorder-view.php', ['id' => $woId]),
                 ]); ?>
             </div>
@@ -165,7 +263,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                     <?php endforeach; ?>
                 <?php endif; ?>
 
-                <?php if (can('workorders.edit') || Acl::canEditWorkOrder($workOrder)): ?>
+                <?php if (Acl::canWorkOnWorkOrder($workOrder)): ?>
                 <form method="post" action="<?= e(url('workorder-view.php', ['id' => $woId])) ?>" class="mt-4">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="comment">
@@ -187,9 +285,12 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
     </div>
 
     <div>
-        <?php if (Acl::canEditWorkOrder($workOrder)): ?>
-            <div class="card is-accent">
-                <div class="card-header"><h3 class="card-title">Move it along</h3></div>
+        <?php if ($canWork): ?>
+            <details class="card">
+                <summary class="card-header" style="cursor:pointer;list-style:none">
+                    <h3 class="card-title">Change something else</h3>
+                    <span class="text-sm text-muted"><?= icon('chevron-down', '', 15) ?></span>
+                </summary>
                 <div class="card-body">
                     <form method="post" action="<?= e(url('workorder-view.php', ['id' => $woId])) ?>">
                         <?= csrf_field() ?>
@@ -198,12 +299,15 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                         <?php
                         $transitions = Status::workOrderTransitions((string) $workOrder['status']);
 
-                        // Closing needs its own permission: do not offer what the server will refuse.
-                        if (!can('workorders.close')) {
-                            foreach (array_keys($transitions) as $candidate) {
-                                if (Status::isClosedWorkOrder((string) $candidate)) {
-                                    unset($transitions[$candidate]);
-                                }
+                        // Do not offer what the server would refuse: closing
+                        // and cancelling each need their own permission.
+                        foreach (array_keys($transitions) as $candidate) {
+                            if ((string) $candidate === 'completed' && !Acl::canCloseWorkOrder($workOrder)) {
+                                unset($transitions[$candidate]);
+                            }
+
+                            if ((string) $candidate === 'cancelled' && !Acl::canCancelWorkOrder($workOrder)) {
+                                unset($transitions[$candidate]);
                             }
                         }
                         ?>
@@ -215,17 +319,19 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                                 'name'    => 'status',
                                 'label'   => 'Change status to',
                                 'type'    => 'select',
-                                'value'   => array_key_first($transitions),
+                                'value'   => (string) $workOrder['status'],
                                 'options' => $transitions,
+                                'empty'   => 'Leave it as it is (' . Status::label((string) $workOrder['status'], 'workorder') . ')',
                                 'noOld'   => true,
                             ]); ?>
 
                             <?php View::partial('form-field', [
                                 'name'        => 'resolution',
-                                'label'       => 'What was done? (if closing)',
+                                'label'       => 'What was done?',
                                 'type'        => 'textarea',
                                 'value'       => (string) ($workOrder['resolution'] ?? ''),
                                 'rows'        => 3,
+                                'hint'        => 'Clearing this box removes what is written there.',
                                 'noOld'       => true,
                                 'attrs'       => ['maxlength' => 5000],
                             ]); ?>
@@ -242,11 +348,11 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                                 ]); ?>
                             <?php endif; ?>
 
-                            <button type="submit" class="btn btn-primary btn-block">Update</button>
+                            <button type="submit" class="btn btn-secondary btn-block">Save this change</button>
                         <?php endif; ?>
                     </form>
                 </div>
-            </div>
+            </details>
         <?php endif; ?>
 
         <div class="card">

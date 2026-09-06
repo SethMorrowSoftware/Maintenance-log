@@ -72,13 +72,20 @@ if (is_post()) {
         }
     }
 
-    // Only somebody who can assign work may choose the assignee.
+    // A field this person's form never showed them must not be written from
+    // their save. The scheduling block belongs to whoever may assign work; a
+    // mechanic correcting a title must not wipe the manager's due date.
     if (!can('workorders.assign')) {
-        unset($data['assigned_to']);
+        unset($data['assigned_to'], $data['due_date'], $data['estimated_hours']);
     }
 
-    $data['is_safety_issue']     = Request::bool('is_safety_issue') ? 1 : 0;
-    $data['took_out_of_service'] = Request::bool('took_out_of_service') ? 1 : 0;
+    $data['is_safety_issue'] = Request::bool('is_safety_issue') ? 1 : 0;
+
+    // The out-of-service tick is offered on a new report only; an edit leaves
+    // the machine's own status alone.
+    if (!$editing) {
+        $data['took_out_of_service'] = Request::bool('took_out_of_service') ? 1 : 0;
+    }
 
     try {
         if ($editing) {
@@ -89,7 +96,17 @@ if (is_post()) {
         } else {
             $data['status'] = 'open';
             $savedId = WorkOrder::create($data);
-            flash('success', 'Reported. Thanks — somebody will pick this up.');
+
+            // "I am fixing this now": the person reporting is very often the
+            // person already holding the spanner. Claiming here saves them a
+            // second trip through the job they just wrote down.
+            $claimed = Request::bool('fixing_now')
+                && can('workorders.edit')
+                && WorkOrder::claim($savedId);
+
+            flash('success', $claimed
+                ? 'Reported, and it is yours. Log the fix when you are done.'
+                : 'Reported. Thanks — somebody will pick this up.');
             \App\Flash::clearDraft('wo-new');
         }
 
@@ -146,7 +163,7 @@ View::render('workorders/edit', [
     'workOrder' => $workOrder,
     'values'    => $values,
     'assets'    => Asset::options(),
-    'assignees' => WorkOrder::assigneeOptions(),
+    'assignees' => WorkOrder::assigneeOptions($editing && $workOrder['assigned_to'] !== null ? (int) $workOrder['assigned_to'] : null),
     'asset'        => $asset,
     'assetHistory' => $asset === null ? [] : Asset::timeline((int) $asset['id'], '', 6),
 ]);

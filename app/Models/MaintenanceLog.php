@@ -487,12 +487,23 @@ final class MaintenanceLog
             }
         }
 
-        // 4. Close the work order this job was against
-        if (!empty($data['work_order_id']) && !empty($data['close_work_order'])) {
+        // 4. Say what this job did to the work order it was against: finish
+        //    it, hand it over for sign-off, or — when it stays open — at least
+        //    tell the people who run the workshop that work has been done, so
+        //    a finished job is never sitting on the board unannounced.
+        if (!empty($data['work_order_id'])) {
+            $workOrderId = (int) $data['work_order_id'];
+
             try {
-                WorkOrder::completeFromLog((int) $data['work_order_id'], $logId);
+                if (!empty($data['close_work_order'])) {
+                    WorkOrder::completeFromLog($workOrderId, $logId);
+                } elseif (!empty($data['handover_work_order'])) {
+                    WorkOrder::markFinishedPendingSignOff($workOrderId, (string) ($data['work_performed'] ?: $data['title']));
+                } else {
+                    WorkOrder::noteWorkLogged($workOrderId, $logId);
+                }
             } catch (Throwable $e) {
-                log_error('Work order completion from log failed: ' . $e->getMessage());
+                log_error('Work order update from log failed: ' . $e->getMessage());
             }
         }
     }

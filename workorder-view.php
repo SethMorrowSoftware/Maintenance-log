@@ -26,12 +26,19 @@ if ($workOrder === null) {
 if (is_post()) {
     Csrf::verify();
 
+    // Pick it up, finish it, hand it back, change the status: the shared
+    // rules, so the same buttons behave the same way here, on the list and
+    // on the dashboards.
+    if (\App\WorkOrderActions::handle()) {
+        redirect(url('workorder-view.php', ['id' => $id]));
+    }
+
     $action = Request::string('action');
 
     if ($action === 'comment') {
         // Anyone who works on work orders may join the conversation; a
         // read-only account may not.
-        if (!can('workorders.edit') && !Acl::canEditWorkOrder($workOrder)) {
+        if (!Acl::canWorkOnWorkOrder($workOrder)) {
             abort(403, 'You cannot comment on work orders.');
         }
 
@@ -42,42 +49,6 @@ if (is_post()) {
         } else {
             WorkOrder::addComment($id, $comment);
             flash('success', 'Comment added.');
-        }
-    }
-
-    if ($action === 'status') {
-        if (!Acl::canEditWorkOrder($workOrder)) {
-            abort(403, 'You cannot change this work order.');
-        }
-
-        $status = Request::string('status');
-
-        if (Status::isClosedWorkOrder($status) && !can('workorders.close')) {
-            flash('error', 'Only a manager can close or cancel a work order. Your other changes were not saved.');
-            redirect(url('workorder-view.php', ['id' => $id]));
-        }
-
-        if (Status::isValid($status, 'workorder')) {
-            $update = ['status' => $status];
-            $resolution = Request::string('resolution');
-
-            if ($resolution !== '') {
-                $update['resolution'] = $resolution;
-            }
-
-            $downtime = Request::intOrNull('downtime_minutes');
-
-            if ($downtime !== null && $downtime < 0) {
-                flash('error', 'Downtime cannot be less than zero.');
-                redirect(url('workorder-view.php', ['id' => $id]));
-            }
-
-            if ($downtime !== null) {
-                $update['downtime_minutes'] = min($downtime, 525600);
-            }
-
-            WorkOrder::update($id, $update);
-            flash('success', 'Status updated.');
         }
     }
 
@@ -114,7 +85,7 @@ if (is_post()) {
     if ($action === 'upload_attachment') {
         require_feature('photos');
 
-        if (!Acl::canEditWorkOrder($workOrder)) {
+        if (!Acl::canWorkOnWorkOrder($workOrder)) {
             abort(403, 'You cannot add files to this work order.');
         }
 
@@ -136,7 +107,7 @@ if (is_post()) {
     if ($action === 'delete_attachment') {
         require_feature('photos');
 
-        if (!Acl::canEditWorkOrder($workOrder)) {
+        if (!Acl::canWorkOnWorkOrder($workOrder)) {
             abort(403, 'You cannot change this work order.');
         }
 
@@ -179,7 +150,7 @@ View::render('workorders/view', [
     'workOrder'   => $workOrder,
     'comments'    => WorkOrder::comments($id),
     'attachments' => Uploader::forEntity('work_order', $id),
-    'assignees'   => WorkOrder::assigneeOptions(),
+    'assignees'   => WorkOrder::assigneeOptions($workOrder['assigned_to'] === null ? null : (int) $workOrder['assigned_to']),
     'logs'        => db()->all(
         'SELECT id, title, performed_at, total_cost FROM {maintenance_logs}
          WHERE work_order_id = ? AND deleted_at IS NULL ORDER BY performed_at DESC',

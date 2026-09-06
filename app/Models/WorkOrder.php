@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Acl;
 use App\Audit;
 use App\Auth;
 use App\Dates;
@@ -357,22 +358,297 @@ final class WorkOrder
      */
     public static function completeFromLog(int $workOrderId, int $logId): void
     {
+        $log = db()->one('SELECT title, work_performed FROM {maintenance_logs} WHERE id = ?', [$logId]);
+
+        self::finish($workOrderId, [
+            'resolution' => $log === null ? '' : trim((string) ($log['work_performed'] ?: $log['title'])),
+            'note'       => 'Finished by a maintenance log. See the job record for details.',
+        ]);
+    }
+
+    /**
+     * Say the job is finished.
+     *
+     * The one route every "done" goes through — the button on the work order,
+     * the button on a list row, and saving a maintenance log against it — so
+     * the machine coming back into service, the comment, the notification and
+     * the Slack post happen once and happen the same way.
+     *
+     * @param  array{resolution?: string, note?: string, back_in_service?: bool, downtime?: int|null} $opts
+     * @return bool false when there was nothing to finish
+     */
+    public static function finish(int $workOrderId, array $opts = []): bool
+    {
+        $workOrder = self::find($workOrderId);
+
+        // Already closed: a second tap on a slow phone must not write a second
+        // close, a second Slack post and a second round of notifications.
+        if ($workOrder === null || Status::isClosedWorkOrder((string) $workOrder['status'])) {
+            return false;
+        }
+
+        $update     = ['status' => 'completed'];
+        $resolution = trim((string) ($opts['resolution'] ?? ''));
+
+        // What was done, in order of who said it best: what was typed now,
+        // then the newest job logged against this order, then whatever is
+        // already on the record. A sentence somebody wrote is never blanked
+        // and never overwritten by a log title.
+        if ($resolution === '' && trim((string) ($workOrder['resolution'] ?? '')) === '') {
+            $log = db()->one(
+                'SELECT work_performed, title FROM {maintenance_logs}
+                 WHERE work_order_id = ? AND deleted_at IS NULL
+                 ORDER BY performed_at DESC, id DESC LIMIT 1',
+                [$workOrderId]
+            );
+
+            if ($log !== null) {
+                $resolution = trim((string) ($log['work_performed'] ?: $log['title']));
+            }
+        }
+
+        if ($resolution !== '') {
+            $update['resolution'] = mb_substr($resolution, 0, 5000, 'UTF-8');
+        }
+
+        // The record should say who fixed it, even if nobody ever assigned it.
+        if (empty($workOrder['assigned_to']) && Auth::id() !== null) {
+            $update['assigned_to'] = Auth::id();
+        }
+
+        if (isset($opts['downtime']) && $opts['downtime'] !== null) {
+            $update['downtime_minutes'] = min(max(0, (int) $opts['downtime']), 525600);
+        }
+
+        self::update($workOrderId, $update);
+
+        if (!empty($opts['note'])) {
+            self::addComment($workOrderId, (string) $opts['note'], false);
+        }
+
+        // The kart this work order took off the track goes back on it — asked
+        // for, and decided here rather than taken on trust from the form, so
+        // a forged post cannot put a ride back in front of guests.
+        if (!empty($opts['back_in_service'])
+            && !empty($workOrder['asset_id'])
+            && self::mayReturnToService($workOrder)) {
+            try {
+                Asset::changeStatus(
+                    (int) $workOrder['asset_id'],
+                    'in_service',
+                    'Back in service after ' . (string) $workOrder['wo_number']
+                );
+            } catch (Throwable $e) {
+                log_error('Return to service after finishing a work order failed: ' . $e->getMessage());
+            }
+        }
+
+        // Whoever runs the workshop hears about every job somebody else
+        // finished. This is the oversight that replaces the old rule where
+        // only a manager could close anything.
+        if (!Acl::can('workorders.assign')) {
+            try {
+                $fresh = self::find($workOrderId);
+                Notifier::pushToRole(
+                    'workorders.assign',
+                    'wo_updated',
+                    'Finished by ' . (user_name() ?: 'a technician') . ': ' . (string) $workOrder['title'],
+                    (string) $workOrder['wo_number']
+                        . (trim((string) ($fresh['resolution'] ?? '')) !== ''
+                            ? ' — ' . Str::limit((string) $fresh['resolution'], 120)
+                            : ''),
+                    'workorder-view.php?id=' . $workOrderId,
+                    'work_order',
+                    $workOrderId,
+                    false,
+                    Auth::id()
+                );
+            } catch (Throwable $e) {
+                log_error('Work order finished notification failed: ' . $e->getMessage());
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * A job was logged against this order and it is staying open. Put a line
+     * in the thread so the work is visible on the record, and move it along
+     * from "nobody has touched it" if it was still sitting untouched.
+     */
+    public static function noteWorkLogged(int $workOrderId, int $logId): void
+    {
         $workOrder = self::find($workOrderId);
 
         if ($workOrder === null || Status::isClosedWorkOrder((string) $workOrder['status'])) {
             return;
         }
 
-        $log = db()->one('SELECT title, work_performed, performed_at FROM {maintenance_logs} WHERE id = ?', [$logId]);
+        $log = db()->one('SELECT title FROM {maintenance_logs} WHERE id = ?', [$logId]);
 
-        self::update($workOrderId, [
-            'status'     => 'completed',
-            'resolution' => $log === null
-                ? 'Completed via a maintenance log.'
-                : trim((string) ($log['work_performed'] ?: $log['title'])),
-        ]);
+        self::addComment(
+            $workOrderId,
+            (user_name() ?: 'Somebody') . ' logged work against this'
+            . ($log === null ? '' : ': ' . Str::limit((string) $log['title'], 120))
+            . '. It is still open.',
+            false
+        );
 
-        self::addComment($workOrderId, 'Completed by a maintenance log. See the job record for details.', false);
+        // Somebody is clearly on it now.
+        if (in_array((string) $workOrder['status'], ['open', 'assigned'], true)) {
+            $update = ['status' => 'in_progress'];
+
+            if (empty($workOrder['assigned_to']) && Auth::id() !== null) {
+                $update['assigned_to'] = Auth::id();
+            }
+
+            self::update($workOrderId, $update);
+        }
+    }
+
+    /**
+     * The mechanic has finished, but this site wants a manager to sign work
+     * off. Keep everything they said, say so on the record, and tell the
+     * people who run the workshop that it is waiting for them.
+     *
+     * No new status: the vocabulary is fixed, and "somebody says it is done"
+     * is a note and a message, not a seventh state.
+     */
+    public static function markFinishedPendingSignOff(int $workOrderId, string $resolution = '', ?int $downtime = null): bool
+    {
+        $workOrder = self::find($workOrderId);
+
+        if ($workOrder === null || Status::isClosedWorkOrder((string) $workOrder['status'])) {
+            return false;
+        }
+
+        $who    = user_name() ?: 'A technician';
+        $update = [];
+
+        if (trim($resolution) !== '') {
+            $update['resolution'] = mb_substr(trim($resolution), 0, 5000, 'UTF-8');
+        }
+
+        if ($downtime !== null) {
+            $update['downtime_minutes'] = min(max(0, $downtime), 525600);
+        }
+
+        // Put their name on it, so the manager knows who to ask.
+        if (empty($workOrder['assigned_to']) && Auth::id() !== null) {
+            $update['assigned_to'] = Auth::id();
+        }
+
+        if ((string) $workOrder['status'] !== 'in_progress') {
+            $update['status'] = 'in_progress';
+        }
+
+        if ($update !== []) {
+            self::update($workOrderId, $update);
+        }
+
+        self::addComment(
+            $workOrderId,
+            $who . ' says this job is finished and it is ready to be signed off.'
+            . (trim($resolution) !== '' ? ' ' . trim($resolution) : ''),
+            false
+        );
+
+        try {
+            Notifier::pushToRole(
+                'workorders.assign',
+                'wo_updated',
+                'Ready to sign off: ' . (string) $workOrder['title'],
+                (string) $workOrder['wo_number'] . ' — finished by ' . $who,
+                'workorder-view.php?id=' . $workOrderId,
+                'work_order',
+                $workOrderId,
+                false,
+                Auth::id()
+            );
+        } catch (Throwable $e) {
+            log_error('Ready-to-sign-off notification failed: ' . $e->getMessage());
+        }
+
+        return true;
+    }
+
+    /**
+     * Should finishing this order offer to put its machine back in service?
+     *
+     * Only when the machine is actually down, only when this order is what
+     * took it down, and never while another open order still holds it there.
+     *
+     * @param array<string, mixed> $workOrder
+     */
+    public static function mayReturnToService(array $workOrder): bool
+    {
+        if (empty($workOrder['asset_id']) || (string) ($workOrder['asset_status'] ?? '') === 'in_service') {
+            return false;
+        }
+
+        if ((int) ($workOrder['took_out_of_service'] ?? 0) !== 1) {
+            return false;
+        }
+
+        return self::othersHoldingOutOfService((int) $workOrder['asset_id'], (int) $workOrder['id']) === 0;
+    }
+
+    /** Is the machine still held down by some OTHER unfinished work order? */
+    public static function othersHoldingOutOfService(int $assetId, int $exceptWorkOrderId): int
+    {
+        return db()->count(
+            "SELECT COUNT(*) FROM {work_orders}
+             WHERE asset_id = ? AND id <> ? AND deleted_at IS NULL
+               AND (took_out_of_service = 1 OR is_safety_issue = 1)
+               AND status NOT IN ('completed','cancelled')",
+            [$assetId, $exceptWorkOrderId]
+        );
+    }
+
+    /**
+     * Put this person's own name on the job and start the clock. The assignee
+     * is always whoever is signed in — this is never a way to assign somebody
+     * else, which stays behind 'workorders.assign'.
+     */
+    public static function claim(int $workOrderId): bool
+    {
+        $workOrder = self::find($workOrderId);
+        $userId    = Auth::id();
+
+        if ($workOrder === null || $userId === null
+            || Status::isClosedWorkOrder((string) $workOrder['status'])) {
+            return false;
+        }
+
+        $had = (int) ($workOrder['assigned_to'] ?? 0);
+
+        self::update($workOrderId, ['assigned_to' => $userId, 'status' => 'in_progress']);
+
+        if ($had > 0 && $had !== $userId) {
+            self::addComment(
+                $workOrderId,
+                'Taken over by ' . (user_name() ?: 'somebody else') . '.',
+                false
+            );
+        }
+
+        return true;
+    }
+
+    /**
+     * Put it back on the pile: the way out of a mis-tapped "I'm on it".
+     */
+    public static function handBack(int $workOrderId): bool
+    {
+        $workOrder = self::find($workOrderId);
+
+        if ($workOrder === null || Status::isClosedWorkOrder((string) $workOrder['status'])) {
+            return false;
+        }
+
+        self::update($workOrderId, ['assigned_to' => null, 'status' => 'open']);
+
+        return true;
     }
 
     /**
@@ -505,25 +781,36 @@ final class WorkOrder
      *
      * @return array<int, string>
      */
-    public static function assigneeOptions(): array
+    public static function assigneeOptions(?int $keepUserId = null): array
     {
         $users = db()->all(
-            "SELECT id, first_name, last_name, username, role
+            "SELECT id, first_name, last_name, username, role, is_active
              FROM {users}
-             WHERE is_active = 1 AND deleted_at IS NULL
-             ORDER BY last_name ASC, first_name ASC"
+             WHERE deleted_at IS NULL AND (is_active = 1 OR id = ?)
+             ORDER BY last_name ASC, first_name ASC",
+            [$keepUserId ?? 0]
         );
 
         $out = [];
 
         foreach ($users as $user) {
-            // Only offer people who could actually do the work.
-            if (!\App\Acl::can('workorders.edit', $user)) {
+            $isKept = $keepUserId !== null && (int) $user['id'] === $keepUserId;
+
+            // Only offer people who could actually do the work — but never
+            // drop whoever this work order is already assigned to, or the
+            // picker would silently unassign them the next time it is saved.
+            if (!$isKept && !\App\Acl::can('workorders.edit', $user)) {
                 continue;
             }
 
             $name = trim((string) $user['first_name'] . ' ' . (string) $user['last_name']);
-            $out[(int) $user['id']] = $name !== '' ? $name : (string) $user['username'];
+            $name = $name !== '' ? $name : (string) $user['username'];
+
+            if ($isKept && (int) $user['is_active'] !== 1) {
+                $name .= ' (no longer signs in)';
+            }
+
+            $out[(int) $user['id']] = $name;
         }
 
         return $out;

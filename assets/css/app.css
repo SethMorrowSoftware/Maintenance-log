@@ -4038,6 +4038,12 @@ details.card > summary:focus-visible {
     .stock-form .btn { flex: 1 1 auto; min-height: 44px; }
 
     .report-tab { min-height: 44px; }
+
+    /* On a phone the Done button is a thumb target, not a trailing link. */
+    .wo-row-actions { justify-content: flex-start; }
+    .wo-row-actions .inline-form,
+    .wo-row-actions > .btn { flex: 1 1 140px; }
+    .wo-row-actions .row-action { width: 100%; min-height: 44px; }
     .bulk-bar { position: sticky; top: var(--header-h); z-index: 2; }
     .chip-lg { white-space: normal; text-align: left; justify-content: flex-start; }
     .filter-toggle > span { display: inline-flex; align-items: center; gap: 6px; }
@@ -4080,7 +4086,13 @@ details.card > summary:focus-visible {
         border-top: 1px solid var(--border);
         box-shadow: 0 -4px 16px rgba(15, 23, 42, .08);
     }
-    .form-sticky .btn { flex: 1; }
+    .form-sticky .btn { flex: 1; min-width: 0; }
+
+    /* Two ways of saving will not fit side by side on a phone once one of
+       them carries a work order number, so they stack — and the one that
+       finishes the job sits on top, where the thumb already is. */
+    .form-sticky.is-two { flex-direction: column; gap: var(--space-2); }
+    .form-sticky.is-two .btn { flex: 0 0 auto; white-space: normal; }
 
     /* Filters fold away on a phone until they are wanted. */
     .filter-toggle { display: inline-flex; grid-column: 1 / -1; justify-content: space-between; }
@@ -4107,6 +4119,36 @@ details.card > summary:focus-visible {
     .filter-dates { grid-column: auto; }
     .stat-card { padding: var(--space-3); }
 }
+
+/* Two ways of saving a log: "that's the job done" and "there is more to do".
+   The one that finishes is drawn first and reached by a stray Enter key last,
+   which is why it comes second in the HTML and first here. */
+.save-choice { display: flex; flex-direction: column; gap: var(--space-2); }
+.save-choice .btn { white-space: normal; }
+.save-choice .is-first,
+.form-sticky .is-first { order: -1; }
+
+/* The "is it done?" card at the top of a work order. */
+.wo-finish { margin-bottom: var(--space-5); }
+.wo-finish .btn-lg { min-height: 56px; font-size: var(--text-md); }
+.wo-finish-more {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    margin-top: var(--space-3);
+}
+.wo-finish-more .btn { flex: 1 1 auto; min-height: 44px; }
+
+/* The one or two buttons on a work order row, on a list or a dashboard. */
+.wo-row-actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+}
+.wo-row-actions .inline-form { display: inline-flex; margin: 0; }
+.row-action { min-height: 40px; white-space: nowrap; }
 
 /* A row of tabs that scrolls sideways says so with a fade at its edge. */
 .tabs.is-scrollable,

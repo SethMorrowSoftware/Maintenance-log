@@ -72,7 +72,8 @@ final class Acl
             'workorders.create' => 'Report issues / open work orders',
             'workorders.edit'   => 'Update work orders',
             'workorders.assign' => 'Assign work orders',
-            'workorders.close'  => 'Complete and close work orders',
+            'workorders.close'  => 'Mark work orders finished',
+            'workorders.cancel' => 'Cancel work orders (not a real fault)',
             'workorders.delete' => 'Delete work orders',
         ],
         'Parts' => [
@@ -124,6 +125,11 @@ final class Acl
             'inspections.perform',
             'workorders.create',
             'workorders.edit',
+            // The mechanic who fixed the kart is the one person who knows it
+            // is fixed, so they may say so. A park that wants a manager to
+            // sign work off unticks this for Technician on the Roles page:
+            // the mechanic's "Done" button then hands the job over instead.
+            'workorders.close',
             // Taking a part off the shelf is daily work for a mechanic. Adding
             // and removing parts from the list is not.
             'parts.adjust',
@@ -138,7 +144,7 @@ final class Acl
             'checklists.manage',
             'inspections.delete',
             'workorders.assign',
-            'workorders.close',
+            'workorders.cancel',
             'workorders.delete',
             'parts.manage',
             'reports.export',
@@ -367,6 +373,13 @@ final class Acl
 
             if ($role === self::ROLE_ADMIN || !self::isValidRole($role) || !is_array($list)) {
                 continue;
+            }
+
+            // Before cancelling was a permission of its own, "close" meant
+            // "close or cancel". A matrix saved back then still means that,
+            // so a site that customised its roles keeps what it had.
+            if (in_array('workorders.close', $list, true) && !in_array('workorders.cancel', $list, true)) {
+                $list[] = 'workorders.cancel';
             }
 
             $out[$role] = self::normalise($list);
@@ -697,6 +710,60 @@ final class Acl
             (int) ($workOrder['assigned_to'] ?? 0) === $userId
             || (int) ($workOrder['reported_by'] ?? 0) === $userId
         );
+    }
+
+    /**
+     * May this user do the WORK on this order — pick it up, get on with it,
+     * finish it, comment, add a photo?
+     *
+     * Wider than canEditWorkOrder() on purpose. Editing is rewriting somebody
+     * else's report: the title, the machine, the priority, the due date. Doing
+     * the work is the workshop's business, and the pile nobody has been given
+     * is the workshop's real queue — a fault a ride operator reported at ten
+     * o'clock must not wait for an administrative act before a mechanic can
+     * start on it. Closed orders narrow back to the people who owned them.
+     *
+     * @param array<string, mixed>      $workOrder
+     * @param array<string, mixed>|null $user
+     */
+    public static function canWorkOnWorkOrder(array $workOrder, ?array $user = null): bool
+    {
+        if (self::canEditWorkOrder($workOrder, $user)) {
+            return true;
+        }
+
+        return self::can('workorders.edit', $user)
+            && !Status::isClosedWorkOrder((string) ($workOrder['status'] ?? ''));
+    }
+
+    /** May this user say the job is finished? */
+    public static function canCloseWorkOrder(array $workOrder, ?array $user = null): bool
+    {
+        return self::can('workorders.close', $user) && self::canWorkOnWorkOrder($workOrder, $user);
+    }
+
+    /**
+     * May this user drop it as not a real fault? Triage, not repair — so it
+     * sits with the people who assign work, not with every mechanic.
+     */
+    public static function canCancelWorkOrder(array $workOrder, ?array $user = null): bool
+    {
+        return self::can('workorders.cancel', $user) && self::canWorkOnWorkOrder($workOrder, $user);
+    }
+
+    /**
+     * May this user put their own name on it? Only their own — assigning
+     * somebody else stays with 'workorders.assign'.
+     */
+    public static function canClaimWorkOrder(array $workOrder, ?array $user = null): bool
+    {
+        $user   = $user ?? Auth::user();
+        $userId = (int) ($user['id'] ?? 0);
+
+        return $userId > 0
+            && self::can('workorders.edit', $user)
+            && !Status::isClosedWorkOrder((string) ($workOrder['status'] ?? ''))
+            && (int) ($workOrder['assigned_to'] ?? 0) !== $userId;
     }
 
     /**

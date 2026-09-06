@@ -45,6 +45,14 @@ if (is_array($oldParts)) {
     }
 }
 
+// Arriving from a work order that is still open: saving this log is how the
+// mechanic finishes it, so the save button says so.
+$closesWorkOrder = !$editing
+    && feature_on('work_orders')
+    && ($workOrder ?? null) !== null
+    && !App\Status::isClosedWorkOrder((string) $workOrder['status']);
+$canCloseLinked  = $closesWorkOrder && App\Acl::canCloseWorkOrder($workOrder);
+
 $touched = static function (array $names): bool {
     foreach ($names as $name) {
         if (has_error($name) || (string) old($name, '') !== '') {
@@ -430,17 +438,11 @@ $touched = static function (array $names): bool {
                                 'empty'   => 'Not related to a work order',
                             ]); ?>
 
-                            <?php if (can('workorders.close')): ?>
-                                <label class="form-check" for="f_close_wo">
-                                    <input type="checkbox" id="f_close_wo" name="close_work_order" value="1" checked>
-                                    <span class="form-check-label">
-                                        Mark that work order as completed
-                                        <small>Untick if there is still more to do on it.</small>
-                                    </span>
-                                </label>
-                            <?php else: ?>
-                                <p class="form-hint">The work order stays open; a manager closes it once they have seen the job.</p>
-                            <?php endif; ?>
+                            <?php // Whether it closes is decided on the button at the
+                                  // bottom, not by a tickbox nobody scrolls to. ?>
+                            <p class="form-hint">
+                                Whether this finishes it off is the button you press at the bottom.
+                            </p>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -492,9 +494,29 @@ $touched = static function (array $names): bool {
         <div>
             <div class="card">
                 <div class="card-body">
-                    <button type="submit" class="btn btn-primary btn-block btn-lg">
-                        <?= icon('save', '', 18) ?> <?= $editing ? 'Save changes' : 'Save this log' ?>
-                    </button>
+                    <?php if ($closesWorkOrder): ?>
+                        <?php // The sticky bar at the foot of the page is a phone-only
+                              // control, so the same choice has to exist here or a
+                              // mechanic at a desk would have no way to finish the job
+                              // from the log they just wrote. "Still more to do" is
+                              // first in the source: a stray Enter must not close
+                              // anything. CSS draws the other one on top. ?>
+                        <div class="save-choice">
+                            <button type="submit" name="close_work_order" value="0"
+                                    class="btn btn-secondary btn-block btn-lg is-second">
+                                Save, still more to do
+                            </button>
+                            <button type="submit" name="close_work_order" value="1"
+                                    class="btn btn-primary btn-block btn-lg is-first">
+                                <?= icon('check-circle', '', 18) ?>
+                                <?= $canCloseLinked ? 'Save and finish ' : 'Save and hand over ' ?><?= e((string) $workOrder['wo_number']) ?>
+                            </button>
+                        </div>
+                    <?php else: ?>
+                        <button type="submit" class="btn btn-primary btn-block btn-lg">
+                            <?= icon('save', '', 18) ?> <?= $editing ? 'Save changes' : 'Save this log' ?>
+                        </button>
+                    <?php endif; ?>
 
                     <?php if (!$editing): ?>
                         <button type="submit" name="after" value="new" class="btn btn-secondary btn-block mt-2">
@@ -536,10 +558,24 @@ $touched = static function (array $names): bool {
         </div>
     </div>
 
-    <?php // On a phone the sidebar lands below the form, so Save travels with the thumb. ?>
-    <div class="form-sticky no-print">
-        <button type="submit" class="btn btn-primary btn-lg">
-            <?= icon('save', '', 18) ?> <?= $editing ? 'Save changes' : 'Save this log' ?>
-        </button>
+    <?php // On a phone the sidebar lands below the form, so Save travels with the thumb.
+          // Arriving from a work order, the two ways of saving are two buttons, so
+          // the consequence is on the thing being pressed rather than in a tickbox
+          // two screens up. "Still more to do" comes first in the source because a
+          // stray Enter key fires the first submit control on the form. ?>
+    <div class="form-sticky no-print<?= $closesWorkOrder ? ' is-two' : '' ?>">
+        <?php if ($closesWorkOrder): ?>
+            <button type="submit" name="close_work_order" value="0" class="btn btn-secondary btn-lg is-second">
+                Save, still more to do
+            </button>
+            <button type="submit" name="close_work_order" value="1" class="btn btn-primary btn-lg is-first">
+                <?= icon('check-circle', '', 18) ?>
+                <?= $canCloseLinked ? 'Save and finish ' : 'Save and hand over ' ?><?= e((string) $workOrder['wo_number']) ?>
+            </button>
+        <?php else: ?>
+            <button type="submit" class="btn btn-primary btn-lg">
+                <?= icon('save', '', 18) ?> <?= $editing ? 'Save changes' : 'Save this log' ?>
+            </button>
+        <?php endif; ?>
     </div>
 </form>

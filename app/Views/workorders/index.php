@@ -17,7 +17,7 @@ foreach (['open', 'assigned', 'in_progress', 'on_hold'] as $key) {
             <?php
             $strip = [
                 ''            => ['label' => 'Open',        'count' => $open],
-                'open'        => ['label' => 'Unstarted',   'count' => (int) ($statusCounts['open'] ?? 0)],
+                'open'        => ['label' => 'Not started', 'count' => (int) ($statusCounts['open'] ?? 0)],
                 'in_progress' => ['label' => 'In progress', 'count' => (int) ($statusCounts['in_progress'] ?? 0)],
                 'on_hold'     => ['label' => 'On hold',     'count' => (int) ($statusCounts['on_hold'] ?? 0)],
                 'closed'      => ['label' => 'Closed',      'count' => (int) ($statusCounts['completed'] ?? 0) + (int) ($statusCounts['cancelled'] ?? 0)],
@@ -34,9 +34,24 @@ foreach (['open', 'assigned', 'in_progress', 'on_hold'] as $key) {
         </div>
 
         <div class="flex gap-2">
+            <?php $me = (int) (user()['id'] ?? 0); ?>
+            <?php if ($me > 0): ?>
+                <a class="btn btn-ghost btn-sm<?= (int) $filters['assigned_to'] === $me ? ' is-active' : '' ?>"
+                   href="<?= e(url('workorders.php', array_merge($_GET, [
+                       'assigned_to' => (int) $filters['assigned_to'] === $me ? null : $me,
+                       'unassigned'  => null,
+                       'page'        => null,
+                   ]))) ?>">
+                    Mine
+                </a>
+            <?php endif; ?>
             <a class="btn btn-ghost btn-sm<?= (int) $filters['unassigned'] === 1 ? ' is-active' : '' ?>"
-               href="<?= e(url('workorders.php', array_merge($_GET, ['unassigned' => (int) $filters['unassigned'] === 1 ? null : 1]))) ?>">
-                Unassigned
+               href="<?= e(url('workorders.php', array_merge($_GET, [
+                   'unassigned'  => (int) $filters['unassigned'] === 1 ? null : 1,
+                   'assigned_to' => null,
+                   'page'        => null,
+               ]))) ?>">
+                Nobody on it
             </a>
             <a class="btn btn-ghost btn-sm<?= (int) $filters['overdue'] === 1 ? ' is-active' : '' ?>"
                href="<?= e(url('workorders.php', array_merge($_GET, ['overdue' => (int) $filters['overdue'] === 1 ? null : 1]))) ?>">
@@ -79,6 +94,7 @@ foreach (['open', 'assigned', 'in_progress', 'on_hold'] as $key) {
                         <th><?= sort_link('status', 'Status', $sort, $direction) ?></th>
                         <th><?= sort_link('assignee', 'Assigned', $sort, $direction) ?></th>
                         <th><?= sort_link('due', 'Due', $sort, $direction) ?></th>
+                        <th><span class="sr-only">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -135,6 +151,9 @@ foreach (['open', 'assigned', 'in_progress', 'on_hold'] as $key) {
                                 <?php else: ?>
                                     <span class="text-subtle">—</span>
                                 <?php endif; ?>
+                            </td>
+                            <td data-label="" class="is-actions">
+                                <?php View::partial('wo-row-actions', ['workOrder' => $wo, 'showLog' => false]); ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
