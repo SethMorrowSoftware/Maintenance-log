@@ -134,8 +134,12 @@ final class Inspection
         // Whether an item may be left blank lives on the template. An item
         // whose template line has since been deleted is treated as required,
         // which is the safe way round.
+        // The template's guidance, unit and acceptable range come along too,
+        // so the runner does not query once per line.
         return db()->all(
-            'SELECT ii.*, COALESCE(ci.is_required, 1) AS is_required
+            'SELECT ii.*, COALESCE(ci.is_required, 1) AS is_required,
+                    ci.description AS template_description, ci.unit AS template_unit,
+                    ci.min_value AS template_min, ci.max_value AS template_max
              FROM {inspection_items} ii
              LEFT JOIN {checklist_items} ci ON ci.id = ii.checklist_item_id
              WHERE ii.inspection_id = ?
@@ -298,6 +302,19 @@ final class Inspection
                 $valueNumber = null;
             }
 
+            // A number outside the range the template calls acceptable is a
+            // failure, and is recorded as one so the report shows the mark.
+            if ($valueNumber !== null && in_array($type, ['number', 'meter'], true)) {
+                $min = $item['template_min'] ?? null;
+                $max = $item['template_max'] ?? null;
+
+                if ($min !== null || $max !== null) {
+                    $outOfRange = ($min !== null && $valueNumber < (float) $min - 0.004)
+                        || ($max !== null && $valueNumber > (float) $max + 0.004);
+                    $response = $outOfRange ? 'fail' : 'pass';
+                }
+            }
+
             db()->update('inspection_items', [
                 'response'     => $response,
                 'value_text'   => mb_substr($valueText, 0, 500, 'UTF-8'),
@@ -345,15 +362,21 @@ final class Inspection
             'signature_name'  => mb_substr((string) ($meta['signature_name'] ?? ''), 0, 120, 'UTF-8'),
         ];
 
+        $meter = null;
+
         if (isset($meta['meter_reading']) && $meta['meter_reading'] !== '') {
-            $update['meter_reading'] = (float) $meta['meter_reading'];
+            $meter = (float) $meta['meter_reading'];
         } elseif ($meterOnList !== null) {
-            $update['meter_reading'] = $meterOnList;
+            $meter = $meterOnList;
+        }
+
+        if ($meter !== null) {
+            $update['meter_reading'] = $meter;
         }
 
         db()->update('inspections', $update, ['id' => $inspectionId]);
 
-        return ['ok' => true, 'missing' => $missing, 'failed' => $failed, 'critical' => $critical];
+        return ['ok' => true, 'missing' => $missing, 'failed' => $failed, 'critical' => $critical, 'meter' => $meter];
     }
 
     /**

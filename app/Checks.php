@@ -227,7 +227,7 @@ final class Checks
         [$scopeSql, $scopeParams] = Scope::assetFilter('a', $user);
 
         return db()->all(
-            "SELECT a.id, a.name, a.asset_tag, a.category_id, a.location_id, a.status,
+            "SELECT a.id, a.name, a.asset_tag, a.category_id, a.location_id, a.status, a.created_at,
                     loc.name AS location_name
              FROM {assets} a
              LEFT JOIN {locations} loc ON loc.id = a.location_id
@@ -324,6 +324,11 @@ final class Checks
         $expected = [];
 
         foreach ($checklists as $checklist) {
+            // A list that did not exist yet on that day was not missed on it.
+            if (self::createdAfter($checklist, $localDate)) {
+                continue;
+            }
+
             if (self::expectedOn($checklist, $localDate)) {
                 $expected[] = $checklist;
             }
@@ -342,6 +347,13 @@ final class Checks
         $grace   = self::grace();
         $rows    = [];
         $byAsset = [];
+        $timedFor = [];
+
+        // Timed lists first, so an untimed list can step aside for a machine
+        // that already has a timed check that day.
+        usort($expected, static function (array $a, array $b): int {
+            return (int) empty($a['due_time']) <=> (int) empty($b['due_time']);
+        });
 
         foreach ($expected as $checklist) {
             $dueAt = self::dueAtFor($checklist, $localDate);
@@ -365,6 +377,11 @@ final class Checks
                     continue;
                 }
 
+                // A machine that was not on the fleet yet was not expected.
+                if (self::createdAfter($machine, $localDate)) {
+                    continue;
+                }
+
                 // A machine that is down is not expected to be checked — unless
                 // it was, which is usually the check that found the problem.
                 if ((string) $machine['status'] !== 'in_service'
@@ -372,18 +389,26 @@ final class Checks
                     continue;
                 }
 
-                $row = self::occurrence($checklist, $machine, $dueAt, $completions, $nowUtc, $isPast, $grace);
+                $assetId = (int) $machine['id'];
+                $row     = self::occurrence($checklist, $machine, $dueAt, $completions, $nowUtc, $isPast, $grace);
 
                 if ($timed) {
                     $rows[] = $row;
+                    $timedFor[$assetId] = true;
                     continue;
                 }
 
                 // Untimed daily lists keep the old rule: one per machine, the
                 // most specific wins, so nobody is told to check a kart twice.
+                // A machine with a timed check that day is already covered —
+                // unless the untimed list was actually run on it.
+                if (isset($timedFor[$assetId])
+                    && !isset($completions[self::key((int) $checklist['id'], $assetId, 0)])) {
+                    continue;
+                }
+
                 $rank    = ['asset' => 3, 'category' => 2, 'all' => 1];
                 $score   = $rank[(string) $checklist['applies_to']] ?? 0;
-                $assetId = (int) $machine['id'];
 
                 if (!isset($byAsset[$assetId]) || $score > $byAsset[$assetId]['_score']) {
                     $row['_score']      = $score;
@@ -398,6 +423,25 @@ final class Checks
         }
 
         return $rows;
+    }
+
+    /**
+     * Was this row (a checklist or a machine) created after the local day?
+     * Rows without a created_at are treated as having always existed.
+     *
+     * @param array<string, mixed> $row
+     */
+    private static function createdAfter(array $row, string $localDate): bool
+    {
+        $created = (string) ($row['created_at'] ?? '');
+
+        if ($created === '') {
+            return false;
+        }
+
+        $local = Dates::toLocal($created, self::zone());
+
+        return $local !== null && $local->format(Dates::DB_DATE) > $localDate;
     }
 
     /**

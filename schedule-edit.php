@@ -99,12 +99,15 @@ if (is_post()) {
             // A never-done schedule keeps its first due date through edits,
             // unless the interval itself changed — then it starts afresh.
             if (empty($before['last_performed_at'])) {
-                foreach (['frequency_type', 'frequency_value', 'meter_interval'] as $key) {
-                    if ((string) ($data[$key] ?? '') !== (string) ($before[$key] ?? '')) {
-                        $data['next_due_date']  = null;
-                        $data['next_due_meter'] = null;
-                        break;
-                    }
+                // Numbers are compared as numbers: the database hands back
+                // "50.00" for a meter interval typed as 50.
+                $changed = (string) $data['frequency_type'] !== (string) ($before['frequency_type'] ?? '')
+                    || (int) $data['frequency_value'] !== (int) ($before['frequency_value'] ?? 0)
+                    || abs((float) ($data['meter_interval'] ?? 0) - (float) ($before['meter_interval'] ?? 0)) > 0.004;
+
+                if ($changed) {
+                    $data['next_due_date']  = null;
+                    $data['next_due_meter'] = null;
                 }
             }
 

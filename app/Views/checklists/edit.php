@@ -63,6 +63,12 @@ $canDelete = $editing && can('checklists.manage');
                                                 </option>
                                             <?php endforeach; ?>
                                         </select>
+                                        <span class="builder-order">
+                                            <button type="button" class="btn btn-ghost btn-sm btn-icon" data-repeater-up
+                                                    aria-label="Move this line up" title="Move up"><?= icon('chevron-up', '', 15) ?></button>
+                                            <button type="button" class="btn btn-ghost btn-sm btn-icon" data-repeater-down
+                                                    aria-label="Move this line down" title="Move down"><?= icon('chevron-down', '', 15) ?></button>
+                                        </span>
                                         <button type="button" class="btn btn-ghost btn-sm" data-repeater-remove
                                                 aria-label="Remove this line">
                                             <?= icon('trash', '', 15) ?>
@@ -141,6 +147,12 @@ $canDelete = $editing && can('checklists.manage');
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <span class="builder-order">
+                                    <button type="button" class="btn btn-ghost btn-sm btn-icon" data-repeater-up
+                                            aria-label="Move this line up" title="Move up"><?= icon('chevron-up', '', 15) ?></button>
+                                    <button type="button" class="btn btn-ghost btn-sm btn-icon" data-repeater-down
+                                            aria-label="Move this line down" title="Move down"><?= icon('chevron-down', '', 15) ?></button>
+                                </span>
                                 <button type="button" class="btn btn-ghost btn-sm" data-repeater-remove
                                         aria-label="Remove this line">
                                     <?= icon('trash', '', 15) ?>
@@ -316,7 +328,7 @@ $canDelete = $editing && can('checklists.manage');
                         'type'  => 'time',
                         'value' => $values['due_time'],
                         'hint'  => 'Leave blank and nobody is chased. A daily list still shows on Today\'s checks as "any time today" and counts in History; other frequencies only appear once they have a time.',
-                        'attrs' => ['step' => 300],
+                        'attrs' => ['step' => 60],
                     ]); ?>
 
                     <?php

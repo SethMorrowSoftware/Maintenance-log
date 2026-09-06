@@ -223,6 +223,10 @@ final class Request
             return $value;
         }
 
+        if (!is_scalar($value)) {
+            return false;
+        }
+
         return in_array(strtolower((string) $value), ['1', 'true', 'yes', 'on'], true);
     }
 
@@ -541,7 +545,10 @@ final class Request
         }
 
         // Must be a site-relative path: no scheme, no host, no protocol-relative.
-        if (strpos($target, '//') === 0 || strpos($target, '\\') !== false) {
+        // Control characters are out too: browsers strip a tab or newline
+        // before parsing, which would turn "/<tab>/evil" into "//evil".
+        if (strpos($target, '//') === 0 || strpos($target, '\\') !== false
+            || preg_match('/[\x00-\x1F\x7F]/', $target)) {
             return null;
         }
 

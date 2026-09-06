@@ -151,7 +151,7 @@ final class WorkOrder
         return db()->all(
             "SELECT w.*, a.name AS asset_name, a.asset_tag,
                     u.first_name, u.last_name, u.username, u.avatar_path, u.id AS assignee_id,
-                    (SELECT COUNT(*) FROM {work_order_comments} wc WHERE wc.work_order_id = w.id) AS comment_count
+                    (SELECT COUNT(*) FROM {work_order_comments} wc WHERE wc.work_order_id = w.id AND wc.is_status_change = 0) AS comment_count
              FROM {work_orders} w
              LEFT JOIN {assets} a ON a.id = w.asset_id
              LEFT JOIN {users} u ON u.id = w.assigned_to

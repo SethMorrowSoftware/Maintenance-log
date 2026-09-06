@@ -25,7 +25,14 @@ use App\Response;
 Auth::requireLogin();
 Acl::requirePermission('settings.manage');
 
-@set_time_limit(300);
+// The full export carries every price and cost, so it needs the money right.
+if (!costs_visible()) {
+    Response::abortPage(403, 'The full export includes prices and costs, so it needs the "see prices and costs" permission.');
+}
+
+if (function_exists('set_time_limit')) {
+    @set_time_limit(300);
+}
 
 // Table => columns to leave out. Sessions, resets and login attempts are not
 // records anybody needs back.
@@ -39,6 +46,10 @@ $tables = [
     'part_transactions'     => [],
     'checklists'            => [],
     'checklist_items'       => [],
+    'checklist_alerts'      => [],
+    'user_areas'            => [],
+    'user_checklists'       => [],
+    'notifications'         => [],
     'maintenance_schedules' => [],
     'work_orders'           => [],
     'work_order_comments'   => [],

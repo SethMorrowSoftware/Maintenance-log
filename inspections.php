@@ -32,6 +32,11 @@ if (is_post()) {
         $id = Request::int('id');
         $inspection = Inspection::find($id);
 
+        // Somebody limited to an area may only delete checks in it.
+        if ($inspection !== null && !\App\Scope::allowsInspection($inspection)) {
+            abort(403, 'This check is outside your area.');
+        }
+
         if ($inspection !== null) {
             db()->delete('inspections', ['id' => $id]);
             audit('delete', 'inspection', $id, 'Deleted inspection of ' . Inspection::subject($inspection));
@@ -119,6 +124,41 @@ if ($areas !== [] && \App\Scope::limited()) {
     $locationOptions = array_intersect_key($locationOptions, array_flip($areas));
 }
 
+// The checklist pick-list, narrowed the same way: somebody limited to an
+// area is not shown the names of lists for places they never see.
+$checklistOptions = [];
+$scopedMachines   = \App\Scope::limited()
+    ? db()->all(
+        'SELECT a.id, a.category_id, a.location_id FROM {assets} a WHERE a.deleted_at IS NULL'
+        . ($scopeSql !== null ? ' AND ' . $scopeSql : ''),
+        $scopeParams
+    )
+    : [];
+
+foreach (db()->all('SELECT * FROM {checklists} ORDER BY name') as $checklist) {
+    if (\App\Scope::limited() && !\App\Scope::allowsChecklist($checklist, null)) {
+        // A machine checklist counts when it covers at least one machine in the area.
+        $covers = false;
+
+        foreach ($scopedMachines as $machine) {
+            $matches = (string) $checklist['applies_to'] === 'all'
+                || ((string) $checklist['applies_to'] === 'category' && (int) $checklist['category_id'] === (int) $machine['category_id'])
+                || ((string) $checklist['applies_to'] === 'asset' && (int) $checklist['asset_id'] === (int) $machine['id']);
+
+            if ($matches && \App\Scope::allowsChecklist($checklist, $machine)) {
+                $covers = true;
+                break;
+            }
+        }
+
+        if (!$covers) {
+            continue;
+        }
+    }
+
+    $checklistOptions[(int) $checklist['id']] = (string) $checklist['name'];
+}
+
 View::render('inspections/index', [
     'title'       => 'Inspections',
     'subtitle'    => 'Completed safety and pre-operation checks',
@@ -129,5 +169,5 @@ View::render('inspections/index', [
     'filters'     => $filters,
     'assets'      => $assetOptions,
     'locations'   => $locationOptions,
-    'checklists'  => db()->pairs('SELECT id, name FROM {checklists} ORDER BY name'),
+    'checklists'  => $checklistOptions,
 ]);

@@ -187,6 +187,28 @@ final class AssetsController
             ];
         }
 
+        // What the log form can tie the job to on this machine: its active
+        // schedules and its open work orders, as id => label pairs.
+        $schedules  = [];
+        $workOrders = [];
+
+        if (feature_on('schedules') && can('schedules.view')) {
+            foreach (db()->all('SELECT id, name FROM {maintenance_schedules} WHERE asset_id = ? AND is_active = 1 ORDER BY name', [(int) $asset['id']]) as $row) {
+                $schedules[] = ['id' => (int) $row['id'], 'label' => (string) $row['name']];
+            }
+        }
+
+        if (feature_on('work_orders') && can('workorders.view')) {
+            foreach (db()->all(
+                "SELECT id, wo_number, title FROM {work_orders}
+                 WHERE asset_id = ? AND deleted_at IS NULL AND status NOT IN ('completed','cancelled')
+                 ORDER BY created_at DESC",
+                [(int) $asset['id']]
+            ) as $row) {
+                $workOrders[] = ['id' => (int) $row['id'], 'label' => (string) $row['wo_number'] . ' — ' . (string) $row['title']];
+            }
+        }
+
         return [
             'asset' => [
                 'id'            => (int) $asset['id'],
@@ -200,7 +222,9 @@ final class AssetsController
                 'url'           => url('asset-view.php', ['id' => (int) $asset['id']]),
                 'history_url'   => url('asset-view.php', ['id' => (int) $asset['id'], 'tab' => 'timeline']),
             ],
-            'events' => $events,
+            'events'      => $events,
+            'schedules'   => $schedules,
+            'work_orders' => $workOrders,
         ];
     }
 

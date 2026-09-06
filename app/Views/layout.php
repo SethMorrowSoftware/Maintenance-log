@@ -219,6 +219,13 @@ $currentNav = $navAliases[$activeNav] ?? $activeNav;
             <div class="header-spacer"></div>
 
             <div class="header-actions">
+                <?php if ($me !== null): ?>
+                    <button type="button" class="header-btn header-search-btn" data-search-open
+                            aria-label="Search" title="Search">
+                        <?= icon('search') ?>
+                    </button>
+                <?php endif; ?>
+
                 <button type="button" class="header-btn" id="theme-toggle"
                         aria-label="Switch between light and dark theme" title="Switch theme">
                     <span class="theme-icon-light"><?= icon('sun') ?></span>

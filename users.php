@@ -46,6 +46,11 @@ if (is_post()) {
     if ($action === 'toggle') {
         $active = (int) $target['is_active'] === 1 ? 0 : 1;
 
+        if ($active === 0 && $id === Auth::id()) {
+            flash('error', 'You cannot switch off your own account.');
+            redirect(url('users.php', $_GET));
+        }
+
         // Locking out the last administrator would leave nobody able to fix it.
         if ($active === 0 && Acl::isLastActiveAdmin($id)) {
             flash('error', $name . ' is the only administrator left. '

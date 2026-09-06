@@ -121,21 +121,24 @@ if (is_post()) {
         ? MaintenanceLog::normaliseParts($partsInput, $editing ? MaintenanceLog::parts($id) : [])
         : ($editing ? MaintenanceLog::parts($id) : []);
 
-    // Fields that belong to a module that is switched off never reach the form.
+    // Fields that belong to a module that is switched off never reach the
+    // form. On an edit the stored value is carried across untouched, so
+    // fixing a typo in the title does not erase a reading taken while the
+    // module was on.
     if (!feature_on('downtime')) {
-        unset($data['downtime_minutes']);
+        $data['downtime_minutes'] = $editing ? $log['downtime_minutes'] : null;
     }
 
     if (!feature_on('meters')) {
-        unset($data['meter_reading']);
+        $data['meter_reading'] = $editing ? $log['meter_reading'] : null;
     }
 
     if (!feature_on('schedules')) {
-        $data['schedule_id'] = null;
+        $data['schedule_id'] = $editing ? $log['schedule_id'] : null;
     }
 
     if (!feature_on('work_orders')) {
-        $data['work_order_id'] = null;
+        $data['work_order_id'] = $editing ? $log['work_order_id'] : null;
     }
 
     // Somebody who cannot see money cannot set it either: their form has no
@@ -206,8 +209,13 @@ if (is_post()) {
     }
 
     // A meter reading only makes sense on a machine that has a meter.
-    if ($asset !== null && (string) $asset['meter_type'] === 'none') {
+    if ($asset !== null && (string) $asset['meter_type'] === 'none' && feature_on('meters')) {
         $data['meter_reading'] = null;
+    }
+
+    // Photos only arrive through a form that offers them.
+    if (!feature_on('photos')) {
+        $_FILES = [];
     }
 
     // Catch a mistyped meter here, where it can still be corrected in the same
@@ -265,7 +273,7 @@ if (is_post()) {
                     'description' => (string) ($data['followup_notes'] ?? ''),
                     'priority'    => 'normal',
                     'status'      => 'open',
-                    'source'      => 'preventive',
+                    'source'      => 'other',
                     'reported_by' => Auth::id(),
                 ]);
 

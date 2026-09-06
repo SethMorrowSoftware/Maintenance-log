@@ -186,8 +186,9 @@ final class Response
             return function_exists('url') ? url('index.php') : 'index.php';
         }
 
-        // Strip CR/LF so a crafted value cannot inject extra headers.
-        $to = str_replace(["\r", "\n", "\0"], '', $to);
+        // Strip control characters so a crafted value cannot inject extra
+        // headers, or smuggle "//" past the checks below behind a tab.
+        $to = (string) preg_replace('/[\x00-\x1F\x7F]/', '', $to);
 
         if (preg_match('#^https?://#i', $to)) {
             $host        = parse_url($to, PHP_URL_HOST);

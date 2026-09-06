@@ -344,11 +344,15 @@ final class Health
             return self::row('Errors this week', 'None', 'ok', 'Nothing has gone wrong that RideLog noticed.');
         }
 
+        // The line itself stays in the file: it carries server paths and
+        // query fragments that do not belong on a web page. Say when.
+        $when = preg_match('/^\[([^\]]+)\]/', $last, $m) === 1 ? ' Most recent: ' . $m[1] . '.' : '';
+
         return self::row(
             'Errors this week',
             $count . ' logged',
             $count > 20 ? 'warn' : 'info',
-            'The details are in storage/logs. Most recent: ' . $last
+            'The details are in storage/logs.' . $when
         );
     }
 

@@ -146,7 +146,9 @@ $isToday = ($date ?? '') === ($today ?? '');
                     } elseif ($rowStatus === 'in_progress' && $inspection !== null && $canRun
                         && ((int) $inspection['user_id'] === (int) user_id() || can('inspections.delete'))) {
                         $action = '<a class="btn btn-secondary btn-sm" href="' . e(url('inspection-run.php', ['id' => (int) $inspection['id']])) . '">Continue</a>';
-                    } elseif ($canRun && $isToday && !in_array($rowStatus, ['done', 'late', 'in_progress'], true)) {
+                    } elseif ($canRun && $isToday && !in_array($rowStatus, ['done', 'late'], true)) {
+                        // Not started, or started by somebody else and left: either
+                        // way this person can run it themselves.
                         $target = $asset === null
                             ? ['checklist_id' => (int) $checklist['id']]
                             : ['asset_id' => (int) $asset['id'], 'checklist_id' => (int) $checklist['id']];

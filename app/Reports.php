@@ -775,7 +775,7 @@ final class Reports
 
         $inspections = db()->pairs(
             "SELECT i.user_id, COUNT(*) FROM {inspections} i
-             INNER JOIN {assets} a ON a.id = i.asset_id
+             LEFT JOIN {assets} a ON a.id = i.asset_id
              WHERE i.user_id IS NOT NULL AND {$inspWhere}
              GROUP BY i.user_id",
             $inspParams

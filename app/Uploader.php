@@ -32,12 +32,14 @@ final class Uploader
         'png'  => ['image/png'],
         'gif'  => ['image/gif'],
         'webp' => ['image/webp'],
+        // Older finfo databases report HEIC as octet-stream; the file's own
+        // "ftyp" header is checked in that case (see looksLikeHeic).
         'heic' => ['image/heic', 'image/heif', 'application/octet-stream'],
         'pdf'  => ['application/pdf'],
-        'doc'  => ['application/msword', 'application/octet-stream'],
-        'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'application/octet-stream'],
-        'xls'  => ['application/vnd.ms-excel', 'application/octet-stream'],
-        'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip', 'application/octet-stream'],
+        'doc'  => ['application/msword'],
+        'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'],
+        'xls'  => ['application/vnd.ms-excel'],
+        'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip'],
         'csv'  => ['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'],
         'txt'  => ['text/plain'],
     ];
@@ -136,7 +138,8 @@ final class Uploader
         // --- Real content type ------------------------------------------------
         $mime = self::detectMime($tmpPath);
 
-        if (!self::mimeMatchesExtension($mime, $extension)) {
+        if (!self::mimeMatchesExtension($mime, $extension)
+            || ($mime === 'application/octet-stream' && !self::looksLikeHeic($tmpPath))) {
             self::reportRejection($originalName, 'MIME ' . $mime . ' does not match .' . $extension);
 
             return self::fail(
@@ -292,6 +295,21 @@ final class Uploader
         }
 
         return 'application/octet-stream';
+    }
+
+    /**
+     * An ISO base media file whose brand is one of the HEIF family: bytes
+     * 4-7 read "ftyp" and the brand at 8-11 is heic/heix/hevc/mif1/msf1.
+     */
+    private static function looksLikeHeic(string $path): bool
+    {
+        $head = @file_get_contents($path, false, null, 0, 12);
+
+        if (!is_string($head) || strlen($head) < 12 || substr($head, 4, 4) !== 'ftyp') {
+            return false;
+        }
+
+        return in_array(strtolower(substr($head, 8, 4)), ['heic', 'heix', 'hevc', 'hevx', 'mif1', 'msf1', 'heif'], true);
     }
 
     private static function mimeMatchesExtension(string $mime, string $extension): bool

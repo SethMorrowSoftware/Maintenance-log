@@ -165,6 +165,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                     <?php endforeach; ?>
                 <?php endif; ?>
 
+                <?php if (can('workorders.edit') || Acl::canEditWorkOrder($workOrder)): ?>
                 <form method="post" action="<?= e(url('workorder-view.php', ['id' => $woId])) ?>" class="mt-4">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="comment">
@@ -180,6 +181,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                     ]); ?>
                     <button type="submit" class="btn btn-primary btn-sm">Post update</button>
                 </form>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -193,7 +195,18 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
                         <?= csrf_field() ?>
                         <input type="hidden" name="action" value="status">
 
-                        <?php $transitions = Status::workOrderTransitions((string) $workOrder['status']); ?>
+                        <?php
+                        $transitions = Status::workOrderTransitions((string) $workOrder['status']);
+
+                        // Closing needs its own permission: do not offer what the server will refuse.
+                        if (!can('workorders.close')) {
+                            foreach (array_keys($transitions) as $candidate) {
+                                if (Status::isClosedWorkOrder((string) $candidate)) {
+                                    unset($transitions[$candidate]);
+                                }
+                            }
+                        }
+                        ?>
 
                         <?php if ($transitions === []): ?>
                             <p class="text-subtle">No further status changes are available.</p>

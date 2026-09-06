@@ -137,7 +137,10 @@ final class SearchController
                     'label' => trim((string) $row['first_name'] . ' ' . (string) $row['last_name'])
                         ?: (string) $row['username'],
                     'meta'  => (string) $row['job_title'],
-                    'url'   => 'user-edit.php?id=' . (int) $row['id'],
+                    // Only somebody who manages people can open the edit page.
+                    'url'   => can('users.manage')
+                        ? 'user-edit.php?id=' . (int) $row['id']
+                        : 'users.php?q=' . rawurlencode((string) $row['username']),
                 ];
             }
         }

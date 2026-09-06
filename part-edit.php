@@ -61,9 +61,10 @@ if (is_post()) {
         'supplier_part_number' => 'Supplier’s number',
     ]);
 
-    // Part numbers are unique, so say so plainly instead of showing a 500.
+    // Part numbers are unique — deleted parts included, since the database
+    // still holds them — so say so plainly instead of showing a 500.
     $clash = db()->one(
-        'SELECT id, name FROM {parts} WHERE part_number = ? AND deleted_at IS NULL'
+        'SELECT id, name, deleted_at FROM {parts} WHERE part_number = ?'
         . ($editing ? ' AND id <> ?' : '') . ' LIMIT 1',
         $editing
             ? [Request::string('part_number'), $id]
@@ -71,8 +72,10 @@ if (is_post()) {
     );
 
     if ($clash !== null) {
-        $validator->addError('part_number',
-            'That part number is already used by “' . (string) $clash['name'] . '”.');
+        $validator->addError('part_number', $clash['deleted_at'] === null
+            ? 'That part number is already used by “' . (string) $clash['name'] . '”.'
+            : 'That part number belonged to “' . (string) $clash['name'] . '”, which was deleted. '
+              . 'Use a different number, or ask an administrator to restore the old part.');
     }
 
     if ($validator->fails()) {

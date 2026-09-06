@@ -53,7 +53,8 @@ if (is_post()) {
         $status = Request::string('status');
 
         if (Status::isClosedWorkOrder($status) && !can('workorders.close')) {
-            abort(403, 'You do not have permission to close a work order.');
+            flash('error', 'Only a manager can close or cancel a work order. Your other changes were not saved.');
+            redirect(url('workorder-view.php', ['id' => $id]));
         }
 
         if (Status::isValid($status, 'workorder')) {
@@ -84,12 +85,18 @@ if (is_post()) {
         Acl::requirePermission('workorders.assign');
 
         $assignee = Request::intOrNull('assigned_to');
+        $status   = (string) $workOrder['status'];
+
+        // Giving it to somebody moves it along; taking it off them puts it back.
+        if ($assignee !== null && $status === 'open') {
+            $status = 'assigned';
+        } elseif ($assignee === null && $status === 'assigned') {
+            $status = 'open';
+        }
 
         WorkOrder::update($id, [
             'assigned_to' => $assignee,
-            'status'      => $assignee !== null && (string) $workOrder['status'] === 'open'
-                ? 'assigned'
-                : (string) $workOrder['status'],
+            'status'      => $status,
         ]);
 
         flash('success', $assignee === null ? 'Unassigned.' : 'Assigned.');
