@@ -325,12 +325,13 @@ $touched = static function (array $names): bool {
                                   // context script switches it on when a different machine is picked. ?>
                             <div data-meter-field <?= $hasMeter ? '' : 'hidden' ?>>
                                 <?php View::partial('form-field', [
-                                    'name'   => 'meter_reading',
-                                    'label'  => 'Meter reading',
-                                    'type'   => 'meter',
-                                    'value'  => $hasMeter ? $values['meter_reading'] : '',
-                                    'suffix' => $hasMeter ? $meterUnit : '',
-                                    'attrs'  => ['min' => '0'],
+                                    'name'     => 'meter_reading',
+                                    'label'    => 'Meter reading',
+                                    'type'     => 'meter',
+                                    'value'    => $hasMeter ? $values['meter_reading'] : '',
+                                    'suffix'   => $hasMeter ? $meterUnit : '',
+                                    'required' => $hasMeter && Settings::bool('require_meter_on_log', false),
+                                    'attrs'    => ['min' => '0'],
                                     'hint'   => $hasMeter
                                         ? 'Currently ' . decimal($asset['meter_reading']) . ' ' . $meterUnit . '.'
                                         : 'The number on the meter now.',

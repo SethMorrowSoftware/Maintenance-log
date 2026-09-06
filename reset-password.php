@@ -30,8 +30,13 @@ if ($user !== null && is_post()) {
         'password' => 'Password',
     ]);
 
+    // The same rule as the profile page: not your own name, username or email.
+    $personal = $validator->fails() ? '' : Auth::validatePassword((string) $_POST['password'], $user);
+
     if ($validator->fails()) {
         $errors = $validator->errors();
+    } elseif ($personal !== '') {
+        $errors['password'] = $personal;
     } elseif (Auth::consumeReset($selector, $token, (string) $_POST['password'])) {
         $done = true;
     } else {

@@ -112,6 +112,14 @@ $currentNav = $navAliases[$activeNav] ?? $activeNav;
 <link rel="icon" type="image/svg+xml" href="<?= e(asset_url('assets/img/favicon.svg')) ?>">
 <link rel="stylesheet" href="<?= e(asset_url('assets/css/app.css')) ?>">
 <link rel="stylesheet" href="<?= e(asset_url('assets/css/print.css')) ?>" media="print">
+<?php
+// The accent colour from Settings → Branding, applied to the solid brand fills.
+$brand = strtolower(trim((string) Settings::get('primary_color', '')));
+
+if (preg_match('/^#[0-9a-f]{6}$/', $brand) === 1 && $brand !== '#4f46e5'):
+?>
+<style>:root { --brand-solid: <?= e($brand) ?>; --brand-solid-hover: <?= e($brand) ?>d9; --brand-600: <?= e($brand) ?>; }</style>
+<?php endif; ?>
 <?php foreach ($extraCss as $css): ?>
 <link rel="stylesheet" href="<?= e(asset_url($css)) ?>">
 <?php endforeach; ?>
@@ -125,7 +133,10 @@ $currentNav = $navAliases[$activeNav] ?? $activeNav;
     'apiUrl'     => url('api/index.php'),
     'csrfToken'  => csrf_token(),
     'userId'     => $me === null ? null : (int) $me['id'],
-    'theme'      => $me === null ? 'system' : (string) ($me['theme'] ?? 'system'),
+    // The site's default theme applies to anyone who has not chosen their own.
+    'theme'      => ($me === null || (string) ($me['theme'] ?? 'system') === 'system')
+        ? (string) Settings::get('theme_default', 'system')
+        : (string) $me['theme'],
     'currency'   => Settings::currency(),
     'canNotify'  => $me !== null,
     'clearDrafts' => \App\Flash::draftsToClear(),

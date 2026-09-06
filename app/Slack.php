@@ -311,7 +311,16 @@ final class Slack
 
         $tag = (string) ($asset['asset_tag'] ?? '');
 
-        return (string) $asset['name'] . ($tag !== '' ? ' (' . $tag . ')' : '');
+        return self::esc((string) $asset['name'] . ($tag !== '' ? ' (' . $tag . ')' : ''));
+    }
+
+    /**
+     * Text somebody typed, made safe for Slack's mrkdwn: an angle bracket in
+     * a work-order title must not turn into a channel-wide ping.
+     */
+    private static function esc(string $text): string
+    {
+        return str_replace(['&', '<', '>'], ['&amp;', '&lt;', '&gt;'], $text);
     }
 
     private static function link(string $path, array $query, string $label): string
@@ -327,7 +336,7 @@ final class Slack
             return '';
         }
 
-        return Str::limit((string) preg_replace('/\s+/', ' ', $text), $limit);
+        return self::esc(Str::limit((string) preg_replace('/\s+/', ' ', $text), $limit));
     }
 
     // -------------------------------------------------------------------------
@@ -399,7 +408,7 @@ final class Slack
 
             $lines   = [];
             $lines[] = $emoji . ' *' . $head . '* — ' . self::machine($asset);
-            $lines[] = '*' . (string) $wo['title'] . '*';
+            $lines[] = '*' . self::esc((string) $wo['title']) . '*';
 
             $detail = self::oneLine((string) ($wo['description'] ?? ''));
 
@@ -458,7 +467,7 @@ final class Slack
             $lines     = [];
             $lines[]   = ($cancelled ? ':heavy_multiplication_x: *Problem closed without work*' : ':white_check_mark: *Problem fixed*')
                        . ' — ' . self::machine($asset);
-            $lines[]   = (string) $wo['wo_number'] . ': ' . (string) $wo['title'];
+            $lines[]   = (string) $wo['wo_number'] . ': ' . self::esc((string) $wo['title']);
 
             $resolution = self::oneLine((string) ($wo['resolution'] ?? ''));
 
@@ -523,11 +532,11 @@ final class Slack
 
             $lines   = [];
             $lines[] = ($critical ? ':no_entry: *Failed safety check*' : ':x: *Failed inspection*')
-                     . ' — ' . $subject . ' · ' . (string) $inspection['checklist_name'];
+                     . ' — ' . self::esc($subject) . ' · ' . self::esc((string) $inspection['checklist_name']);
             $lines[] = $failed . ' of ' . $total . ' failed' . ($takenOutOfService ? ', taken out of service' : '');
 
             foreach ($items as $item) {
-                $lines[] = '• ' . (string) $item['item_text']
+                $lines[] = '• ' . self::esc((string) $item['item_text'])
                     . ((string) ($item['notes'] ?? '') !== '' ? ' — ' . self::oneLine((string) $item['notes'], 120) : '');
             }
 
@@ -636,7 +645,7 @@ final class Slack
             $lines   = [];
             $lines[] = ($followUp ? ':bookmark: *Work logged, needs follow-up*' : ':wrench: *Work logged*')
                      . ' — ' . self::machine($asset);
-            $lines[] = '*' . (string) $log['title'] . '*';
+            $lines[] = '*' . self::esc((string) $log['title']) . '*';
 
             $done = self::oneLine((string) ($log['work_performed'] ?? ''));
 
@@ -685,11 +694,11 @@ final class Slack
                 return;
             }
 
-            $text = ':package: *Running low* — ' . (string) $part['name']
-                . ((string) ($part['part_number'] ?? '') !== '' ? ' (' . (string) $part['part_number'] . ')' : '')
+            $text = ':package: *Running low* — ' . self::esc((string) $part['name'])
+                . ((string) ($part['part_number'] ?? '') !== '' ? ' (' . self::esc((string) $part['part_number']) . ')' : '')
                 . "\n" . decimal($part['quantity_on_hand']) . ' ' . (string) $part['unit_of_measure']
                 . ' left, reorder at ' . decimal($part['reorder_level'])
-                . ((string) ($part['supplier'] ?? '') !== '' ? ' · from ' . (string) $part['supplier'] : '')
+                . ((string) ($part['supplier'] ?? '') !== '' ? ' · from ' . self::esc((string) $part['supplier']) : '')
                 . ' · ' . self::link('part-view.php', ['id' => (int) $part['id']], 'Open the part');
 
             self::send('stock', $text);
@@ -760,7 +769,7 @@ final class Slack
             }
 
             $lines[] = rtrim($detail, ' ·');
-            $lines[] = self::link('checks.php', ['date' => Dates::today()], "Open today's checks");
+            $lines[] = self::link('checks.php', ['date' => Checks::today()], "Open today's checks");
 
             $own     = (string) ($checklist['alert_mention'] ?? '');
             $mention = '';
@@ -828,8 +837,8 @@ final class Slack
                 $dot  = ':large_yellow_circle:';
             }
 
-            $lines[] = '• ' . $dot . ' *' . $when . '* — ' . (string) $row['name']
-                     . ' (' . (string) $row['asset_name'] . ')';
+            $lines[] = '• ' . $dot . ' *' . $when . '* — ' . self::esc((string) $row['name'])
+                     . ' (' . self::esc((string) $row['asset_name']) . ')';
         }
 
         $overdueAll = count(array_filter($due, static fn (array $r): bool => (string) $r['due_state'] === 'overdue'));

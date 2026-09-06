@@ -84,11 +84,11 @@ better to find out now than halfway through.
 > **"Access denied"** means the username or password is wrong, or you did not
 > tick ALL PRIVILEGES on the wizard's last screen.
 
-**Your account.** Your name, a username, an email address and a password. This
+**Administrator.** Your name, a username, an email address and a password. This
 is the administrator account — the one that can add everybody else. Use a real
 email address; it is how you get back in if you forget the password.
 
-**About your park.** The site name (which appears in the header and on printed
+**Site details.** The site name (which appears in the header and on printed
 reports), your organisation's name, your time zone, and the web address the site
 will live at. Get the time zone right — every date in the system is displayed in
 it. You also choose what to **start with**:
@@ -271,8 +271,13 @@ in cPanel under **Metrics → Errors**.
 
 **"Configuration file not found".** `config/config.php` is missing, so the
 application thinks it has not been installed. If you deleted it by accident,
-re-run the installer; your data is untouched and it will reconnect to the same
-database.
+restore it from your backup. If you have no backup, delete
+`config/installed.lock` as well and re-run the installer against the same
+database: choose **"Nothing — start empty"** on the Site details step so the
+starting fleet is not loaded on top of your machines. Your records are
+untouched, but the installer writes a new application key (everybody signs in
+again) and a new cron token, so re-enter the cron command from Settings →
+Security afterwards.
 
 **A photo will not upload.** Two limits apply and the smaller wins: the one in
 **Settings → Uploads**, and your host's `upload_max_filesize`. The Uploads

@@ -45,9 +45,9 @@ final class SearchController
                  LEFT JOIN {asset_categories} c ON c.id = a.category_id
                  WHERE a.deleted_at IS NULL
                    AND (a.name LIKE ? OR a.asset_tag LIKE ? OR a.serial_number LIKE ?
-                        OR a.model LIKE ? OR a.manufacturer LIKE ?)
+                        OR a.model LIKE ? OR a.manufacturer LIKE ? OR a.custom_data LIKE ?)
                  ORDER BY a.name LIMIT 6",
-                [$like, $like, $like, $like, $like]
+                [$like, $like, $like, $like, $like, $like]
             );
 
             foreach ($rows as $row) {

@@ -70,7 +70,7 @@ if (is_post()) {
     }
 
     $rules = [
-        'username'        => 'required|string|max:64|alpha_dash|unique:users,username' . ($editing ? ',' . $id : ''),
+        'username'        => 'required|string|max:64|username|unique:users,username' . ($editing ? ',' . $id : ''),
         'email'           => 'required|email|max:190|unique:users,email' . ($editing ? ',' . $id : ''),
         'first_name'      => 'required|string|max:80',
         'last_name'       => 'required|string|max:80',
@@ -82,7 +82,7 @@ if (is_post()) {
     ];
 
     $validator = Validator::make($_POST, $rules, [
-        'username.alpha_dash' => 'A username can only use letters, numbers, dots, dashes and underscores.',
+        'username.username'   => 'A username can only use letters, numbers, dots, dashes and underscores.',
         'username.unique'     => 'Somebody already signs in with that username.',
         'email.unique'        => 'Somebody is already using that email address.',
     ], [
@@ -138,6 +138,12 @@ if (is_post()) {
         redirect(url('user-edit.php', ['id' => $id]));
     }
 
+    // Switching yourself off ends your own session on the next click.
+    if ($editing && $id === Auth::id() && !Request::bool('is_active')) {
+        flash('error', 'You cannot switch off your own account.');
+        redirect(url('user-edit.php', ['id' => $id]));
+    }
+
     $data['is_active']            = Request::bool('is_active') ? 1 : 0;
     $data['must_change_password'] = Request::bool('must_change_password') ? 1 : 0;
     $data['notify_email']         = Request::bool('notify_email') ? 1 : 0;
@@ -155,6 +161,9 @@ if (is_post()) {
             if ($password !== '') {
                 Auth::changePassword($id, $password);
                 Auth::revokeAllTokens($id);
+
+                // changePassword() clears the flag; the box on this form decides.
+                db()->update('users', ['must_change_password' => $data['must_change_password']], ['id' => $id]);
             }
 
             if ($data['is_active'] === 0) {

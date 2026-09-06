@@ -386,12 +386,17 @@ View::partial('tabs', ['tabs' => $tabLinks, 'active' => $tab]);
                     </label>
 
                 <?php elseif ($type === 'select' && isset($choices[$key])): ?>
+                    <?php
+                    // A grouped list (the time zones, by region) renders as optgroups.
+                    $grouped = is_array(reset($choices[$key]));
+                    ?>
                     <?php View::partial('form-field', [
                         'name'    => 's_' . $key,
                         'label'   => $label,
                         'type'    => 'select',
                         'value'   => $value,
-                        'options' => $choices[$key],
+                        'options' => $grouped ? [] : $choices[$key],
+                        'groups'  => $grouped ? $choices[$key] : [],
                         'hint'    => $hint,
                         'empty'   => null,
                         'noOld'   => true,

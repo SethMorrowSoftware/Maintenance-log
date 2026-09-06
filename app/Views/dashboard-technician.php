@@ -113,7 +113,7 @@ foreach ($dueList as $due) {
     <div class="card is-danger">
         <div class="card-header">
             <h2 class="card-title"><?= icon('alert-triangle', '', 18) ?> Not running</h2>
-            <a class="btn btn-ghost btn-sm" href="<?= e(url('assets.php', ['status' => 'out_of_service'])) ?>">
+            <a class="btn btn-ghost btn-sm" href="<?= e(url('assets.php', ['status' => 'down'])) ?>">
                 All <?= icon('chevron-right', '', 14) ?>
             </a>
         </div>

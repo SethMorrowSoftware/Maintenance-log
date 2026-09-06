@@ -74,6 +74,16 @@ if (is_post()) {
     }
 
     if ($action === 'delete') {
+        // A person limited to just this list would be limited to nothing —
+        // which the scope code reads as "everything". Re-point them first.
+        $limitedBy = db()->count('SELECT COUNT(*) FROM {user_checklists} WHERE checklist_id = ?', [$id]);
+
+        if ($limitedBy > 0) {
+            flash('error', $limitedBy . ' ' . ($limitedBy === 1 ? 'person is' : 'people are') . ' limited to this checklist. '
+                . 'Give them another area or checklist on their account first (People → edit).');
+            redirect(url('checklists.php'));
+        }
+
         // Inspections keep their own copy of the item text, so history survives.
         db()->delete('checklists', ['id' => $id]);
         audit('delete', 'checklist', $id, 'Deleted ' . (string) $row['name']);

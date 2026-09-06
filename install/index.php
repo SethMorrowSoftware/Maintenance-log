@@ -135,7 +135,7 @@ function requirement_checks(): array
     $optional = [
         'gd'   => 'Resizes uploaded photos and strips their metadata. Without it, photos are stored as uploaded.',
         'curl' => 'Not required, but useful for future integrations.',
-        'zip'  => 'Not required by RideLog itself.',
+        'zip'  => 'Lets Settings → System download every record as one ZIP of spreadsheets. Without it you get a single JSON file instead.',
         'intl' => 'Improves number and date formatting.',
     ];
 
@@ -918,7 +918,7 @@ switch ($step) {
                             <li>Work orders from report through to completion</li>
                             <li>Parts inventory with stock levels</li>
                             <li>Reports and CSV exports</li>
-                            <li>Four roles, from read-only to administrator</li>
+                            <li>Five roles, from checks-only floor staff to administrator</li>
                         </ul>
                     </div>
                 </div>
@@ -1256,7 +1256,7 @@ switch ($step) {
                     <div class="alert alert-info mt-5">
                         <div class="alert-body">
                             <strong class="alert-title">What happens next</strong>
-                            <p style="margin:4px 0 0">RideLog creates 24 tables, loads its starting data,
+                            <p style="margin:4px 0 0">RideLog creates 27 tables, loads its starting data,
                             creates your account and writes <code>config/config.php</code>. It takes a few
                             seconds. Do not close the tab.</p>
                         </div>
@@ -1349,7 +1349,7 @@ switch ($step) {
                 quiet day.</p>
 
                 <p class="mb-2"><strong>In cPanel &rarr; Cron Jobs</strong>, add a job that runs
-                <em>Once Per Hour</em> with this command:</p>
+                <em>Once Per Day</em> (early in the morning, before the park opens) with this command:</p>
 
                 <pre style="white-space:pre-wrap;word-break:break-all"><code>curl -s "<?= esc((string) $done['cron_url']) ?>" &gt;/dev/null 2&gt;&amp;1</code></pre>
 

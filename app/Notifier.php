@@ -53,6 +53,24 @@ final class Notifier
                 if ($existing !== null) {
                     return 0;
                 }
+
+                // The recurring reminders — due service, low stock, a missed
+                // check — are raised by every hourly run. Once read, they
+                // come back once a day at most, not every hour.
+                if (in_array($type, ['pm_due', 'pm_overdue', 'low_stock', 'checklist_missed'], true)) {
+                    $recent = db()->value(
+                        'SELECT id FROM {notifications}
+                         WHERE user_id = ? AND type = ? AND entity_type = ? AND entity_id = ? AND title = ?
+                           AND created_at > ?
+                         LIMIT 1',
+                        [$userId, $type, $entityType, $entityId, mb_substr($title, 0, 191, 'UTF-8'),
+                         gmdate(Dates::DB_FORMAT, time() - 86400)]
+                    );
+
+                    if ($recent !== null) {
+                        return 0;
+                    }
+                }
             }
 
             $id = db()->insert('notifications', [

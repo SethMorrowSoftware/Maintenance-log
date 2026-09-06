@@ -693,6 +693,22 @@ final class Asset
             }
         }
 
+        // Only what the viewer may see: the modules a switch has turned off,
+        // or a role cannot open, do not show up in the history either.
+        $events = array_values(array_filter($events, static function (array $event): bool {
+            $url = (string) ($event['url'] ?? '');
+
+            if (strpos($url, 'inspection-view.php') !== false) {
+                return can('inspections.view');
+            }
+
+            if (strpos($url, 'workorder-view.php') !== false) {
+                return can('workorders.view');
+            }
+
+            return true;
+        }));
+
         usort($events, static function (array $a, array $b): int {
             return strcmp($b['when'], $a['when']);
         });

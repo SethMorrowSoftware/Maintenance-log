@@ -55,7 +55,7 @@ $currency = Settings::currency();
         'sub'   => $counts['assets_down'] === 0 ? 'Everything is running' : 'Not earning',
         'icon'  => 'alert-triangle',
         'tone'  => $counts['assets_down'] > 0 ? 'danger' : 'muted',
-        'href'  => can('assets.view') ? url('assets.php', ['status' => 'out_of_service']) : '',
+        'href'  => can('assets.view') ? url('assets.php', ['status' => 'down']) : '',
     ]); ?>
 
     <?php
@@ -67,13 +67,18 @@ $currency = Settings::currency();
         }
     }
     ?>
+    <?php
+    // The tile counts everything due, not just the handful the table shows.
+    $dueTotal = (int) ($dueTotals['total'] ?? count($dueList));
+    $overdue  = (int) ($dueTotals['overdue'] ?? $overdue);
+    ?>
     <?php if (feature_on('schedules')): ?>
         <?php View::partial('stat-card', [
             'label' => 'Maintenance due',
-            'value' => num(count($dueList)),
+            'value' => num($dueTotal),
             'sub'   => $overdue > 0 ? $overdue . ' overdue' : 'Nothing overdue',
             'icon'  => 'calendar',
-            'tone'  => $overdue > 0 ? 'danger' : (count($dueList) > 0 ? 'warn' : 'ok'),
+            'tone'  => $overdue > 0 ? 'danger' : ($dueTotal > 0 ? 'warn' : 'ok'),
             'href'  => can('schedules.view') ? url('schedules.php', ['due' => 'soon']) : '',
         ]); ?>
     <?php endif; ?>
@@ -129,7 +134,7 @@ $currency = Settings::currency();
                     <h2 class="card-title">
                         <?= icon('alert-triangle', '', 18) ?> Not available to guests
                     </h2>
-                    <a class="btn btn-ghost btn-sm" href="<?= e(url('assets.php', ['status' => 'out_of_service'])) ?>">
+                    <a class="btn btn-ghost btn-sm" href="<?= e(url('assets.php', ['status' => 'down'])) ?>">
                         View all <?= icon('chevron-right', '', 14) ?>
                     </a>
                 </div>

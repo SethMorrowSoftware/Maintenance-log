@@ -206,6 +206,15 @@ if (is_post()) {
     $asset = Asset::find((int) $data['asset_id']);
     $data['status_before'] = $asset === null ? null : (string) $asset['status'];
 
+    // A site that insists on a meter reading with every job gets one.
+    if ($asset !== null && feature_on('meters') && Settings::bool('require_meter_on_log', false)
+        && (string) $asset['meter_type'] !== 'none' && ($data['meter_reading'] ?? '') === '') {
+        flash_errors([
+            'meter_reading' => 'This site asks for the meter reading with every job. Type the number on the meter.',
+        ], $_POST);
+        redirect(url('log-edit.php', $backTo));
+    }
+
     if (($data['status_after'] ?? '') === '') {
         $data['status_after'] = null;
     }

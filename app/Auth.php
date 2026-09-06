@@ -168,7 +168,8 @@ final class Auth
             $query  = [];
 
             // Only carry a same-site relative path forward.
-            if ($target !== '' && strpos($target, '//') !== 0 && strpos($target, 'login.php') === false) {
+            if ($target !== '' && strpos($target, '//') !== 0 && strpos($target, 'login.php') === false
+                && strpos($target, 'logout.php') === false) {
                 $query['redirect'] = $target;
             }
 

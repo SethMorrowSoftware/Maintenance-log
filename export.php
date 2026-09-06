@@ -72,7 +72,10 @@ $db = db();
  * @return Generator<int, array<string, mixed>>
  */
 $rows = static function (string $table, array $drop) use ($db): Generator {
-    $statement = $db->run('SELECT * FROM {' . $table . '} ORDER BY id ASC');
+    // Not every table has an id (the area and checklist links are keyed by
+    // the pair), so only order by it where it exists.
+    $order     = in_array('id', $db->columns($table), true) ? ' ORDER BY id ASC' : '';
+    $statement = $db->run('SELECT * FROM {' . $table . '}' . $order);
 
     while (($row = $statement->fetch(PDO::FETCH_ASSOC)) !== false) {
         foreach ($drop as $column) {

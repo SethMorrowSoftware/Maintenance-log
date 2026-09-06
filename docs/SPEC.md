@@ -80,7 +80,7 @@ If something here conflicts with your instincts, follow this file.
 ├─ config/                 .htaccess DENY ALL. config.php written by installer. installed.lock
 ├─ storage/                .htaccess DENY ALL
 │  ├─ uploads/  logs/  cache/
-├─ docs/  SPEC.md  INSTALL.md  USER-GUIDE.md  DATA-MODEL.md
+├─ docs/  SPEC.md  INSTALL.md  USER-GUIDE.md
 ├─ .htaccess
 └─ README.md
 ```

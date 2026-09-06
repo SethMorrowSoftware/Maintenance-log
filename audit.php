@@ -29,7 +29,7 @@ $where  = ['1'];
 $params = [];
 
 if ($filters['q'] !== '') {
-    $like     = '%' . str_replace(['%', '_'], ['\%', '\_'], $filters['q']) . '%';
+    $like     = \App\Str::likeContains($filters['q']);
     $where[]  = '(a.description LIKE ? OR a.user_name LIKE ?)';
     array_push($params, $like, $like);
 }

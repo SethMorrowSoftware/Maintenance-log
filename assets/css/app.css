@@ -4003,6 +4003,7 @@ details.card > summary:focus-visible {
 
     /* Every header control is a full-size thumb target, and search gets a button. */
     .header-btn, .header-menu-btn { width: 44px; height: 44px; }
+    .nav-link { min-height: 44px; }
     .header-search-btn { display: inline-flex; }
     .user-menu-trigger { min-height: 44px; }
 

@@ -545,7 +545,8 @@ final class Dates
             return null;
         }
 
-        $today = self::parseDate(self::today());
+        // Due-date maths is the site's, not the viewer's.
+        $today = self::parseDate(self::today(self::siteZone()));
 
         if ($today === null) {
             return null;
@@ -695,6 +696,21 @@ final class Dates
     public static function displayOffsetSeconds(?string $tz = null): int
     {
         return self::now()->setTimezone(self::displayZone($tz))->getOffset();
+    }
+
+    /**
+     * The site's own timezone name — the one due dates, day boundaries and
+     * anything else that must not depend on who is looking are worked out in.
+     */
+    public static function siteZone(): string
+    {
+        $site = trim((string) Settings::get('timezone', ''));
+
+        if ($site === '') {
+            $site = trim((string) Config::get('app.timezone', ''));
+        }
+
+        return $site !== '' && self::makeZone($site) !== null ? $site : 'UTC';
     }
 
     // -------------------------------------------------------------------------

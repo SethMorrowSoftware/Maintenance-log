@@ -176,8 +176,8 @@ VALUES
   -- Security -----------------------------------------------------------------
   ('session_timeout_minutes', '480', 'int', 'security', 0,
    'Session timeout (minutes)', 'Sign a user out after this much inactivity.', 10),
-  ('allow_registration', '0', 'bool', 'security', 0,
-   'Allow self-registration', 'Leave off. Administrators should create accounts.', 20),
+  ('allow_registration', '0', 'hidden', 'security', 0,
+   'Allow self-registration', 'There is no sign-up page: administrators create accounts.', 20),
   ('password_min_length', '8', 'int', 'security', 0,
    'Minimum password length', 'Eight characters or more.', 30),
   ('audit_retention_days', '365', 'int', 'security', 0,

@@ -473,8 +473,8 @@ final class MaintenanceLog
             }
         }
 
-        // 3. Roll the schedule forward
-        if (!empty($scheduleId)) {
+        // 3. Roll the schedule forward — once the job is actually finished.
+        if (!empty($scheduleId) && (int) ($data['is_completed'] ?? 1) === 1) {
             try {
                 Scheduler::markPerformed(
                     (int) $scheduleId,

@@ -337,8 +337,10 @@ if ($rideLogIsInstalled && session_status() === PHP_SESSION_ACTIVE) {
 
             App\Flash::warning('You were signed out because your session expired.');
 
+            // Come back to the page, unless it was the sign-out page itself.
             $target = (string) ($_SERVER['REQUEST_URI'] ?? '');
-            Response::redirect(url('login.php', $target !== '' ? ['redirect' => $target] : []));
+            $keep   = $target !== '' && strpos($target, 'logout.php') === false && strpos($target, 'login.php') === false;
+            Response::redirect(url('login.php', $keep ? ['redirect' => $target] : []));
         }
     } else {
         Auth::touchActivity();

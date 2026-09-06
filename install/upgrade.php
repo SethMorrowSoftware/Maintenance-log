@@ -162,9 +162,16 @@ if (is_post()) {
             : implode('; ', array_slice($base['errors'], 0, 3)),
     ];
 
-    // Reference data uses INSERT IGNORE, so this fills in settings a new
-    // version added without overwriting anything the site owner has changed.
-    $seed = SqlRunner::executeFile($pdo, __DIR__ . '/seed.sql', $prefix, false);
+    // Only the settings block of the seed is re-run: INSERT IGNORE fills in
+    // the keys a new version added without touching values the site owner has
+    // changed. The categories, locations and checklists are the site's own by
+    // now — re-inserting them would bring back rows that were deliberately
+    // deleted (and could hand their ids to something else).
+    $seedStatements = array_filter(
+        SqlRunner::split((string) file_get_contents(__DIR__ . '/seed.sql')),
+        static fn (string $statement): bool => stripos($statement, 'INTO {settings}') !== false
+    );
+    $seed = SqlRunner::execute($pdo, implode(";\n", $seedStatements) . ";\n", $prefix, false);
 
     $results[] = [
         'name'   => 'seed.sql (new reference data)',

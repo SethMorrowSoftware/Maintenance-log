@@ -108,11 +108,22 @@ final class CustomFields
         $fields = [];
         $errors = [];
         $keys   = [];
+        $labels = [];
 
         foreach ($rows as $index => $row) {
             if (!is_array($row) || trim((string) ($row['label'] ?? '')) === '') {
                 continue;
             }
+
+            // Two fields with the same name would be two identical boxes.
+            $labelKey = mb_strtolower(trim((string) $row['label']), 'UTF-8');
+
+            if (isset($labels[$labelKey])) {
+                $errors[(int) $index] = 'There is already a field called "' . trim((string) $row['label']) . '".';
+                continue;
+            }
+
+            $labels[$labelKey] = true;
 
             if (count($fields) >= self::MAX_FIELDS) {
                 $errors[(int) $index] = 'That is more than ' . self::MAX_FIELDS . ' fields, which is the most the form can hold.';

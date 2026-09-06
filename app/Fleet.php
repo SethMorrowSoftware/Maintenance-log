@@ -75,7 +75,31 @@ final class Fleet
         }
 
         $before = self::counts();
-        $result = SqlRunner::executeFile(db()->pdo(), self::file(), db()->prefix(), false);
+
+        // What the site already has, so nothing of it is touched: the fleet's
+        // own "aim the ride checklist at rides" step is skipped on a site that
+        // is already running, and a fleet schedule that lands on a machine the
+        // site already had (same tag, different machine) is taken off again.
+        $existingAssets  = array_map('intval', db()->column('SELECT id FROM {assets}'));
+        $lastScheduleId  = (int) db()->value('SELECT COALESCE(MAX(id), 0) FROM {maintenance_schedules}');
+        $statements      = array_filter(
+            SqlRunner::split((string) file_get_contents(self::file())),
+            static fn (string $statement): bool => stripos(ltrim($statement), 'UPDATE') !== 0
+        );
+
+        $result = SqlRunner::execute(db()->pdo(), implode(";\n", $statements) . ";\n", db()->prefix(), false);
+
+        if ($existingAssets !== []) {
+            try {
+                db()->run(
+                    'DELETE FROM {maintenance_schedules} WHERE id > ? AND asset_id IN ('
+                    . implode(',', array_fill(0, count($existingAssets), '?')) . ')',
+                    array_merge([$lastScheduleId], $existingAssets)
+                );
+            } catch (Throwable $e) {
+                log_error('Could not detach fleet schedules from existing machines: ' . $e->getMessage());
+            }
+        }
 
         // Every new schedule starts one interval out from today.
         try {

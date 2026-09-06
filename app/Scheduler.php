@@ -50,14 +50,19 @@ final class Scheduler
             // one interval away forever, and it could never come due.
             $lastPerformed = $schedule['last_performed_at'] ?? null;
 
+            // Calendar maths happens in the site's zone, whoever triggered it:
+            // a save from a phone set to another zone and the nightly job must
+            // agree on which day a job was done.
+            $zone = Dates::siteZone();
+
             if (is_string($lastPerformed) && $lastPerformed !== '') {
-                $local    = Dates::toLocal($lastPerformed);
-                $base     = $local === null ? Dates::today() : $local->format(Dates::DB_DATE);
+                $local    = Dates::toLocal($lastPerformed, $zone);
+                $base     = $local === null ? Dates::today($zone) : $local->format(Dates::DB_DATE);
                 $nextDate = Dates::addInterval($base, $frequencyType, $frequencyVal);
             } elseif (!empty($schedule['next_due_date'])) {
                 $nextDate = (string) $schedule['next_due_date'];
             } else {
-                $nextDate = Dates::addInterval(Dates::today(), $frequencyType, $frequencyVal);
+                $nextDate = Dates::addInterval(Dates::today($zone), $frequencyType, $frequencyVal);
             }
 
             // If the schedule has been neglected the computed date can still be
@@ -133,14 +138,21 @@ final class Scheduler
             return;
         }
 
+        $asset = db()->one('SELECT * FROM {assets} WHERE id = ? LIMIT 1', [(int) $schedule['asset_id']]);
+
+        // A job logged without a reading was still done at the meter's current
+        // value; otherwise a meter-based service would stay overdue forever.
+        if ($meterReading === null && $asset !== null && (string) ($asset['meter_type'] ?? 'none') !== 'none') {
+            $meterReading = (float) ($asset['meter_reading'] ?? 0);
+        }
+
         $updated = array_merge($schedule, [
             'last_performed_at' => $performedAtUtc,
             'last_meter'        => $meterReading,
             'last_log_id'       => $logId,
         ]);
 
-        $asset = db()->one('SELECT * FROM {assets} WHERE id = ? LIMIT 1', [(int) $schedule['asset_id']]);
-        $next  = self::computeNextDue($updated, $asset);
+        $next = self::computeNextDue($updated, $asset);
 
         db()->update('maintenance_schedules', [
             'last_performed_at' => $performedAtUtc,

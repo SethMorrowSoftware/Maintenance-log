@@ -133,16 +133,18 @@ final class Dashboard
 
         // Bucket by the site's own month, not UTC's: a job logged at 9pm on
         // the 31st belongs to that month, whatever the clock in Greenwich says.
+        // Done here rather than in SQL so daylight saving is right all year.
         $rows = db()->all(
-            "SELECT DATE_FORMAT(DATE_ADD(performed_at, INTERVAL ? SECOND), '%Y-%m') AS ym, log_type, COUNT(*) AS n
-             FROM {maintenance_logs}
-             WHERE deleted_at IS NULL AND performed_at >= ?
-             GROUP BY ym, log_type",
-            [Dates::displayOffsetSeconds(), $first]
+            'SELECT performed_at, log_type FROM {maintenance_logs}
+             WHERE deleted_at IS NULL AND performed_at >= ?',
+            [$first]
         );
 
+        $zone = Dates::siteZone();
+
         foreach ($rows as $row) {
-            $key = (string) $row['ym'];
+            $local = Dates::toLocal((string) $row['performed_at'], $zone);
+            $key   = $local === null ? '' : $local->format('Y-m');
 
             if (!isset($buckets[$key])) {
                 continue;
@@ -153,7 +155,7 @@ final class Dashboard
                 ? 'preventive'
                 : (in_array($type, ['corrective', 'repair', 'safety'], true) ? 'corrective' : 'other');
 
-            $buckets[$key][$group] += (int) $row['n'];
+            $buckets[$key][$group]++;
         }
 
         $planned    = [];
@@ -197,18 +199,19 @@ final class Dashboard
         $first = $range[0]['start_utc'] ?? Dates::nowUtc();
 
         $rows = db()->all(
-            "SELECT DATE_FORMAT(DATE_ADD(performed_at, INTERVAL ? SECOND), '%Y-%m') AS ym, SUM(total_cost) AS total
-             FROM {maintenance_logs}
-             WHERE deleted_at IS NULL AND performed_at >= ?
-             GROUP BY ym",
-            [Dates::displayOffsetSeconds(), $first]
+            'SELECT performed_at, total_cost FROM {maintenance_logs}
+             WHERE deleted_at IS NULL AND performed_at >= ?',
+            [$first]
         );
 
+        $zone = Dates::siteZone();
+
         foreach ($rows as $row) {
-            $key = (string) $row['ym'];
+            $local = Dates::toLocal((string) $row['performed_at'], $zone);
+            $key   = $local === null ? '' : $local->format('Y-m');
 
             if (isset($buckets[$key])) {
-                $buckets[$key] = round((float) $row['total'], 2);
+                $buckets[$key] = round($buckets[$key] + (float) $row['total_cost'], 2);
             }
         }
 

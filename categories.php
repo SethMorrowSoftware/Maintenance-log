@@ -63,13 +63,23 @@ if (is_post()) {
         // limited to it, needs those moved first — the merge does that.
         if ($row !== null && $kind === 'locations') {
             $areaUse = db()->count('SELECT COUNT(*) FROM {checklists} WHERE location_id = ?', [$id])
-                + db()->count('SELECT COUNT(*) FROM {user_areas} WHERE location_id = ?', [$id]);
+                + db()->count('SELECT COUNT(*) FROM {user_areas} WHERE location_id = ?', [$id])
+                + db()->count('SELECT COUNT(*) FROM {inspections} WHERE location_id = ?', [$id]);
 
             if ($areaUse > 0) {
-                flash('error', 'That area still has checklists or people attached to it. '
+                flash('error', 'That area still has checklists, past checks or people attached to it. '
                     . 'Use "Delete…" on its row to move them to another area first.');
                 redirect($back);
             }
+        }
+
+        // A checklist written for the category would otherwise be left aimed
+        // at nothing — which the board reads as "every uncategorised machine".
+        if ($row !== null && $kind === 'categories'
+            && db()->count('SELECT COUNT(*) FROM {checklists} WHERE category_id = ?', [$id]) > 0) {
+            flash('error', 'A checklist is written for that category. '
+                . 'Use "Delete…" on its row to move it to another category first.');
+            redirect($back);
         }
 
         if ($row !== null) {

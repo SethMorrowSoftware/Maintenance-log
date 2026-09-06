@@ -64,20 +64,21 @@ maintenance record is a record.
 The screen for this is built to be used one-handed, on a phone, standing next to
 the machine at eight in the morning.
 
-1. **Run an inspection** on the dashboard, or scan the sticker on the machine.
+1. **Run a check** on the dashboard (**Run today's check** on the simpler home page), or scan the sticker on the machine.
 2. Pick the machine, if you did not scan it.
 3. Work down the list. Each line is a big **Pass** / **Fail** button.
 4. Anything you mark **Fail** opens a note box. Say what is wrong — *"pads down
    to the wear line on the near side"* is worth ten times more than "worn".
 5. The bar at the bottom keeps count of how far through you are.
-6. Type your name and press **Finish**.
+6. Type your name under **Finish up** and press **Finish**. Lines marked *optional* can be left blank.
 
 **You can stop and come back.** Press **Save for later** and everything you have
 answered is kept. If your phone loses signal halfway round, nothing is lost —
 open it again and carry on from where you were.
 
 **A red line marked "Safety" is the important kind.** If you fail one of those,
-tick *"Take this asset out of service"* at the bottom. The machine is marked as
+tick *"Take this machine out of service"* at the bottom (it uses whatever word
+your site uses for its machines). The machine is marked as
 not available to guests, and an urgent work order is raised straight away so
 somebody owns the problem.
 
@@ -152,7 +153,8 @@ If somebody has set the stickers up to do so, scanning can drop you straight
 into a new maintenance log or a new inspection instead. Ask whoever printed
 them.
 
-To print stickers: **Assets → Print labels**, or the little QR button on any
+To print stickers: **Machines → Print labels** (the menu uses whatever your site
+calls its machines), or the little QR button on any
 machine's page.
 
 ---
@@ -166,7 +168,7 @@ bumper car was pulling left" and a job with a name on it.
 wrong, how urgent it is, and save. A manager assigns it; whoever it is assigned
 to sees it on their dashboard under *My work*.
 
-When it is fixed, open the work order and click **Log the work**. The
+When it is fixed, open the work order and click **Log the fix**. The
 maintenance log fills itself in from the work order, and completing it closes
 the work order off.
 
@@ -174,7 +176,7 @@ the work order off.
 
 ## Parts
 
-**Parts Inventory** is what is on the shelf.
+**Parts** is what is on the shelf.
 
 The number on each row is how many there are. If you took some, type how many
 and press **Took**; if you put some back, press **Back**. That is it — every

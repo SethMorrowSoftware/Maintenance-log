@@ -86,6 +86,9 @@ View::render('dashboard', [
     'costTrend'   => $costTrend,
     'downtime'    => Dashboard::downtimeMinutes(30),
     'dueList'     => can('schedules.view') ? Dashboard::dueMaintenance(8) : [],
+    'dueTotals'   => can('schedules.view')
+        ? ['total' => count(\App\Scheduler::due((int) Settings::int('dashboard_pm_lookahead_days', 14))), 'overdue' => \App\Scheduler::overdueCount()]
+        : ['total' => 0, 'overdue' => 0],
     'workOrders'  => can('workorders.view') ? Dashboard::openWorkOrders(6) : [],
     'myWork'      => can('workorders.view') ? Dashboard::myWork(5) : ['work_orders' => [], 'count' => 0],
     'assetsDown'  => can('assets.view') ? Dashboard::assetsDown(6) : [],
