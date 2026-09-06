@@ -62,7 +62,21 @@
     };
 
     /** Delegated listener, so it keeps working for content added later. */
+    var delegated = {};
+
     RL.on = function (selector, eventName, handler, root) {
+        // RL.init runs again for every modal and repeater row; a document-level
+        // listener must only ever be registered once per selector and event.
+        if (!root) {
+            var key = eventName + '|' + selector;
+
+            if (delegated[key]) {
+                return;
+            }
+
+            delegated[key] = true;
+        }
+
         (root || document).addEventListener(eventName, function (event) {
             var target = event.target.closest(selector);
 
@@ -1135,10 +1149,16 @@
                 return;
             }
 
-            form.addEventListener('submit', function () {
+            form.addEventListener('submit', function (event) {
                 var buttons = RL.qsa('button[type="submit"], input[type="submit"]', form);
 
+                // Decide once every other submit listener has had its say: a
+                // validation stop must not leave Save dead for fifteen seconds.
                 window.setTimeout(function () {
+                    if (event.defaultPrevented) {
+                        return;
+                    }
+
                     buttons.forEach(function (button) {
                         button.disabled = true;
                         button.classList.add('is-loading');
@@ -1147,6 +1167,10 @@
 
                 // If the browser restores the page from cache, re-enable them.
                 window.setTimeout(function () {
+                    if (event.defaultPrevented) {
+                        return;
+                    }
+
                     buttons.forEach(function (button) {
                         button.disabled = false;
                         button.classList.remove('is-loading');
@@ -1212,11 +1236,15 @@
         }
 
         if (field.validity.rangeUnderflow) {
-            return label + ' must be ' + field.min + ' or more.';
+            return label + ' must be ' + describeBound(field, field.min) + ' or more.';
         }
 
         if (field.validity.rangeOverflow) {
-            return label + ' must be ' + field.max + ' or less.';
+            if (field.type === 'datetime-local' || field.type === 'date') {
+                return label + ' cannot be in the future.';
+            }
+
+            return label + ' must be ' + describeBound(field, field.max) + ' or less.';
         }
 
         if (field.validity.tooShort) {
@@ -1236,6 +1264,21 @@
         }
 
         return field.validationMessage || (label + ' is not valid.');
+    }
+
+    /** A min/max attribute in words a person would use. */
+    function describeBound(field, bound) {
+        if (field.type === 'datetime-local' || field.type === 'date') {
+            var when = new Date(bound);
+
+            if (!isNaN(when.getTime())) {
+                return field.type === 'date'
+                    ? when.toLocaleDateString()
+                    : when.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+            }
+        }
+
+        return bound;
     }
 
     function showFieldError(field, message) {
@@ -1793,6 +1836,14 @@
             openSpotlight('');
         });
 
+        // On a phone the search box is hidden; a button in the header opens it.
+        RL.qsa('[data-search-open]').forEach(function (button) {
+            button.addEventListener('click', function (event) {
+                event.preventDefault();
+                openSpotlight('');
+            });
+        });
+
         document.addEventListener('keydown', function (event) {
             var typingHere = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)
                 || document.activeElement.isContentEditable;
@@ -2205,7 +2256,49 @@
                     history.setAttribute('href', asset.history_url);
                 }
 
+                // The schedule and work-order choices follow the machine too.
+                refill('[data-ctx-schedules]', data.schedules || []);
+                refill('[data-ctx-workorders]', data.work_orders || []);
+
                 panel.hidden = false;
+            }
+
+            /** Rebuild a select's choices from the machine's own list, keeping the empty option. */
+            function refill(selector, rows) {
+                var wrapper = form.querySelector(selector);
+
+                if (!wrapper) {
+                    return;
+                }
+
+                var select = wrapper.querySelector('select');
+
+                if (!select) {
+                    return;
+                }
+
+                var was = select.value;
+                var empty = select.querySelector('option[value=""]');
+
+                while (select.firstChild) {
+                    select.removeChild(select.firstChild);
+                }
+
+                if (empty) {
+                    select.appendChild(empty);
+                }
+
+                rows.forEach(function (row) {
+                    select.appendChild(RL.el('option', { value: String(row.id), text: row.label }));
+                });
+
+                select.value = was;
+
+                if (select.value !== was) {
+                    select.value = '';
+                }
+
+                wrapper.hidden = rows.length === 0;
             }
 
             select.addEventListener('change', function () {
@@ -2403,14 +2496,30 @@
             var checked = {};
 
             // Rows added on the page (parts used) do not exist yet on a fresh
-            // form: grow the repeater until every drafted name has a home.
+            // form: grow the repeater until every drafted row has a home. Only
+            // names shaped like the repeater's own rows count — a field the
+            // page simply does not render this time must not add blank rows.
+            var container = form.querySelector('[data-repeater]');
+            var template = container ? container.querySelector('[data-repeater-template]') : null;
+            var rowPattern = null;
+
+            if (template) {
+                var match = /name="([^"\[]+)\[/.exec(template.innerHTML);
+
+                if (match) {
+                    rowPattern = new RegExp('^' + match[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\[[^\\]]+\\]');
+                }
+            }
+
             fields.forEach(function (pair) {
                 var tries = 0;
 
-                while (fieldsNamed(form, pair[0]).length === 0 && tries < 40) {
-                    var container = form.querySelector('[data-repeater]');
+                if (!rowPattern || !rowPattern.test(pair[0])) {
+                    return;
+                }
 
-                    if (!container || !RL.repeater.add(container)) {
+                while (fieldsNamed(form, pair[0]).length === 0 && tries < 40) {
+                    if (!RL.repeater.add(container)) {
                         break;
                     }
 
@@ -2538,6 +2647,28 @@
             if (row) {
                 RL.repeater.remove(row);
             }
+        });
+
+        // Up and down one place. The server saves rows in document order.
+        RL.on('[data-repeater-up], [data-repeater-down]', 'click', function (event, button) {
+            event.preventDefault();
+
+            var row = button.closest('[data-repeater-row]');
+
+            if (!row) {
+                return;
+            }
+
+            var up = button.hasAttribute('data-repeater-up');
+            var sibling = up ? row.previousElementSibling : row.nextElementSibling;
+
+            if (!sibling || !sibling.hasAttribute('data-repeater-row')) {
+                return;
+            }
+
+            row.parentNode.insertBefore(row, up ? sibling : sibling.nextSibling);
+            button.focus();
+            row.dispatchEvent(new Event('change', { bubbles: true }));
         });
     }
 
@@ -2670,9 +2801,32 @@
             return;
         }
 
+        function isRequired(item) {
+            return item.dataset.required !== '0';
+        }
+
+        /** A number line with an acceptable range: '' (blank), 'pass' or 'fail'. */
+        function numberState(item) {
+            var field = item.querySelector('[data-value-input]');
+
+            if (!field || field.value.trim() === '') {
+                return '';
+            }
+
+            var value = parseFloat(field.value);
+            var min = field.dataset.min !== undefined ? parseFloat(field.dataset.min) : null;
+            var max = field.dataset.max !== undefined ? parseFloat(field.dataset.max) : null;
+
+            if (isNaN(value) || (min === null && max === null)) {
+                return 'pass';
+            }
+
+            return (min !== null && value < min - 0.004) || (max !== null && value > max + 0.004) ? 'fail' : 'pass';
+        }
+
         function refreshItem(item) {
             var checked = item.querySelector('[data-response-input]:checked');
-            var value = checked ? checked.value : '';
+            var value = checked ? checked.value : numberState(item);
 
             item.classList.remove('is-pass', 'is-fail', 'is-na', 'is-unanswered');
 
@@ -2684,6 +2838,12 @@
                 item.classList.add('is-na');
             } else {
                 item.classList.add('is-unanswered');
+            }
+
+            var rangeHint = item.querySelector('[data-range-hint]');
+
+            if (rangeHint) {
+                rangeHint.classList.toggle('text-danger', value === 'fail');
             }
 
             RL.qsa('.response-btn', item).forEach(function (button) {
@@ -2723,12 +2883,18 @@
                     return;
                 }
 
-                // Number, meter and text items count once they have a value.
+                // Number, meter and text items count once they have a value;
+                // a number outside its acceptable range is a fail.
                 var field = item.querySelector('input[type="number"], textarea[name*="value_text"]');
 
                 if (field && field.value.trim() !== '') {
                     answered++;
-                    passed++;
+
+                    if (numberState(item) === 'fail') {
+                        failed++;
+                    } else {
+                        passed++;
+                    }
                 }
             });
 
@@ -2770,13 +2936,29 @@
             });
 
             RL.qsa('input[type="number"], textarea', item).forEach(function (field) {
-                field.addEventListener('input', RL.debounce(refreshProgress, 250));
+                field.addEventListener('input', RL.debounce(function () {
+                    refreshItem(item);
+                    refreshProgress();
+                }, 250));
             });
 
             refreshItem(item);
         });
 
         refreshProgress();
+
+        // Toasts sit at the bottom of a phone screen, where the sticky bar is.
+        // Tell the stylesheet how tall the bar is so they stack above it.
+        var bar = RL.qs('.checklist-progress');
+
+        if (bar) {
+            var lift = function () {
+                document.documentElement.style.setProperty('--toast-offset', bar.offsetHeight + 'px');
+            };
+
+            lift();
+            window.addEventListener('resize', RL.debounce(lift, 150));
+        }
 
         // Warn before finishing with unanswered items, rather than letting the
         // server bounce it back after a scroll to the bottom.
@@ -2790,8 +2972,10 @@
                     return;
                 }
 
+                // Only lines marked "must be answered" hold up the sign-off,
+                // the same rule the server applies.
                 var unanswered = items.filter(function (item) {
-                    if (item.querySelector('[data-response-input]:checked')) {
+                    if (!isRequired(item) || item.querySelector('[data-response-input]:checked')) {
                         return false;
                     }
 
@@ -2854,6 +3038,20 @@
         RL.on('[data-print]', 'click', function (event) {
             event.preventDefault();
             window.print();
+        });
+
+        // Filters folded away on a phone
+        RL.on('[data-filter-toggle]', 'click', function (event, button) {
+            event.preventDefault();
+
+            var bar = button.closest('.filter-bar');
+
+            if (!bar) {
+                return;
+            }
+
+            var open = bar.classList.toggle('is-collapsed') === false;
+            button.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
 
         // Collapsible sections

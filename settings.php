@@ -185,6 +185,9 @@ if (is_post()) {
             $value = Request::bool('s_' . $key) ? '1' : '0';
         } elseif (!array_key_exists('s_' . $key, $_POST)) {
             continue;
+        } elseif (!is_scalar($_POST['s_' . $key])) {
+            // A field posted as an array is not something our form sends.
+            continue;
         } else {
             $value = (string) $_POST['s_' . $key];
         }

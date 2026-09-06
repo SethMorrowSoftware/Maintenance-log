@@ -96,9 +96,10 @@ $actions = '<a class="btn btn-secondary" href="'
     . icon('printer', '', 17) . ' Print</a>';
 
 if (can('inspections.perform')) {
+    // The same list again, without the "which check?" step in between.
     $again = $isArea
         ? ['checklist_id' => (int) $inspection['checklist_id']]
-        : ['asset_id' => (int) $inspection['asset_id']];
+        : array_filter(['asset_id' => (int) $inspection['asset_id'], 'checklist_id' => (int) ($inspection['checklist_id'] ?? 0)]);
 
     if (!$isArea || !empty($inspection['checklist_id'])) {
         $actions .= '<a class="btn btn-primary" href="'

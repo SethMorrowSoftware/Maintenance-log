@@ -148,7 +148,7 @@ $canSeeCosts = costs_visible();
                     <h2 class="card-title"><?= icon('package', '', 18) ?> Parts used</h2>
                 </div>
                 <div class="table-wrap">
-                    <table class="table">
+                    <table class="table<?= $printing ? '' : ' is-stacked' ?>">
                         <thead>
                             <tr>
                                 <th>Part</th><th class="is-numeric">Qty</th>
@@ -160,7 +160,7 @@ $canSeeCosts = costs_visible();
                         <tbody>
                             <?php foreach ($parts as $part): ?>
                                 <tr>
-                                    <td>
+                                    <td class="is-row-title" data-label="Part">
                                         <?php if (!$printing && !empty($part['part_id'])): ?>
                                             <a href="<?= e(url('part-view.php', ['id' => (int) $part['part_id']])) ?>">
                                                 <?= e((string) $part['part_name']) ?>
@@ -175,10 +175,10 @@ $canSeeCosts = costs_visible();
                                             <span class="cell-secondary"><?= e((string) $part['notes']) ?></span>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="is-numeric"><?= e(decimal($part['quantity'])) ?></td>
+                                    <td class="is-numeric" data-label="Qty"><?= e(decimal($part['quantity'])) ?></td>
                                     <?php if ($canSeeCosts): ?>
-                                        <td class="is-numeric"><?= e(money($part['unit_cost'])) ?></td>
-                                        <td class="is-numeric"><?= e(money($part['total_cost'])) ?></td>
+                                        <td class="is-numeric" data-label="Each"><?= e(money($part['unit_cost'])) ?></td>
+                                        <td class="is-numeric" data-label="Total"><?= e(money($part['total_cost'])) ?></td>
                                     <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
@@ -284,6 +284,33 @@ $canSeeCosts = costs_visible();
                     </dl>
                 </div>
             </div>
+
+            <?php if (($history ?? []) !== []): ?>
+                <div class="card">
+                    <div class="card-header"><h3 class="card-title">History</h3></div>
+                    <div class="card-body">
+                        <?php
+                        $events = [];
+
+                        foreach ($history as $entry) {
+                            $events[] = [
+                                'title' => (string) $entry['description'],
+                                'meta'  => trim((string) ($entry['first_name'] ?? '') . ' ' . (string) ($entry['last_name'] ?? ''))
+                                    . ' · ' . Dates::ago((string) $entry['created_at']),
+                                'tone'  => 'muted',
+                            ];
+                        }
+
+                        View::partial('timeline', ['events' => $events]);
+                        ?>
+                        <?php if (can('audit.view')): ?>
+                            <a class="btn btn-ghost btn-sm mt-2" href="<?= e(url('audit.php', ['entity_type' => 'maintenance_log', 'q' => '#' . $logId])) ?>">
+                                Every change <?= icon('chevron-right', '', 14) ?>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
 
             <?php if (can('logs.delete')): ?>
                 <div class="card is-danger">

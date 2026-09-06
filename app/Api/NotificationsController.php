@@ -31,6 +31,14 @@ final class NotificationsController
         return ['read', 'read_all'];
     }
 
+    /** The bell goes with the module: switched off means these answer 404 too. */
+    private static function guard(): void
+    {
+        if (!\App\Features::on('notifications')) {
+            \App\Response::error('Notifications are switched off on this site.', 'feature_off', 404);
+        }
+    }
+
     /**
      * Just the count. Polled every minute, so it stays as small as possible.
      *
@@ -38,6 +46,8 @@ final class NotificationsController
      */
     public static function unread(): array
     {
+        self::guard();
+
         return ['count' => Notifier::unreadCount()];
     }
 
@@ -48,6 +58,8 @@ final class NotificationsController
      */
     public static function recent(): array
     {
+        self::guard();
+
         $rows = Notifier::forUser((int) Auth::id(), false, 10);
         $out  = [];
 
@@ -73,6 +85,8 @@ final class NotificationsController
      */
     public static function read(): array
     {
+        self::guard();
+
         $body = Request::isJson() ? Request::json() : $_POST;
         $id   = (int) ($body['id'] ?? 0);
 
@@ -86,6 +100,8 @@ final class NotificationsController
      */
     public static function readAll(): array
     {
+        self::guard();
+
         $marked = Notifier::markAllRead((int) Auth::id());
 
         return ['marked' => $marked, 'count' => Notifier::unreadCount()];

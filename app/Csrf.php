@@ -100,9 +100,14 @@ final class Csrf
             return $_SERVER['HTTP_X_XSRF_TOKEN'];
         }
 
-        // A JSON body may carry it too.
-        if (isset($_GET[self::FIELD]) && is_string($_GET[self::FIELD])) {
-            return $_GET[self::FIELD];
+        // A JSON body may carry it too. Never the query string: a token in a
+        // URL ends up in access logs, history and referrers.
+        if (Request::isJson()) {
+            $json = Request::json();
+
+            if (isset($json[self::FIELD]) && is_string($json[self::FIELD])) {
+                return $json[self::FIELD];
+            }
         }
 
         return '';

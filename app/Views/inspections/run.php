@@ -72,7 +72,16 @@ foreach ($sections as $sectionItems) {
                 $response  = (string) $item['response'];
                 $type      = (string) $item['response_type'];
                 $critical  = (int) $item['is_critical'] === 1;
+                $required  = (int) ($item['is_required'] ?? 1) === 1;
                 $answered  = $response !== '' || (string) $item['value_text'] !== '' || $item['value_number'] !== null;
+
+                // The template's guidance, unit and acceptable range came with the item.
+                $template = $item['checklist_item_id'] === null ? null : [
+                    'description' => (string) ($item['template_description'] ?? ''),
+                    'unit'        => (string) ($item['template_unit'] ?? ''),
+                    'min_value'   => $item['template_min'] ?? null,
+                    'max_value'   => $item['template_max'] ?? null,
+                ];
 
                 $stateClass = 'is-unanswered';
 
@@ -86,20 +95,17 @@ foreach ($sections as $sectionItems) {
                     $stateClass = 'is-pass';
                 }
                 ?>
-                <div class="checklist-item <?= e($stateClass) ?> is-required" data-checklist-item>
+                <div class="checklist-item <?= e($stateClass) ?><?= $required ? ' is-required' : ' is-optional' ?>"
+                     data-checklist-item data-required="<?= $required ? '1' : '0' ?>">
                     <div class="checklist-item-head">
                         <div>
                             <div class="checklist-item-text">
                                 <span class="text-subtle"><?= (int) $itemNumber ?>.</span>
                                 <?= e((string) $item['item_text']) ?>
+                                <?php if (!$required): ?>
+                                    <span class="text-subtle text-sm">(optional)</span>
+                                <?php endif; ?>
                             </div>
-                            <?php
-                            // The original description lives on the template.
-                            $template = $item['checklist_item_id'] === null
-                                ? null
-                                : db()->one('SELECT description, unit, min_value, max_value FROM {checklist_items} WHERE id = ?',
-                                    [(int) $item['checklist_item_id']]);
-                            ?>
                             <?php if ($template !== null && (string) $template['description'] !== ''): ?>
                                 <div class="checklist-item-desc"><?= e((string) $template['description']) ?></div>
                             <?php endif; ?>
@@ -136,7 +142,9 @@ foreach ($sections as $sectionItems) {
                             <input type="number" step="0.01" class="form-input"
                                    name="items[<?= $itemId ?>][value_number]"
                                    value="<?= attr((string) ($item['value_number'] ?? '')) ?>"
-                                   inputmode="decimal"
+                                   inputmode="decimal" data-value-input
+                                   <?= $template !== null && $template['min_value'] !== null ? 'data-min="' . attr((string) $template['min_value']) . '"' : '' ?>
+                                   <?= $template !== null && $template['max_value'] !== null ? 'data-max="' . attr((string) $template['max_value']) . '"' : '' ?>
                                    aria-label="<?= attr((string) $item['item_text']) ?>">
                             <?php if ($template !== null && (string) $template['unit'] !== ''): ?>
                                 <span class="input-addon"><?= e((string) $template['unit']) ?></span>
@@ -145,11 +153,12 @@ foreach ($sections as $sectionItems) {
                             <?php endif; ?>
                         </div>
                         <?php if ($template !== null && ($template['min_value'] !== null || $template['max_value'] !== null)): ?>
-                            <div class="form-hint">
-                                Expected
-                                <?= $template['min_value'] !== null ? e(decimal($template['min_value'])) : '' ?>
-                                <?= $template['min_value'] !== null && $template['max_value'] !== null ? ' to ' : '' ?>
-                                <?= $template['max_value'] !== null ? e(decimal($template['max_value'])) : '' ?>
+                            <div class="form-hint" data-range-hint>
+                                OK between
+                                <?= $template['min_value'] !== null ? e(decimal($template['min_value'])) : 'anything' ?>
+                                and
+                                <?= $template['max_value'] !== null ? e(decimal($template['max_value'])) : 'anything' ?>.
+                                A number outside that counts as a fail.
                             </div>
                         <?php endif; ?>
                     <?php endif; ?>
@@ -163,7 +172,7 @@ foreach ($sections as $sectionItems) {
                     <?php endif; ?>
 
                     <?php // ---------- Notes, shown when something failed ---------- ?>
-                    <?php if ($choices !== []): ?>
+                    <?php if ($choices !== [] || $type === 'number' || $type === 'meter'): ?>
                         <div class="checklist-notes" data-fail-notes
                              <?= in_array($response, ['fail', 'no'], true) || (string) $item['notes'] !== '' ? '' : 'hidden' ?>>
                             <label class="form-label" for="notes-<?= $itemId ?>">What is wrong?</label>

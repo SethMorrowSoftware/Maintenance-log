@@ -159,7 +159,7 @@ $inspector    = trim((string) $inspection['first_name'] . ' ' . (string) $inspec
             </div>
         <?php endif; ?>
 
-        <?php if (!$printing && $attachments !== []): ?>
+        <?php if (!$printing && feature_on('photos') && $attachments !== []): ?>
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title"><?= icon('paperclip', '', 18) ?> Photos</h2>
@@ -248,7 +248,7 @@ $inspector    = trim((string) $inspection['first_name'] . ' ' . (string) $inspec
 
                     <?php if ($inspection['duration_minutes'] !== null): ?>
                         <dt>Took</dt>
-                        <dd><?= e(Dates::humanDuration((int) $inspection['duration_minutes'])) ?></dd>
+                        <dd><?= (int) $inspection['duration_minutes'] === 0 ? 'Under a minute' : e(Dates::humanDuration((int) $inspection['duration_minutes'])) ?></dd>
                     <?php endif; ?>
 
                     <?php if ($inspection['meter_reading'] !== null): ?>

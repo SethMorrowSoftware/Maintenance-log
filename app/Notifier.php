@@ -38,13 +38,16 @@ final class Notifier
         }
 
         try {
-            // Suppress an identical unread notification for the same record.
+            // Suppress an identical unread notification for the same record —
+            // the same title, so "assigned to you" does not swallow a later
+            // "cancelled" or "new comment" on the same work order.
             if ($entityType !== '' && $entityId !== null) {
                 $existing = db()->value(
                     'SELECT id FROM {notifications}
                      WHERE user_id = ? AND type = ? AND entity_type = ? AND entity_id = ? AND is_read = 0
+                       AND title = ?
                      LIMIT 1',
-                    [$userId, $type, $entityType, $entityId]
+                    [$userId, $type, $entityType, $entityId, mb_substr($title, 0, 191, 'UTF-8')]
                 );
 
                 if ($existing !== null) {

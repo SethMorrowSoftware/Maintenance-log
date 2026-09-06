@@ -201,7 +201,7 @@ switch ($tab) {
     default:
         $data['recentLogs'] = db()->all(
             'SELECT l.id, l.title, l.log_type, l.performed_at, l.total_cost,
-                    u.first_name, u.last_name, u.username, u.avatar_path
+                    u.id AS user_id, u.first_name, u.last_name, u.username, u.avatar_path
              FROM {maintenance_logs} l
              LEFT JOIN {users} u ON u.id = l.user_id
              WHERE l.asset_id = ? AND l.deleted_at IS NULL

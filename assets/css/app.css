@@ -159,6 +159,14 @@
     --z-modal:    100;
     --z-toast:    120;
 
+    /* Solid brand fills with white text. These stay dark in the dark theme,
+       where the brand ramp itself is inverted for links and tints. */
+    --brand-solid:       #4f46e5;
+    --brand-solid-hover: #4338ca;
+
+    /* Room for a sticky bar at the bottom of a phone screen; set by core.js */
+    --toast-offset: 0px;
+
     color-scheme: light;
 }
 
@@ -377,7 +385,7 @@ hr, .divider {
     top: 0;
     z-index: 999;
     padding: var(--space-3) var(--space-5);
-    background: var(--brand-600);
+    background: var(--brand-solid);
     color: #fff;
     border-radius: 0 0 var(--radius-md) 0;
     font-weight: 600;
@@ -760,6 +768,16 @@ pre code { padding: 0; background: none; border: 0; }
 
 .header-spacer { flex: 1; }
 
+/* Only a phone needs a button to open search; the box itself is there otherwise. */
+.header-search-btn { display: none; }
+
+/* A bar of actions that stays under the thumb on a phone. Rendered inline
+   (after the form) on wider screens, where the sidebar Save button serves. */
+.form-sticky { display: none; }
+
+/* The filter toggle is a phone-only control. */
+.filter-toggle { display: none; }
+
 .header-actions {
     display: flex;
     align-items: center;
@@ -1111,12 +1129,12 @@ pre code { padding: 0; background: none; border: 0; }
 }
 
 .btn-primary {
-    background: var(--brand-600);
-    border-color: var(--brand-600);
+    background: var(--brand-solid);
+    border-color: var(--brand-solid);
     color: #fff;
     box-shadow: var(--shadow-sm);
 }
-.btn-primary:hover { background: var(--brand-700); border-color: var(--brand-700); color: #fff; }
+.btn-primary:hover { background: var(--brand-solid-hover); border-color: var(--brand-solid-hover); color: #fff; }
 
 .btn-secondary {
     background: var(--surface);
@@ -1570,6 +1588,8 @@ pre code { padding: 0; background: none; border: 0; }
     align-items: center;
     gap: var(--space-2);
 }
+.builder-order { display: inline-flex; gap: 2px; flex: 0 0 auto; }
+
 .builder-handle {
     flex: 0 0 auto;
     color: var(--text-subtle);
@@ -1968,11 +1988,11 @@ pre code { padding: 0; background: none; border: 0; }
     transform: translateY(-1px);
 }
 .action-tile.is-primary {
-    background: var(--brand-600);
-    border-color: var(--brand-600);
+    background: var(--brand-solid);
+    border-color: var(--brand-solid);
     color: #fff;
 }
-.action-tile.is-primary:hover { background: var(--brand-700); border-color: var(--brand-700); }
+.action-tile.is-primary:hover { background: var(--brand-solid-hover); border-color: var(--brand-solid-hover); }
 
 .action-icon {
     flex: 0 0 auto;
@@ -2297,8 +2317,8 @@ a.stat-card:hover {
 .day-choice:hover { border-color: var(--brand-300); color: var(--text); }
 .day-choice:focus-within { box-shadow: var(--shadow-focus); border-color: var(--border-focus); }
 .day-choice:has(input:checked) {
-    border-color: var(--brand-500);
-    background: var(--brand-600);
+    border-color: var(--brand-solid);
+    background: var(--brand-solid);
     color: #fff;
 }
 
@@ -2673,8 +2693,8 @@ a.stat-card:hover {
     border-color: var(--border-strong);
 }
 .page-link.is-active {
-    background: var(--brand-600);
-    border-color: var(--brand-600);
+    background: var(--brand-solid);
+    border-color: var(--brand-solid);
     color: #fff;
 }
 .page-link.is-disabled {
@@ -3171,6 +3191,7 @@ a.stat-card:hover {
     align-items: center;
     gap: var(--space-4);
     padding: var(--space-3) var(--space-5);
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
     background: var(--surface);
     border-top: 1px solid var(--border);
     box-shadow: 0 -4px 16px rgba(15, 23, 42, .08);
@@ -3627,7 +3648,7 @@ details.card > summary:focus-visible {
     color: var(--brand-700);
     font-weight: 600;
 }
-.install-step.is-current .step-num { background: var(--brand-600); color: #fff; }
+.install-step.is-current .step-num { background: var(--brand-solid); color: #fff; }
 .install-step.is-done { color: var(--ok); }
 .install-step.is-done .step-num { background: var(--ok-bg); color: var(--ok); }
 
@@ -3855,11 +3876,12 @@ details.card > summary:focus-visible {
 
     #toast-root {
         top: auto;
-        bottom: var(--space-3);
+        bottom: calc(var(--space-3) + var(--toast-offset) + env(safe-area-inset-bottom, 0px));
         left: var(--space-3);
         right: var(--space-3);
         max-width: none;
     }
+    .toast-close { padding: 10px; margin: -8px; }
 
     .pagination-bar { flex-direction: column; align-items: stretch; gap: var(--space-3); }
     .pagination { justify-content: center; }
@@ -3964,7 +3986,44 @@ details.card > summary:focus-visible {
 
     .checklist-item { padding: var(--space-3); }
     .response-btn { min-height: 52px; }
+
+    /* Every header control is a full-size thumb target, and search gets a button. */
+    .header-btn, .header-menu-btn { width: 44px; height: 44px; }
+    .header-search-btn { display: inline-flex; }
+    .user-menu-trigger { min-height: 44px; }
+
+    /* Small buttons still meet the 44px floor when a finger is doing the tapping. */
+    .btn-sm { min-height: 44px; }
+    .page-link { min-width: 44px; height: 44px; }
+    .attachment-remove { width: 36px; height: 36px; }
+    .password-toggle { min-width: 44px; min-height: 44px; }
+    .chip-lg { min-height: 44px; }
+
+    /* The sticky Save bar on the phone-length forms. */
+    .form-sticky {
+        display: flex;
+        position: sticky;
+        bottom: 0;
+        z-index: 3;
+        margin: var(--space-4) calc(var(--space-4) * -1) calc(var(--space-4) * -1);
+        padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        box-shadow: 0 -4px 16px rgba(15, 23, 42, .08);
+    }
+    .form-sticky .btn { flex: 1; }
+
+    /* Filters fold away on a phone until they are wanted. */
+    .filter-toggle { display: inline-flex; grid-column: 1 / -1; justify-content: space-between; }
+    .filter-bar.is-collapsed > .form-group:not(:first-of-type),
+    .filter-bar.is-collapsed > .filter-actions { display: none; }
 }
+
+/* Phones with a home indicator: keep the drawer's last link above it. */
+@supports (padding: env(safe-area-inset-bottom)) {
+    .sidebar-footer { padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom)); }
+}
+
 
 /* Very small phones.
    Two KPI columns are kept down to 340px: six tiles in a single column pushes

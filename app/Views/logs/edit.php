@@ -22,6 +22,38 @@ $hasMeter    = $meterUnit !== '' && $meterUnit !== 'none';
 $currency    = Settings::currency();
 $canSeeCosts = costs_visible();
 $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
+
+// After a rejected save the typed part lines come back, and the section that
+// holds an error or a typed value opens so the message can be seen.
+$oldParts = old('parts', null);
+
+if (is_array($oldParts)) {
+    $logParts = [];
+
+    foreach ($oldParts as $line) {
+        if (!is_array($line)) {
+            continue;
+        }
+
+        $logParts[] = [
+            'part_id'    => (string) ($line['part_id'] ?? ''),
+            'part_name'  => (string) ($line['part_name'] ?? ''),
+            'quantity'   => (string) ($line['quantity'] ?? ''),
+            'unit_cost'  => (string) ($line['unit_cost'] ?? ''),
+            'total_cost' => (float) ($line['quantity'] ?? 0) * (float) ($line['unit_cost'] ?? 0),
+        ];
+    }
+}
+
+$touched = static function (array $names): bool {
+    foreach ($names as $name) {
+        if (has_error($name) || (string) old($name, '') !== '') {
+            return true;
+        }
+    }
+
+    return false;
+};
 ?>
 
 <form method="post" action="<?= e(url('log-edit.php', $editing ? ['id' => (int) $log['id']] : [])) ?>"
@@ -148,7 +180,7 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                                         <div class="form-group">
                                             <label class="form-label">Part</label>
                                             <select class="form-select" name="parts[<?= (int) $index ?>][part_id]"
-                                                    data-part-select>
+                                                    data-part-select aria-label="Part from stock">
                                                 <option value="">Not from stock</option>
                                                 <?php foreach ($partOptions as $option): ?>
                                                     <option value="<?= (int) $option['id'] ?>"
@@ -164,13 +196,13 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label">Description</label>
-                                            <input type="text" class="form-input" data-part-name
+                                            <input type="text" class="form-input" data-part-name aria-label="Part description"
                                                    name="parts[<?= (int) $index ?>][part_name]"
                                                    value="<?= attr((string) $part['part_name']) ?>" maxlength="191">
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label">Qty</label>
-                                            <input type="number" step="0.01" min="0" class="form-input" data-line-qty
+                                            <input type="number" step="0.01" min="0" class="form-input" data-line-qty inputmode="decimal" aria-label="Quantity"
                                                    name="parts[<?= (int) $index ?>][quantity]"
                                                    value="<?= attr((string) $part['quantity']) ?>">
                                         </div>
@@ -179,7 +211,7 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                                                 <label class="form-label">Each</label>
                                                 <div class="input-group">
                                                     <span class="input-addon"><?= e($currency) ?></span>
-                                                    <input type="number" step="0.01" min="0" class="form-input" data-line-cost
+                                                    <input type="number" step="0.01" min="0" class="form-input" data-line-cost inputmode="decimal" aria-label="Cost each"
                                                            name="parts[<?= (int) $index ?>][unit_cost]"
                                                            value="<?= attr((string) $part['unit_cost']) ?>">
                                                 </div>
@@ -205,7 +237,7 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                             <div class="form-row <?= e($partColumns) ?>">
                                 <div class="form-group">
                                     <label class="form-label">Part</label>
-                                    <select class="form-select" name="parts[__INDEX__][part_id]" data-part-select>
+                                    <select class="form-select" name="parts[__INDEX__][part_id]" data-part-select aria-label="Part from stock">
                                         <option value="">Not from stock</option>
                                         <?php foreach ($partOptions as $option): ?>
                                             <option value="<?= (int) $option['id'] ?>"
@@ -220,12 +252,12 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Description</label>
-                                    <input type="text" class="form-input" data-part-name
+                                    <input type="text" class="form-input" data-part-name aria-label="Part description"
                                            name="parts[__INDEX__][part_name]" maxlength="191">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Qty</label>
-                                    <input type="number" step="0.01" min="0" class="form-input" data-line-qty
+                                    <input type="number" step="0.01" min="0" class="form-input" data-line-qty inputmode="decimal" aria-label="Quantity"
                                            name="parts[__INDEX__][quantity]" value="1">
                                 </div>
                                 <?php if ($canSeeCosts): ?>
@@ -233,7 +265,7 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                                         <label class="form-label">Each</label>
                                         <div class="input-group">
                                             <span class="input-addon"><?= e($currency) ?></span>
-                                            <input type="number" step="0.01" min="0" class="form-input" data-line-cost
+                                            <input type="number" step="0.01" min="0" class="form-input" data-line-cost inputmode="decimal" aria-label="Cost each"
                                                    name="parts[__INDEX__][unit_cost]" value="">
                                         </div>
                                     </div>
@@ -257,7 +289,8 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
 
             <?php // ============ Time, cost and condition (optional) ============ ?>
             <details class="card"
-                <?= ($values['labor_hours'] || $values['meter_reading'] || $values['downtime_minutes'] || $values['other_cost']) ? 'open' : '' ?>>
+                <?= ($values['labor_hours'] || $values['meter_reading'] || $values['downtime_minutes'] || $values['other_cost']
+                    || $touched(['labor_hours', 'meter_reading', 'downtime_minutes', 'other_cost', 'labor_rate', 'labor_cost', 'parts_cost', 'status_after', 'schedule_id', 'work_order_id'])) ? 'open' : '' ?>>
                 <summary class="card-header" style="cursor:pointer;list-style:none">
                     <h2 class="card-title"><?= icon('clock', '', 18) ?> <?= $canSeeCosts ? 'Time, cost and condition' : 'Time and condition' ?></h2>
                     <span class="text-sm text-muted">Optional <?= icon('chevron-down', '', 15) ?></span>
@@ -351,7 +384,7 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
 
                     <div class="flex items-center justify-between p-3 rounded bg-sunken">
                         <strong>Total cost of this job</strong>
-                        <strong class="text-lg tabular" data-grand-total><?= e(money($values['labor_cost'] ?: 0)) ?></strong>
+                        <strong class="text-lg tabular" data-grand-total><?= e(money($values['total_cost'] ?? ((float) $values['labor_cost'] + (float) $values['parts_cost'] + (float) $values['other_cost']))) ?></strong>
                     </div>
 
                     <hr>
@@ -368,39 +401,46 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
                         'hint'    => 'Choosing one changes the ' . asset_word() . '\'s status straight away.',
                     ]); ?>
 
-                    <?php if ($assetSchedules !== []): ?>
-                        <?php View::partial('form-field', [
-                            'name'    => 'schedule_id',
-                            'label'   => 'Was this a scheduled job?',
-                            'type'    => 'select',
-                            'value'   => $values['schedule_id'],
-                            'options' => $assetSchedules,
-                            'empty'   => 'No, one-off work',
-                            'hint'    => 'Linking it marks the schedule done and sets the next due date.',
-                        ]); ?>
+                    <?php // Both selects are always in the page: the context script refills
+                          // them when a different machine is picked, and hides them when
+                          // the machine has nothing to link to. ?>
+                    <?php if (feature_on('schedules') && can('schedules.view')): ?>
+                        <div data-ctx-schedules <?= $assetSchedules === [] ? 'hidden' : '' ?>>
+                            <?php View::partial('form-field', [
+                                'name'    => 'schedule_id',
+                                'label'   => 'Was this a scheduled job?',
+                                'type'    => 'select',
+                                'value'   => $values['schedule_id'],
+                                'options' => $assetSchedules,
+                                'empty'   => 'No, one-off work',
+                                'hint'    => 'Linking it marks the schedule done and sets the next due date.',
+                            ]); ?>
+                        </div>
                     <?php endif; ?>
 
-                    <?php if ($openWorkOrders !== []): ?>
-                        <?php View::partial('form-field', [
-                            'name'    => 'work_order_id',
-                            'label'   => 'Does this close a work order?',
-                            'type'    => 'select',
-                            'value'   => $values['work_order_id'],
-                            'options' => $openWorkOrders,
-                            'empty'   => 'Not related to a work order',
-                        ]); ?>
+                    <?php if (feature_on('work_orders') && can('workorders.view')): ?>
+                        <div data-ctx-workorders <?= $openWorkOrders === [] ? 'hidden' : '' ?>>
+                            <?php View::partial('form-field', [
+                                'name'    => 'work_order_id',
+                                'label'   => 'Does this close a work order?',
+                                'type'    => 'select',
+                                'value'   => $values['work_order_id'],
+                                'options' => $openWorkOrders,
+                                'empty'   => 'Not related to a work order',
+                            ]); ?>
 
-                        <?php if (can('workorders.close')): ?>
-                            <label class="form-check" for="f_close_wo">
-                                <input type="checkbox" id="f_close_wo" name="close_work_order" value="1" checked>
-                                <span class="form-check-label">
-                                    Mark that work order as completed
-                                    <small>Untick if there is still more to do on it.</small>
-                                </span>
-                            </label>
-                        <?php else: ?>
-                            <p class="form-hint">The work order stays open; a manager closes it once they have seen the job.</p>
-                        <?php endif; ?>
+                            <?php if (can('workorders.close')): ?>
+                                <label class="form-check" for="f_close_wo">
+                                    <input type="checkbox" id="f_close_wo" name="close_work_order" value="1" checked>
+                                    <span class="form-check-label">
+                                        Mark that work order as completed
+                                        <small>Untick if there is still more to do on it.</small>
+                                    </span>
+                                </label>
+                            <?php else: ?>
+                                <p class="form-hint">The work order stays open; a manager closes it once they have seen the job.</p>
+                            <?php endif; ?>
+                        </div>
                     <?php endif; ?>
                 </div>
             </details>
@@ -493,5 +533,12 @@ $partColumns = $canSeeCosts ? 'cols-4' : 'cols-3';
             </div>
             <?php endif; ?>
         </div>
+    </div>
+
+    <?php // On a phone the sidebar lands below the form, so Save travels with the thumb. ?>
+    <div class="form-sticky no-print">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <?= icon('save', '', 18) ?> <?= $editing ? 'Save changes' : 'Save this log' ?>
+        </button>
     </div>
 </form>

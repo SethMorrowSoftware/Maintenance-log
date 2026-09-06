@@ -588,7 +588,47 @@ final class MaintenanceLog
             'total_cost'   => $log['total_cost'],
         ]);
 
+        // A schedule this job had marked done goes back to the job before it,
+        // or to "not yet done", so the service comes round again.
+        if (!empty($log['schedule_id'])) {
+            self::rewindSchedule((int) $log['schedule_id'], $id);
+        }
+
         return true;
+    }
+
+    /**
+     * Recompute a schedule after the log that last performed it was deleted.
+     */
+    private static function rewindSchedule(int $scheduleId, int $deletedLogId): void
+    {
+        try {
+            $schedule = db()->one('SELECT * FROM {maintenance_schedules} WHERE id = ? LIMIT 1', [$scheduleId]);
+
+            if ($schedule === null || (int) ($schedule['last_log_id'] ?? 0) !== $deletedLogId) {
+                return;
+            }
+
+            $previous = db()->one(
+                'SELECT id, performed_at, meter_reading FROM {maintenance_logs}
+                 WHERE schedule_id = ? AND deleted_at IS NULL AND is_completed = 1
+                 ORDER BY performed_at DESC, id DESC LIMIT 1',
+                [$scheduleId]
+            );
+
+            db()->update('maintenance_schedules', [
+                'last_performed_at' => $previous === null ? null : (string) $previous['performed_at'],
+                'last_meter'        => $previous === null ? null : $previous['meter_reading'],
+                'last_log_id'       => $previous === null ? null : (int) $previous['id'],
+                // Never done now: recompute() gives it a fresh first due point.
+                'next_due_date'     => null,
+                'next_due_meter'    => null,
+            ], ['id' => $scheduleId]);
+
+            Scheduler::recompute($scheduleId);
+        } catch (Throwable $e) {
+            log_error('Schedule rewind after log delete failed: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -59,6 +59,19 @@ if (is_post()) {
             redirect($back);
         }
 
+        // An area that still has checklists written for it, or people
+        // limited to it, needs those moved first — the merge does that.
+        if ($row !== null && $kind === 'locations') {
+            $areaUse = db()->count('SELECT COUNT(*) FROM {checklists} WHERE location_id = ?', [$id])
+                + db()->count('SELECT COUNT(*) FROM {user_areas} WHERE location_id = ?', [$id]);
+
+            if ($areaUse > 0) {
+                flash('error', 'That area still has checklists or people attached to it. '
+                    . 'Use "Delete…" on its row to move them to another area first.');
+                redirect($back);
+            }
+        }
+
         if ($row !== null) {
             db()->delete($table, ['id' => $id]);
             audit('delete', $entity, $id, 'Deleted ' . strtolower($noun) . ' "' . (string) $row['name'] . '"');
@@ -82,14 +95,25 @@ if (is_post()) {
 
         $moved = db()->count("SELECT COUNT(*) FROM {assets} WHERE {$column} = ?", [$id]);
 
-        db()->run("UPDATE {assets} SET {$column} = ? WHERE {$column} = ?", [$targetId, $id]);
+        // Everything that points at the old row moves in one go, or not at all.
+        db()->transaction(static function (\App\Database $db) use ($table, $column, $kind, $targetId, $id): void {
+            $db->run("UPDATE {assets} SET {$column} = ? WHERE {$column} = ?", [$targetId, $id]);
 
-        if ($kind === 'categories') {
-            // Checklists aimed at the old category now aim at the new one.
-            db()->run('UPDATE {checklists} SET category_id = ? WHERE category_id = ?', [$targetId, $id]);
-        }
+            if ($kind === 'categories') {
+                // Checklists aimed at the old category now aim at the new one.
+                $db->run('UPDATE {checklists} SET category_id = ? WHERE category_id = ?', [$targetId, $id]);
+            } else {
+                // Area checklists, past area checks and the people limited to
+                // the area all follow it — the foreign keys would otherwise
+                // quietly blank them or drop them.
+                $db->run('UPDATE {checklists} SET location_id = ? WHERE location_id = ?', [$targetId, $id]);
+                $db->run('UPDATE {inspections} SET location_id = ? WHERE location_id = ?', [$targetId, $id]);
+                $db->run('INSERT IGNORE INTO {user_areas} (user_id, location_id) SELECT user_id, ? FROM {user_areas} WHERE location_id = ?', [$targetId, $id]);
+                $db->run('DELETE FROM {user_areas} WHERE location_id = ?', [$id]);
+            }
 
-        db()->delete($table, ['id' => $id]);
+            $db->delete($table, ['id' => $id]);
+        });
 
         audit('delete', $entity, $id, 'Deleted ' . strtolower($noun) . ' "' . (string) $row['name']
             . '", moving ' . $moved . ' ' . asset_word(true) . ' to "' . (string) $target['name'] . '"');

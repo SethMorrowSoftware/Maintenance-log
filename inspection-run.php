@@ -180,9 +180,10 @@ if (is_post()) {
     }
 
     // A meter that goes backwards is a typo often enough that it is worth
-    // stopping for, while the number is still on screen.
-    if ($meta['meter_reading'] !== ''
-        && (float) $meta['meter_reading'] < (float) $inspection['asset_meter'] - 0.004) {
+    // stopping for, while the number is still on screen — whether it was
+    // typed in the box at the bottom or on a "meter reading" line.
+    if (!$isArea && $result['meter'] !== null
+        && (float) $result['meter'] < (float) $inspection['asset_meter'] - 0.004) {
         flash('error', 'The meter on ' . (string) $inspection['asset_name'] . ' reads '
             . decimal($inspection['asset_meter']) . ' ' . (string) $inspection['meter_type']
             . '. A reading cannot go backwards — check the number. Your progress has been saved.');

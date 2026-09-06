@@ -283,9 +283,13 @@ final class Auth
         }
 
         if (!(int) $user['is_active']) {
+            // The same words as a wrong password: the sign-in form must not
+            // confirm that a switched-off account exists, or that its
+            // password was right. The audit log says what really happened.
             self::recordAttempt($identifier, false);
+            Audit::auth('login.inactive', (int) $user['id'], 'Sign-in refused: the account is switched off');
 
-            return self::failure('That account has been deactivated. Please contact an administrator.');
+            return self::failure('That username or password is not correct.');
         }
 
         // Success.

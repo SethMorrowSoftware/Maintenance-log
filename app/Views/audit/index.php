@@ -35,16 +35,22 @@ $linkFor = static function (string $entityType, $entityId): ?string {
         return null;
     }
 
+    // Only pages the viewer can actually open: an edit page needs its
+    // "manage" permission, which somebody with audit.view may not hold.
     $map = [
         'asset'           => 'asset-view.php',
         'maintenance_log' => 'log-view.php',
         'work_order'      => 'workorder-view.php',
         'inspection'      => 'inspection-view.php',
         'part'            => 'part-view.php',
-        'user'            => 'user-edit.php',
-        'checklist'       => 'checklist-edit.php',
-        'schedule'        => 'schedule-edit.php',
+        'user'            => can('users.manage') ? 'user-edit.php' : null,
+        'checklist'       => can('checklists.manage') ? 'checklist-edit.php' : null,
+        'schedule'        => can('schedules.manage') ? 'schedule-edit.php' : null,
     ];
+
+    if (!isset($map[$entityType]) || $map[$entityType] === null) {
+        return null;
+    }
 
     return isset($map[$entityType]) ? url($map[$entityType], ['id' => (int) $entityId]) : null;
 };

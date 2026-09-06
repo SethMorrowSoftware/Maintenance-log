@@ -23,18 +23,38 @@ if ($filters === []) {
 }
 
 $hasActive = false;
+$active    = 0;
+$position  = 0;
+$folded    = 0; // filters, beyond the first, that are set — they keep the bar open on a phone
 
 foreach ($filters as $config) {
-    if (($config['value'] ?? '') !== '') {
+    $position++;
+    $value = $config['value'] ?? '';
+
+    // An unset id filter arrives as 0, which is "nothing chosen", not a choice.
+    if ($value !== '' && $value !== null && $value !== 0 && $value !== '0') {
         $hasActive = true;
-        break;
+        $active++;
+
+        // A preset date range is not somebody's choice; it does not hold the bar open.
+        if ($position > 1 && (string) ($config['type'] ?? 'text') !== 'date') {
+            $folded++;
+        }
     }
 }
 ?>
-<form method="get" action="<?= e(url($action)) ?>" class="filter-bar no-print" data-filter-form>
+<form method="get" action="<?= e(url($action)) ?>" class="filter-bar no-print<?= $folded === 0 && count($filters) > 1 ? ' is-collapsed' : '' ?>" data-filter-form>
     <?php foreach ($hidden as $key => $val): ?>
         <input type="hidden" name="<?= e($key) ?>" value="<?= e($val) ?>">
     <?php endforeach; ?>
+
+    <?php if (count($filters) > 1): ?>
+        <button type="button" class="btn btn-secondary btn-sm filter-toggle" data-filter-toggle
+                aria-expanded="<?= $folded === 0 ? 'false' : 'true' ?>">
+            <span><?= icon('filter', '', 15) ?> Filters<?= $active > 0 ? ' (' . (int) $active . ' on)' : '' ?></span>
+            <?= icon('chevron-down', '', 15) ?>
+        </button>
+    <?php endif; ?>
 
     <?php foreach ($filters as $fieldName => $config): ?>
         <?php

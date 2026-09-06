@@ -54,7 +54,8 @@ $filters = [
 $sort      = Request::string('sort', 'performed');
 $direction = Request::string('dir', 'desc');
 
-if (!isset(MaintenanceLog::SORTS[$sort])) {
+// Somebody who cannot see money cannot rank jobs by it either.
+if (!isset(MaintenanceLog::SORTS[$sort]) || ($sort === 'cost' && !costs_visible())) {
     $sort = 'performed';
 }
 
