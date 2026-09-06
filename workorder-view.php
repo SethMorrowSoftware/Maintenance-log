@@ -127,7 +127,13 @@ if (is_post()) {
 
 $actions = '';
 
-if (!Status::isClosedWorkOrder((string) $workOrder['status']) && can('logs.create')) {
+// The "Is it done?" card carries its own link to the log form, and a second
+// blue button in the header would compete with the one action this page is
+// for. So the header keeps it only for somebody that card is not shown to.
+$open      = !Status::isClosedWorkOrder((string) $workOrder['status']);
+$hasFinish = $open && Acl::canWorkOnWorkOrder($workOrder);
+
+if ($open && !$hasFinish && can('logs.create')) {
     $actions .= '<a class="btn btn-primary" href="'
         . e(url('log-edit.php', ['work_order_id' => $id, 'asset_id' => (int) ($workOrder['asset_id'] ?? 0)])) . '">'
         . icon('wrench', '', 17) . ' Log the fix</a>';

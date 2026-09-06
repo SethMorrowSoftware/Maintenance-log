@@ -478,14 +478,20 @@ $touched = static function (array $names): bool {
                         ]); ?>
                     </div>
 
-                    <label class="form-check" for="f_not_finished">
-                        <input type="checkbox" id="f_not_finished" name="not_finished" value="1"
-                               <?= checked(!(int) $values['is_completed']) ?>>
-                        <span class="form-check-label">
-                            The job is not finished yet
-                            <small>Record what you have done so far and come back to it.</small>
-                        </span>
-                    </label>
+                    <?php // Arriving from an open work order, the two save buttons
+                          // already ask whether the job is finished. Asking again
+                          // here is how somebody ends up with a closed work order
+                          // attached to a log that says the work is unfinished. ?>
+                    <?php if (!$closesWorkOrder): ?>
+                        <label class="form-check" for="f_not_finished">
+                            <input type="checkbox" id="f_not_finished" name="not_finished" value="1"
+                                   <?= checked(!(int) $values['is_completed']) ?>>
+                            <span class="form-check-label">
+                                The job is not finished yet
+                                <small>Record what you have done so far and come back to it.</small>
+                            </span>
+                        </label>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

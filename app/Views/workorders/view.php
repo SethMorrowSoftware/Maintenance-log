@@ -94,7 +94,7 @@ $returnTicked = $mayReturn && (int) ($workOrder['is_safety_issue'] ?? 0) !== 1;
                 <?php if (can('logs.create')): ?>
                     <a class="btn btn-secondary" data-no-guard
                        href="<?= e(url('log-edit.php', ['work_order_id' => $woId, 'asset_id' => (int) ($workOrder['asset_id'] ?? 0)])) ?>">
-                        <?= icon('wrench', '', 16) ?> Log parts and time
+                        <?= icon('wrench', '', 16) ?> Log the fix in full
                     </a>
                 <?php endif; ?>
             </div>

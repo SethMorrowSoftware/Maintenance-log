@@ -201,6 +201,14 @@ if (is_post()) {
     $data['handover_work_order'] = $wantsClose && !$data['close_work_order']
         && Acl::canWorkOnWorkOrder($linkedWorkOrder);
 
+    // Arriving from an open work order, the button answers "is the job
+    // finished?" for the log as well, and the separate tick is not shown.
+    // Two controls for one question is how people end up with a finished
+    // work order attached to a log that says the work is not finished.
+    if (Request::has('close_work_order')) {
+        $data['is_completed'] = $wantsClose ? 1 : 0;
+    }
+
     if (!$data['requires_followup']) {
         $data['followup_notes'] = null;
     }
