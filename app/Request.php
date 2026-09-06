@@ -428,7 +428,10 @@ final class Request
                     continue;
                 }
 
-                $candidate = trim(explode(',', (string) $_SERVER[$header])[0]);
+                // The trusted proxy appends the address it saw at the END of
+                // X-Forwarded-For; anything before it was supplied by the client.
+                $hops      = array_map('trim', explode(',', (string) $_SERVER[$header]));
+                $candidate = (string) end($hops);
 
                 if (filter_var($candidate, FILTER_VALIDATE_IP) !== false) {
                     return $candidate;

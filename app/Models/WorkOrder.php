@@ -239,7 +239,9 @@ final class WorkOrder
                     ($row['asset_name'] ?? 'No ' . asset_word()) . ' — ' . $data['wo_number'],
                     'workorder-view.php?id=' . $id,
                     'work_order',
-                    $id
+                    $id,
+                    false,
+                    Auth::id()
                 );
             } catch (Throwable $e) {
                 log_error('Work order notification failed: ' . $e->getMessage());
@@ -461,6 +463,17 @@ final class WorkOrder
             'deleted_at' => Dates::nowUtc(),
             'updated_by' => Auth::id(),
         ], ['id' => $id]);
+
+        // A bell that leads to a record that no longer exists helps nobody.
+        try {
+            db()->run(
+                "UPDATE {notifications} SET is_read = 1, read_at = ?
+                 WHERE entity_type = 'work_order' AND entity_id = ? AND is_read = 0",
+                [Dates::nowUtc(), $id]
+            );
+        } catch (Throwable $e) {
+            // Not worth failing the delete over.
+        }
 
         Audit::deleted('work_order', $id, 'Deleted ' . (string) $workOrder['wo_number']);
 

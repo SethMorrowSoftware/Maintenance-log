@@ -24,7 +24,7 @@ foreach ($assets as $asset) {
         'href' => url('schedules.php', ['due' => 'soon']),
     ]); ?>
     <?php View::partial('stat-card', [
-        'label' => 'All schedules', 'value' => num(count($schedules)),
+        'label' => 'All schedules', 'value' => num($counts['all'] ?? count($schedules)),
         'icon' => 'list', 'tone' => 'brand',
         'href' => url('schedules.php'),
     ]); ?>
@@ -89,7 +89,7 @@ foreach ($assets as $asset) {
                                 <?php endif; ?>
                             </td>
                             <td data-label="Every">
-                                <?= e(Dates::describeInterval(
+                                <?= e(Dates::describeSchedule(
                                     (string) $schedule['frequency_type'],
                                     (int) $schedule['frequency_value'],
                                     $schedule['meter_interval'] === null ? null : (float) $schedule['meter_interval'],

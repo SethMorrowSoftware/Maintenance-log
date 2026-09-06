@@ -69,6 +69,20 @@ if (is_post()) {
 
     $data = $validator->validated();
 
+    // A meter interval only means something on a machine with a meter, and
+    // only while the site tracks meters at all.
+    $meterAsset = db()->one('SELECT meter_type FROM {assets} WHERE id = ? LIMIT 1', [(int) $data['asset_id']]);
+    $meterless  = $meterAsset === null || (string) $meterAsset['meter_type'] === 'none' || !feature_on('meters');
+
+    if ($meterless && ($data['frequency_type'] === 'meter' || !empty($data['meter_interval']))) {
+        flash_errors([
+            'meter_interval' => feature_on('meters')
+                ? 'That ' . asset_word() . ' has no meter, so it cannot be serviced by the meter. Give it a calendar interval, or set its meter type on the ' . asset_word() . ' first.'
+                : 'Meters are switched off on this site. Use a calendar interval.',
+        ], $_POST);
+        redirect(url('schedule-edit.php', $editing ? ['id' => $id] : []));
+    }
+
     // A meter schedule needs an interval; a calendar one does not.
     if ($data['frequency_type'] === 'meter') {
         if (empty($data['meter_interval']) || (float) $data['meter_interval'] <= 0) {

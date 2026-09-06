@@ -97,7 +97,11 @@ final class PartsController
         $body   = Request::isJson() ? Request::json() : $_POST;
         $id     = (int) ($body['id'] ?? 0);
         $amount = (float) ($body['amount'] ?? 0);
-        $way    = (string) ($body['way'] ?? 'out');
+        $way    = is_string($body['way'] ?? null) ? (string) $body['way'] : 'out';
+
+        if (!in_array($way, ['in', 'out'], true)) {
+            Response::error('Say whether stock went in or out.', 'validation_failed', 422, ['way' => 'Say whether stock went in or out.']);
+        }
 
         $part = Part::find($id);
 
@@ -118,8 +122,8 @@ final class PartsController
         }
 
         $delta  = $way === 'out' ? -$amount : $amount;
-        $result = Part::adjustStock($id, $delta, $way === 'out' ? 'out' : 'in', 'manual', null,
-            (string) ($body['notes'] ?? ''));
+        $result = Part::adjustStock($id, $delta, $way, 'manual', null,
+            is_string($body['notes'] ?? null) ? (string) $body['notes'] : '');
 
         audit('stock.adjust', 'part', $id,
             (string) $part['name'] . ': ' . ($delta > 0 ? '+' : '') . decimal($delta)

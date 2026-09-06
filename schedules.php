@@ -90,6 +90,14 @@ if ($show === 'all') {
 
 $counts = ['overdue' => 0, 'due_soon' => 0, 'ok' => 0];
 
+// The whole book, whatever the list above is narrowed to.
+$counts['all'] = db()->count(
+    'SELECT COUNT(*) FROM {maintenance_schedules} s
+     INNER JOIN {assets} a ON a.id = s.asset_id AND a.deleted_at IS NULL'
+    . ($assetId > 0 ? ' WHERE s.asset_id = ?' : ''),
+    $assetId > 0 ? [$assetId] : []
+);
+
 foreach (Scheduler::due(30) as $item) {
     if ($item['due_state'] === 'overdue') {
         $counts['overdue']++;

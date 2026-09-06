@@ -665,10 +665,36 @@ final class Dates
                     return 'By meter';
                 }
 
-                return 'Every ' . rtrim(rtrim(number_format($meterInterval, 2, '.', ','), '0'), '.') . ' ' . $meterUnit;
+                return 'Every ' . self::meterAmount($meterInterval) . ' ' . $meterUnit;
             default:
                 return ucfirst(str_replace('_', ' ', $frequencyType));
         }
+    }
+
+    /**
+     * The calendar description plus the meter one, for a schedule that has
+     * both: "Monthly or every 50 hours, whichever comes first".
+     */
+    public static function describeSchedule(string $frequencyType, int $value = 1, ?float $meterInterval = null, string $meterUnit = 'hours'): string
+    {
+        $calendar = self::describeInterval($frequencyType, $value, $meterInterval, $meterUnit);
+
+        if ($frequencyType === 'meter' || $meterInterval === null || $meterInterval <= 0) {
+            return $calendar;
+        }
+
+        return $calendar . ' or every ' . self::meterAmount($meterInterval) . ' ' . $meterUnit . ', whichever comes first';
+    }
+
+    private static function meterAmount(float $amount): string
+    {
+        return rtrim(rtrim(number_format($amount, 2, '.', ','), '0'), '.');
+    }
+
+    /** The display timezone's current offset from UTC, in seconds. */
+    public static function displayOffsetSeconds(?string $tz = null): int
+    {
+        return self::now()->setTimezone(self::displayZone($tz))->getOffset();
     }
 
     // -------------------------------------------------------------------------

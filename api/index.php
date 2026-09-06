@@ -82,6 +82,13 @@ if (in_array($action, $writes, true) && Request::isGet()) {
     Response::error('That has to be sent as a POST request.', 'method_not_allowed', 405);
 }
 
+// Somebody who has been told to choose a new password does that first; the
+// pages enforce it, and so does anything that changes data from here.
+if (in_array($action, $writes, true) && Auth::check()
+    && (int) (Auth::user()['must_change_password'] ?? 0) === 1) {
+    Response::error('Please choose a new password first.', 'password_change_required', 403);
+}
+
 if (!Request::isGet()) {
     if (!Csrf::check()) {
         Response::error(

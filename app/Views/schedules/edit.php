@@ -80,8 +80,7 @@ $hasMeter  = $asset !== null && $meterUnit !== 'none';
                                 'days'       => 'Every N days',
                                 'weeks'      => 'Every N weeks',
                                 'months'     => 'Every N months',
-                                'meter'      => 'By the meter only (no calendar)',
-                            ],
+                            ] + (feature_on('meters') ? ['meter' => 'By the meter only (no calendar)'] : []),
                             'required' => true,
                         ]); ?>
 
@@ -95,6 +94,7 @@ $hasMeter  = $asset !== null && $meterUnit !== 'none';
                         ]); ?>
                     </div>
 
+                    <?php if (feature_on('meters')): ?>
                     <?php View::partial('form-field', [
                         'name'   => 'meter_interval',
                         'label'  => 'Meter interval',
@@ -107,6 +107,7 @@ $hasMeter  = $asset !== null && $meterUnit !== 'none';
                             : 'This ' . asset_word() . ' has no meter, so leave this blank.',
                         'attrs'  => ['min' => '0', 'step' => '0.01'],
                     ]); ?>
+                    <?php endif; ?>
 
                     <div class="form-row cols-2">
                         <?php View::partial('form-field', [

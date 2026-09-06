@@ -4,16 +4,8 @@
 (function () {
     'use strict';
 
-    document.addEventListener('click', function (event) {
-        var trigger = event.target.closest('[data-print]');
-
-        if (!trigger) {
-            return;
-        }
-
-        event.preventDefault();
-        window.print();
-    });
+    // [data-print] buttons are handled by core.js, which the print layout
+    // loads as well; a second listener here opened the dialog twice.
 
     // Pages that exist only to be printed can open the dialog themselves.
     if (document.body.hasAttribute('data-auto-print')) {

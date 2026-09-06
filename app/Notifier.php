@@ -136,7 +136,8 @@ final class Notifier
         string $link = '',
         string $entityType = '',
         ?int $entityId = null,
-        bool $email = false
+        bool $email = false,
+        ?int $exceptUserId = null
     ): int {
         try {
             $users = db()->all('SELECT id, role FROM {users} WHERE is_active = 1 AND deleted_at IS NULL');
@@ -147,6 +148,11 @@ final class Notifier
         $ids = [];
 
         foreach ($users as $user) {
+            // Nobody needs telling about something they just did themselves.
+            if ($exceptUserId !== null && (int) $user['id'] === $exceptUserId) {
+                continue;
+            }
+
             if (Acl::can($permission, ['id' => $user['id'], 'role' => $user['role'], 'is_active' => 1])) {
                 $ids[] = (int) $user['id'];
             }

@@ -312,6 +312,9 @@ View::render('checklists/edit', [
         Status::options('frequency'),
         array_flip(['daily', 'weekly', 'monthly', 'quarterly', 'annual', 'preseason', 'adhoc'])
     ),
-    'responseTypes' => Status::options('response_type'),
+    // A meter line asks for something the site has switched off.
+    'responseTypes' => feature_on('meters')
+        ? Status::options('response_type')
+        : array_diff_key(Status::options('response_type'), ['meter' => true]),
     'sections'   => $sectionSuggestions,
 ]);

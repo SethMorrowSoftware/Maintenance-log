@@ -2542,8 +2542,13 @@
                     } else if (field.tagName === 'SELECT') {
                         // An empty draft never blanks a choice the page opened
                         // with, such as the machine somebody has just come
-                        // back from adding.
+                        // back from adding — and a draft written for another
+                        // machine never swaps out the one this page opened on.
                         if (pair[1] === '' && field.value !== '') {
+                            return;
+                        }
+
+                        if (field.hasAttribute('data-asset-picker') && field.value !== '' && field.value !== pair[1]) {
                             return;
                         }
 

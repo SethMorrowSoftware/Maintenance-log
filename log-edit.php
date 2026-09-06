@@ -183,7 +183,9 @@ if (is_post()) {
     if (!empty($data['work_order_id'])) {
         $linkedWorkOrder = \App\Models\WorkOrder::find((int) $data['work_order_id']);
 
-        if ($linkedWorkOrder === null || (int) $linkedWorkOrder['asset_id'] !== (int) $data['asset_id']) {
+        // A work order raised without a machine can be closed by a job on any.
+        if ($linkedWorkOrder === null
+            || ($linkedWorkOrder['asset_id'] !== null && (int) $linkedWorkOrder['asset_id'] !== (int) $data['asset_id'])) {
             $linkedWorkOrder       = null;
             $data['work_order_id'] = null;
         }
@@ -382,6 +384,13 @@ if ($asset !== null && feature_on('work_orders')) {
          ORDER BY created_at DESC",
         [(int) $asset['id']]
     );
+}
+
+// Arriving from a work order that has no machine: it must still be offered,
+// or the link is lost on the way in.
+if ($workOrder !== null && feature_on('work_orders') && !isset($openWorkOrders[(int) $workOrder['id']])
+    && !\App\Status::isClosedWorkOrder((string) $workOrder['status'])) {
+    $openWorkOrders = [(int) $workOrder['id'] => (string) $workOrder['wo_number'] . ' — ' . (string) $workOrder['title']] + $openWorkOrders;
 }
 
 // Who can be named as having done the work. The person already on an

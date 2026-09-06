@@ -20,7 +20,7 @@ $overdue  = !empty($workOrder['due_date']) && Dates::isPast((string) $workOrder[
     </div>
 <?php endif; ?>
 
-<div class="grid grid-sidebar">
+<div class="grid grid-sidebar is-actions-first">
     <div>
         <div class="card">
             <div class="card-header">

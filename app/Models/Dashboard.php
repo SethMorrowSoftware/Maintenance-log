@@ -131,12 +131,14 @@ final class Dashboard
 
         $first = $range[0]['start_utc'] ?? Dates::nowUtc();
 
+        // Bucket by the site's own month, not UTC's: a job logged at 9pm on
+        // the 31st belongs to that month, whatever the clock in Greenwich says.
         $rows = db()->all(
-            "SELECT DATE_FORMAT(performed_at, '%Y-%m') AS ym, log_type, COUNT(*) AS n
+            "SELECT DATE_FORMAT(DATE_ADD(performed_at, INTERVAL ? SECOND), '%Y-%m') AS ym, log_type, COUNT(*) AS n
              FROM {maintenance_logs}
              WHERE deleted_at IS NULL AND performed_at >= ?
              GROUP BY ym, log_type",
-            [$first]
+            [Dates::displayOffsetSeconds(), $first]
         );
 
         foreach ($rows as $row) {
@@ -195,11 +197,11 @@ final class Dashboard
         $first = $range[0]['start_utc'] ?? Dates::nowUtc();
 
         $rows = db()->all(
-            "SELECT DATE_FORMAT(performed_at, '%Y-%m') AS ym, SUM(total_cost) AS total
+            "SELECT DATE_FORMAT(DATE_ADD(performed_at, INTERVAL ? SECOND), '%Y-%m') AS ym, SUM(total_cost) AS total
              FROM {maintenance_logs}
              WHERE deleted_at IS NULL AND performed_at >= ?
              GROUP BY ym",
-            [$first]
+            [Dates::displayOffsetSeconds(), $first]
         );
 
         foreach ($rows as $row) {

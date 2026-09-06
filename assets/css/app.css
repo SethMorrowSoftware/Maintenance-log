@@ -80,7 +80,7 @@
     --ok:            #15803d;
     --ok-bg:         #dcfce7;
     --ok-border:     #86efac;
-    --ok-solid:      #16a34a;
+    --ok-solid:      #15803d;   /* white text on it reads at 4.5:1 */
 
     --warn:          #b45309;
     --warn-bg:       #fef3c7;
@@ -2146,6 +2146,16 @@ a.stat-card:hover {
 /* Roles: the permission grid */
 .roles-matrix th.is-role,
 .roles-matrix td.is-role { text-align: center; width: 8.5rem; }
+
+/* On a phone the grid scrolls sideways; the permission name stays put. */
+.roles-matrix th:first-child,
+.roles-matrix td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface);
+    box-shadow: 1px 0 0 var(--border);
+}
 .roles-matrix th.is-role small {
     display: block;
     margin-top: 2px;
@@ -3772,6 +3782,10 @@ details.card > summary:focus-visible {
 @media (max-width: 1200px) {
     :root { --sidebar-w: 216px; }
     .grid-sidebar { grid-template-columns: 1fr; }
+
+    /* A page whose sidebar holds the actions (a work order's "move it along")
+       shows them first once the columns stack, not four screens down. */
+    .grid-sidebar.is-actions-first > :last-child { order: -1; }
 }
 
 /* Tablets — the sidebar becomes a drawer */

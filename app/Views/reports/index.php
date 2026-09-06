@@ -222,7 +222,7 @@ $render = static function ($value, string $format): string {
         </div>
     <?php else: ?>
         <div class="table-wrap">
-            <table class="table table-compact<?= $printing ? '' : ' table-sortable' ?>">
+            <table class="table table-compact<?= $printing ? '' : ' table-sortable is-stacked' ?>">
                 <thead>
                     <tr>
                         <?php foreach ($columns as $column): ?>
@@ -235,8 +235,8 @@ $render = static function ($value, string $format): string {
                 <tbody>
                     <?php foreach ($rows as $row): ?>
                         <tr>
-                            <?php foreach ($columns as $column): ?>
-                                <td<?= ($column['align'] ?? '') === 'right' ? ' class="is-numeric"' : '' ?>
+                            <?php foreach ($columns as $index => $column): ?>
+                                <td class="<?= ($column['align'] ?? '') === 'right' ? 'is-numeric' : '' ?><?= $index === 0 ? ' is-row-title' : '' ?>"
                                     data-label="<?= attr((string) $column['label']) ?>">
                                     <?= $render($row[$column['key']] ?? null, (string) ($column['format'] ?? 'text')) ?>
                                 </td>
@@ -248,7 +248,8 @@ $render = static function ($value, string $format): string {
                     <tfoot>
                         <tr>
                             <?php foreach ($columns as $index => $column): ?>
-                                <td<?= ($column['align'] ?? '') === 'right' ? ' class="is-numeric"' : '' ?>>
+                                <td class="<?= ($column['align'] ?? '') === 'right' ? 'is-numeric' : '' ?><?= $index === 0 ? ' is-row-title' : (array_key_exists($column['key'], $totals) ? '' : ' is-empty-mobile') ?>"
+                                    data-label="<?= attr((string) $column['label']) ?>">
                                     <?php if (array_key_exists($column['key'], $totals)): ?>
                                         <strong><?= $render(
                                             $totals[$column['key']],

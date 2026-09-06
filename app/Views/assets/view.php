@@ -244,7 +244,7 @@ if (can('audit.view')) {
                                     <tr>
                                         <td data-label="Job" class="is-row-title"><?= e((string) $schedule['name']) ?></td>
                                         <td data-label="Every">
-                                            <?= e(Dates::describeInterval(
+                                            <?= e(Dates::describeSchedule(
                                                 (string) $schedule['frequency_type'],
                                                 (int) $schedule['frequency_value'],
                                                 $schedule['meter_interval'] === null ? null : (float) $schedule['meter_interval'],
@@ -516,7 +516,7 @@ if (can('audit.view')) {
                                             <?php endif; ?>
                                         </td>
                                         <td data-label="Every">
-                                            <?= e(Dates::describeInterval(
+                                            <?= e(Dates::describeSchedule(
                                                 (string) $schedule['frequency_type'],
                                                 (int) $schedule['frequency_value'],
                                                 $schedule['meter_interval'] === null ? null : (float) $schedule['meter_interval'],
@@ -772,6 +772,7 @@ if (can('audit.view')) {
                             'value'   => (string) $asset['status'],
                             'options' => Status::options('asset'),
                             'noOld'   => true,
+                            'attrs'   => ['aria-label' => 'New status'],
                         ]); ?>
 
                         <?php View::partial('form-field', [

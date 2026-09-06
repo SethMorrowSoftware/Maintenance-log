@@ -850,7 +850,15 @@
 
         // Redraw on resize (debounced) and whenever the theme changes, since
         // the colours come from CSS custom properties.
-        var redraw = RL.debounce ? RL.debounce(renderAll, 200) : renderAll;
+        // A phone fires resize every time its address bar slides away; only
+        // a change of width means the charts need a new layout.
+        var lastWidth = window.innerWidth;
+        var redraw = RL.debounce ? RL.debounce(function () {
+            if (window.innerWidth !== lastWidth) {
+                lastWidth = window.innerWidth;
+                renderAll();
+            }
+        }, 200) : renderAll;
 
         window.addEventListener('resize', redraw);
         window.addEventListener('rl:themechange', function () {

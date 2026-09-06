@@ -114,7 +114,7 @@ final class Settings
 
         // Write to a temporary file then rename, so a concurrent request never
         // reads a half-written cache.
-        $tmp = $file . '.' . getmypid() . '.tmp';
+        $tmp = $file . '.' . (function_exists('getmypid') ? getmypid() : mt_rand()) . '.tmp';
 
         if (@file_put_contents($tmp, $php, LOCK_EX) !== false) {
             if (!@rename($tmp, $file)) {
