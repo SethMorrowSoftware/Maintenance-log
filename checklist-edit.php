@@ -42,9 +42,13 @@ if (is_post()) {
         'name'              => 'required|string|max:191',
         'description'       => 'nullable|text|max:2000',
         'applies_to'        => 'required|in:all,category,asset,location',
-        'category_id'       => 'nullable|int',
-        'asset_id'          => 'nullable|int',
-        'location_id'       => 'nullable|int',
+        // A checklist aimed at something that does not exist can never come
+        // due, and nothing would ever say so — it just sits there looking
+        // active. The area already had this check further down; these two
+        // bring the other scopes into line.
+        'category_id'       => 'nullable|int|exists:asset_categories,id',
+        'asset_id'          => 'nullable|int|exists:assets,id',
+        'location_id'       => 'nullable|int|exists:locations,id',
         'frequency'         => 'required|in:daily,weekly,monthly,quarterly,annual,preseason,adhoc',
         'estimated_minutes' => 'nullable|int|min:0|max:1440',
         'due_time'          => 'nullable|string|max:8',
@@ -274,6 +278,18 @@ $defaults = [
 
 $values = $editing ? array_merge($defaults, $checklist) : $defaults;
 $items  = $editing ? Inspection::checklistItems($id) : [];
+
+// Arriving from a machine that has no checklist yet — somebody tried to run a
+// check on it and there was nothing to run. Start the form aimed at that
+// machine rather than making them find it again.
+if (!$editing) {
+    $forAsset = Request::int('asset_id');
+
+    if ($forAsset > 0 && db()->exists('assets', ['id' => $forAsset, 'deleted_at' => null])) {
+        $values['applies_to'] = 'asset';
+        $values['asset_id']   = $forAsset;
+    }
+}
 
 // The time input wants HH:MM.
 $values['due_time'] = substr((string) ($values['due_time'] ?? ''), 0, 5);

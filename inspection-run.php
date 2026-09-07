@@ -82,11 +82,27 @@ if ($inspectionId === 0) {
     if ($checklists === []) {
         // Somebody limited to an area is told no more than that — not the
         // name of a machine they are not meant to see.
-        flash('error', Scope::limited()
-            ? 'That ' . asset_word() . ' is not in your area.'
-            : 'There is no checklist set up for ' . (string) $asset['name']
-              . '. Ask an administrator to create one under Checklists.');
-        redirect(url(Scope::limited() ? 'checks.php' : 'inspections.php'));
+        if (Scope::limited()) {
+            flash('error', 'That ' . asset_word() . ' is not in your area.');
+            redirect(url('checks.php'));
+        }
+
+        // Somebody has walked to the machine, or scanned the tag on it, and
+        // there is nothing to run. Sending them to a list of other machines
+        // wastes the trip, so land them on this one: its history is there,
+        // and so are the buttons to log work or report a fault. An
+        // administrator gets taken straight to writing the missing checklist.
+        flash(
+            'warning',
+            'There is no checklist set up for ' . (string) $asset['name'] . '. '
+            . (can('checklists.manage')
+                ? 'You can write one now.'
+                : 'You can still log work on it or report a problem, and ask an administrator for a checklist.')
+        );
+
+        redirect(can('checklists.manage')
+            ? url('checklist-edit.php', ['asset_id' => $assetId])
+            : url('asset-view.php', ['id' => $assetId]));
     }
 
     if ($checklistId === 0) {
