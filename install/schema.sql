@@ -688,10 +688,18 @@ CREATE TABLE IF NOT EXISTS {inspection_items} (
   checklist_item_id  INT UNSIGNED DEFAULT NULL,
   section            VARCHAR(120) NOT NULL DEFAULT '',
   item_text          VARCHAR(255) NOT NULL,
+  item_description   VARCHAR(500) NOT NULL DEFAULT '',
   response_type      VARCHAR(20)  NOT NULL DEFAULT 'pass_fail_na',
   response           VARCHAR(10)  NOT NULL DEFAULT '',
   value_text         VARCHAR(500) NOT NULL DEFAULT '',
   value_number       DECIMAL(12,2) DEFAULT NULL,
+  -- The standard this answer was judged against, as it stood when the check
+  -- was started. Copied from the checklist line rather than read back from it,
+  -- so editing or deleting that line cannot rewrite a filed inspection. See
+  -- install/migrations/003_inspection_item_snapshot.sql.
+  unit               VARCHAR(20)  NOT NULL DEFAULT '',
+  min_value          DECIMAL(12,2) DEFAULT NULL,
+  max_value          DECIMAL(12,2) DEFAULT NULL,
   is_critical        TINYINT(1)   NOT NULL DEFAULT 0,
   notes              VARCHAR(500) NOT NULL DEFAULT '',
   photo_path         VARCHAR(255) DEFAULT NULL,

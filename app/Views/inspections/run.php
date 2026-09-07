@@ -75,8 +75,13 @@ foreach ($sections as $sectionItems) {
                 $required  = (int) ($item['is_required'] ?? 1) === 1;
                 $answered  = $response !== '' || (string) $item['value_text'] !== '' || $item['value_number'] !== null;
 
-                // The template's guidance, unit and acceptable range came with the item.
-                $template = $item['checklist_item_id'] === null ? null : [
+                // The guidance, unit and acceptable range were copied onto the
+                // run when it started, so they are read unconditionally. This
+                // used to be skipped whenever the checklist line behind the
+                // item had been deleted — which is exactly when the range
+                // mattered most, and meant the page stopped marking a reading
+                // outside it as a fail without saying anything.
+                $template = [
                     'description' => (string) ($item['template_description'] ?? ''),
                     'unit'        => (string) ($item['template_unit'] ?? ''),
                     'min_value'   => $item['template_min'] ?? null,
@@ -106,7 +111,7 @@ foreach ($sections as $sectionItems) {
                                     <span class="text-subtle text-sm">(optional)</span>
                                 <?php endif; ?>
                             </div>
-                            <?php if ($template !== null && (string) $template['description'] !== ''): ?>
+                            <?php if ((string) $template['description'] !== ''): ?>
                                 <div class="checklist-item-desc"><?= e((string) $template['description']) ?></div>
                             <?php endif; ?>
                         </div>
@@ -143,16 +148,16 @@ foreach ($sections as $sectionItems) {
                                    name="items[<?= $itemId ?>][value_number]"
                                    value="<?= attr((string) ($item['value_number'] ?? '')) ?>"
                                    inputmode="decimal" data-value-input
-                                   <?= $template !== null && $template['min_value'] !== null ? 'data-min="' . attr((string) $template['min_value']) . '"' : '' ?>
-                                   <?= $template !== null && $template['max_value'] !== null ? 'data-max="' . attr((string) $template['max_value']) . '"' : '' ?>
+                                   <?= $template['min_value'] !== null ? 'data-min="' . attr((string) $template['min_value']) . '"' : '' ?>
+                                   <?= $template['max_value'] !== null ? 'data-max="' . attr((string) $template['max_value']) . '"' : '' ?>
                                    aria-label="<?= attr((string) $item['item_text']) ?>">
-                            <?php if ($template !== null && (string) $template['unit'] !== ''): ?>
+                            <?php if ((string) $template['unit'] !== ''): ?>
                                 <span class="input-addon"><?= e((string) $template['unit']) ?></span>
                             <?php elseif ($type === 'meter' && $hasMeter): ?>
                                 <span class="input-addon"><?= e($meterUnit) ?></span>
                             <?php endif; ?>
                         </div>
-                        <?php if ($template !== null && ($template['min_value'] !== null || $template['max_value'] !== null)): ?>
+                        <?php if ($template['min_value'] !== null || $template['max_value'] !== null): ?>
                             <div class="form-hint" data-range-hint>
                                 OK between
                                 <?= $template['min_value'] !== null ? e(decimal($template['min_value'])) : 'anything' ?>

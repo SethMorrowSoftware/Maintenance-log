@@ -89,8 +89,27 @@ $inspector    = trim((string) $inspection['first_name'] . ' ' . (string) $inspec
 
                             if ($item['value_number'] !== null) {
                                 $value = decimal($item['value_number']);
+
+                                if ((string) ($item['template_unit'] ?? '') !== '') {
+                                    $value .= ' ' . (string) $item['template_unit'];
+                                }
                             } elseif ((string) $item['value_text'] !== '') {
                                 $value = (string) $item['value_text'];
+                            }
+
+                            // A reading on its own does not say whether it was
+                            // acceptable, so the record carries the range it
+                            // was measured against. This is the document an
+                            // inspector or an insurer asks to see: a number
+                            // with no standard beside it proves nothing.
+                            $standard = '';
+
+                            if ($item['value_number'] !== null
+                                && ($item['template_min'] !== null || $item['template_max'] !== null)) {
+                                $standard = 'Acceptable: '
+                                    . ($item['template_min'] !== null ? decimal($item['template_min']) : 'anything')
+                                    . ' to '
+                                    . ($item['template_max'] !== null ? decimal($item['template_max']) : 'anything');
                             }
                             ?>
                             <li class="result-item is-<?= e($tone) ?>">
@@ -114,7 +133,12 @@ $inspector    = trim((string) $inspection['first_name'] . ' ' . (string) $inspec
                                         </span>
                                     <?php endif; ?>
                                     <?php if ($value !== ''): ?>
-                                        <div class="result-value"><?= e($value) ?></div>
+                                        <div class="result-value">
+                                            <?= e($value) ?>
+                                            <?php if ($standard !== ''): ?>
+                                                <span class="result-standard"><?= e($standard) ?></span>
+                                            <?php endif; ?>
+                                        </div>
                                     <?php endif; ?>
                                     <?php if ((string) $item['notes'] !== ''): ?>
                                         <div class="result-note"><?= nl2br_e((string) $item['notes']) ?></div>

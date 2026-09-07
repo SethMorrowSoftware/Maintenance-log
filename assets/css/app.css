@@ -3303,6 +3303,17 @@ a.stat-card:hover {
     font-weight: 650;
     font-variant-numeric: tabular-nums;
 }
+
+/* The standard the reading was judged against, beside the reading. Quieter
+   than the number itself, but it prints: a measurement with no acceptable
+   range next to it proves nothing to an inspector. */
+.result-standard {
+    margin-left: var(--space-2);
+    font-weight: 400;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
 .result-note {
     margin-top: var(--space-1);
     padding-left: var(--space-3);

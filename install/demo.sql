@@ -242,16 +242,20 @@ VALUES
    'Kart reached noticeably higher speed than the rest of the junior fleet on the test lap. Governor not limiting correctly. Removed from service and raised a work order.',
    'Ravi Patel');
 
+-- unit, min_value and max_value are the standard each answer was judged
+-- against, copied off the checklist line when the check was started. They are
+-- listed here rather than left to their defaults so the sample inspection
+-- shows a real acceptable range, the way a live one does.
 INSERT IGNORE INTO {inspection_items}
   (id, inspection_id, checklist_item_id, section, item_text, response_type, response,
-   value_text, value_number, is_critical, notes, sort_order)
+   value_text, value_number, unit, min_value, max_value, is_critical, notes, sort_order)
 VALUES
-  (1, 4, 1,  'Brakes & Steering', 'Brake pedal firm, kart stops in a straight line', 'pass_fail', 'pass', '', NULL, 1, '', 10),
-  (2, 4, 4,  'Controls', 'Throttle returns fully to idle when released', 'pass_fail', 'pass', '', NULL, 1, '', 40),
-  (3, 4, 5,  'Controls', 'Kill switch stops the engine', 'pass_fail', 'pass', '', NULL, 1, '', 50),
-  (4, 4, 12, 'Wheels & Tires', 'Tyre pressure (front / rear)', 'number', '', '', 18.00, 0, 'Front 18, rear 20.', 120),
-  (5, 4, 19, 'Engine & Fluids', 'Hour meter reading', 'meter', '', '', 587.00, 0, '', 190),
-  (6, 4, 20, 'Final', 'Test lap completed, kart handles normally', 'pass_fail', 'fail', '', NULL, 1,
+  (1, 4, 1,  'Brakes & Steering', 'Brake pedal firm, kart stops in a straight line', 'pass_fail', 'pass', '', NULL, '', NULL, NULL, 1, '', 10),
+  (2, 4, 4,  'Controls', 'Throttle returns fully to idle when released', 'pass_fail', 'pass', '', NULL, '', NULL, NULL, 1, '', 40),
+  (3, 4, 5,  'Controls', 'Kill switch stops the engine', 'pass_fail', 'pass', '', NULL, '', NULL, NULL, 1, '', 50),
+  (4, 4, 12, 'Wheels & Tires', 'Tyre pressure (front / rear)', 'number', '', '', 18.00, 'PSI', 0.00, 60.00, 0, 'Front 18, rear 20.', 120),
+  (5, 4, 19, 'Engine & Fluids', 'Hour meter reading', 'meter', '', '', 587.00, 'hours', NULL, NULL, 0, '', 190),
+  (6, 4, 20, 'Final', 'Test lap completed, kart handles normally', 'pass_fail', 'fail', '', NULL, '', NULL, NULL, 1,
    'Kart exceeded the junior speed limit on the back straight. Governor linkage appears not to be restricting travel.', 200);
 
 

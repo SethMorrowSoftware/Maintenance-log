@@ -131,15 +131,24 @@ final class Inspection
      */
     public static function items(int $inspectionId): array
     {
-        // Whether an item may be left blank lives on the template. An item
-        // whose template line has since been deleted is treated as required,
-        // which is the safe way round.
-        // The template's guidance, unit and acceptable range come along too,
-        // so the runner does not query once per line.
+        // The acceptable range, the unit and the guidance are read off the
+        // inspection itself, not back off the checklist. They were copied
+        // there when the run started, so editing or deleting the checklist
+        // line afterwards cannot change what this check was measured against.
+        // Reading them live is what let a deleted line file an out-of-range
+        // reading as a pass — see migration 003.
+        //
+        // Whether a line may be left blank is the exception and stays live:
+        // that is a question about the run in front of you rather than a fact
+        // about the record, so an administrator can still release somebody
+        // stuck on a line that should never have been mandatory. A line whose
+        // template has been deleted is treated as required, the safe way round.
         return db()->all(
             'SELECT ii.*, COALESCE(ci.is_required, 1) AS is_required,
-                    ci.description AS template_description, ci.unit AS template_unit,
-                    ci.min_value AS template_min, ci.max_value AS template_max
+                    ii.item_description AS template_description,
+                    ii.unit             AS template_unit,
+                    ii.min_value        AS template_min,
+                    ii.max_value        AS template_max
              FROM {inspection_items} ii
              LEFT JOIN {checklist_items} ci ON ci.id = ii.checklist_item_id
              WHERE ii.inspection_id = ?
@@ -239,13 +248,22 @@ final class Inspection
             ]);
 
             foreach (self::checklistItems($checklistId) as $item) {
+                // The standard comes with the question. A check that read its
+                // acceptable range back from the checklist would change its
+                // mind whenever somebody edited the checklist, so the range,
+                // the unit and the guidance are copied onto the run here and
+                // never consulted from the template again.
                 $db->insert('inspection_items', [
                     'inspection_id'     => $inspectionId,
                     'checklist_item_id' => (int) $item['id'],
                     'section'           => (string) $item['section'],
                     'item_text'         => (string) $item['item_text'],
+                    'item_description'  => (string) $item['description'],
                     'response_type'     => (string) $item['response_type'],
                     'response'          => '',
+                    'unit'              => (string) $item['unit'],
+                    'min_value'         => $item['min_value'],
+                    'max_value'         => $item['max_value'],
                     'is_critical'       => (int) $item['is_critical'],
                     'sort_order'        => (int) $item['sort_order'],
                     'created_at'        => Dates::nowUtc(),
